@@ -1,0 +1,2 @@
+-- supabase/seed.sql
+-- Dev seed data. Empty at baseline; Phase 6 adds "Demo"-labeled fixtures.

@@ -1,0 +1,12 @@
+# Single-package repo — pnpm 11 reads settings here (moved out of package.json).
+# Approve the install scripts of these deps so `pnpm install` doesn't fail on
+# pnpm 11's default-deny build gate (ERR_PNPM_IGNORED_BUILDS) locally and on
+# Vercel/CI. All ship prebuilt binaries or a downloaded binary — no native build.
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  msw: true
+  sharp: true
+  supabase: true
+  unrs-resolver: true

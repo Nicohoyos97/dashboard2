@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens — INITIAL_PROMPT.md §6 is the primary design source. Tailwind v4
+ * is CSS-first: tokens live in @theme, not tailwind.config.ts. shadcn semantic
+ * tokens (--background, --primary, …) map onto the same palette below so shadcn
+ * components inherit the portal look out of the box.
+ */
+@theme inline {
+  /* shadcn semantic tokens → CSS variables defined in :root */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Brand tokens — utilities: bg-paper, text-ink, text-blue, border-line, … */
+  --color-blue: #2563eb; /* primary */
+  --color-blue-soft: #1d4ed8; /* primary hover */
+  --color-blue-pale: #eef5ff; /* active nav pill / soft icon squares */
+  --color-ink: #0f172a; /* headings */
+  --color-paper: #f7f9fc; /* page background */
+  --color-paper-2: #f1f5f9; /* subtle alt surface */
+  --color-line: #e6ecf4; /* borders, dividers */
+  --color-line-soft: #eef2f7;
+  --color-muted-ink: #64748b; /* muted text */
+  --color-success: #10b981; /* positive */
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444; /* critical */
+  --color-info: #3b82f6;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+/* Light theme — shadcn tokens mapped onto the §6 palette. */
+:root {
+  --radius: 1rem; /* 16px — cards use 14–16px per §6 */
+
+  --background: #f7f9fc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eef5ff;
+  --accent-foreground: #2563eb;
+  --destructive: #ef4444;
+  --border: #e6ecf4;
+  --input: #e6ecf4;
+  --ring: #2563eb;
+}
+
+/* Dark theme — not part of the MVP spec; slate defaults keep shadcn components
+   legible if `.dark` is ever applied. */
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e3a8a;
+  --accent-foreground: #bfdbfe;
+  --destructive: #ef4444;
+  --border: rgba(241, 245, 249, 0.12);
+  --input: rgba(241, 245, 249, 0.16);
+  --ring: #60a5fa;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+}

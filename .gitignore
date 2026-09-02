@@ -1,0 +1,33 @@
+# dependencies
+node_modules
+
+# next
+.next
+out
+
+# env — keep the templates, ignore everything else (.env.local, etc.)
+.env*
+!.env.example
+!.env.cloud.example
+
+# vercel
+.vercel
+
+# mcp config (may hold project refs / tokens)
+.mcp.json
+
+# stitch mcp
+.stitch-mcp-auto*
+
+# supabase local
+supabase/.branches
+supabase/.temp
+
+# misc
+*.local
+.DS_Store
+*.tsbuildinfo
+
+# test artifacts
+test-results
+playwright-report

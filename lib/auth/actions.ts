@@ -1,0 +1,163 @@
+'use server';
+
+import { getLocale, getTranslations } from 'next-intl/server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+import { createClient } from '@/lib/supabase/server';
+
+import {
+  type SignInValues,
+  type SignUpValues,
+  forgotPasswordSchema,
+  passwordSchema,
+  signInSchema,
+  signUpSchema,
+} from './schemas';
+
+// Discriminated result returned to the client form. Never leak provider error
+// details that would aid account enumeration.
+export type AuthResult =
+  | { ok: true; url?: string; needsConfirmation?: boolean }
+  | { ok: false; error: string };
+
+async function getOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  if (host) return `${proto}://${host}`;
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+}
+
+// Prefix a locale-agnostic app path with the active locale (English = no prefix).
+// Used for redirects + the callback `next` param so a Spanish user stays in /es.
+async function localePath(path: string): Promise<string> {
+  const locale = await getLocale();
+  return locale === 'en' ? path : `/${locale}${path}`;
+}
+
+export async function signInWithPassword(
+  values: SignInValues,
+  redirectTo?: string,
+): Promise<AuthResult> {
+  const t = await getTranslations('AuthErrors');
+  const parsed = signInSchema.safeParse(values);
+  if (!parsed.success) return { ok: false, error: t('checkDetails') };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+
+  // Do not differentiate wrong-password from unknown-email (enumeration).
+  if (error) return { ok: false, error: t('invalidCredentials') };
+
+  // redirectTo (from the guard's redirectedFrom) is already locale-prefixed.
+  redirect(redirectTo && redirectTo.startsWith('/') ? redirectTo : await localePath('/dashboard'));
+}
+
+export async function signUpWithPassword(values: SignUpValues): Promise<AuthResult> {
+  const t = await getTranslations('AuthErrors');
+  const parsed = signUpSchema.safeParse(values);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? t('checkDetails') };
+  }
+
+  const supabase = await createClient();
+  const origin = await getOrigin();
+  const { firstName, lastName, email, password } = parsed.data;
+
+  // Carry the locale through the email-confirmation round-trip: after the user
+  // clicks the link, /callback redirects to this locale-aware dashboard.
+  const next = await localePath('/dashboard');
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${origin}/callback?next=${encodeURIComponent(next)}`,
+      data: { full_name: `${firstName} ${lastName}`.trim() },
+    },
+  });
+
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('password')) return { ok: false, error: error.message };
+    return { ok: false, error: t('createFailed') };
+  }
+
+  // With email confirmations on, an existing email returns a user with no
+  // identities (Supabase obfuscates to prevent enumeration). Treat as in-use.
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    return { ok: false, error: t('emailInUse') };
+  }
+
+  return { ok: true, needsConfirmation: true };
+}
+
+export async function signInWithGoogle(redirectTo?: string): Promise<AuthResult> {
+  const t = await getTranslations('AuthErrors');
+  const supabase = await createClient();
+  const origin = await getOrigin();
+  const next =
+    redirectTo && redirectTo.startsWith('/') ? redirectTo : await localePath('/dashboard');
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${origin}/callback?next=${encodeURIComponent(next)}` },
+  });
+
+  if (error || !data.url) {
+    return { ok: false, error: t('googleFailed') };
+  }
+  return { ok: true, url: data.url };
+}
+
+export async function signOut(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect(await localePath('/signin'));
+}
+
+export async function requestPasswordReset(email: string): Promise<AuthResult> {
+  const t = await getTranslations('AuthErrors');
+  const parsed = forgotPasswordSchema.safeParse({ email });
+  if (!parsed.success) return { ok: false, error: t('checkDetails') };
+
+  const supabase = await createClient();
+  const origin = await getOrigin();
+  const next = await localePath('/reset-password');
+  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${origin}/callback?next=${encodeURIComponent(next)}`,
+  });
+
+  // Always report success — never reveal whether an account exists.
+  return { ok: true };
+}
+
+export async function updatePassword(password: string): Promise<AuthResult> {
+  const t = await getTranslations('AuthErrors');
+  const parsed = passwordSchema.safeParse(password);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? t('checkDetails') };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  // Reaching reset-password requires an active recovery session from /callback.
+  if (!user) return { ok: false, error: t('serverError') };
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    // Supabase's own messages (e.g. same_password, weak password) are passed
+    // through untranslated for now — see the i18n follow-up note in the PR.
+    if (error.message.toLowerCase().includes('password')) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: false, error: t('serverError') };
+  }
+
+  redirect(await localePath('/dashboard'));
+}
