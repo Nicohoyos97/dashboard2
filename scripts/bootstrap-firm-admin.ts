@@ -24,16 +24,19 @@ function loadEnvLocal(): void {
   }
 }
 
+// pnpm forwards the `--` separator; drop it so positionals line up.
+const args = process.argv.slice(2).filter((a) => a !== '--');
+
 function arg(flag: string): string | undefined {
-  const i = process.argv.indexOf(flag);
-  return i >= 0 ? process.argv[i + 1] : undefined;
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : undefined;
 }
 
 async function main(): Promise<void> {
   loadEnvLocal();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const email = process.argv[2]?.toLowerCase();
+  const email = args[0]?.toLowerCase();
   if (!url || !key) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing');
   if (!email || email.startsWith('--')) throw new Error('usage: pnpm firm:admin -- <email> [--password <pw>] [--firm <name>]');
 

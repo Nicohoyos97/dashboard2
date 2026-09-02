@@ -63,3 +63,5 @@ _Add entries as `- YYYY-MM-DD — <assumption> — <why> — <where it applies>`
 - 2026-09-02 — Added a private `exports` bucket for CSV/PDF exports (`exports/{entity}/{export_id}/{filename}`) instead of mixing exports into `documents` — migration `0005_tax_reminders.sql`.
 - 2026-09-02 — Supabase CLI upgraded to v2.116 (`config.toml`: `[inbucket]` → `[local_smtp]`); the local mail catcher is now Mailpit at `http://127.0.0.1:54324` — `tests/e2e/auth.spec.ts`, `docs/ENVIRONMENTS.md`.
 - 2026-09-02 — The first `master_admin` is granted with `pnpm firm:admin -- <email>` (service role, `scripts/bootstrap-firm-admin.ts`); the app never self-provisions firm roles. Further staff are added by a master admin (Phase 2 UI).
+- 2026-09-02 — Vercel plan is **Pro** (owner confirmed at Checkpoint 2): per-minute cron for `/api/jobs/process-documents` and a long `maxDuration` are available — `vercel.json`, `docs/PLAN.md` §3.4.
+- 2026-09-02 — The cloud Supabase project is deferred until the first Vercel deploy; Phases 2–5 are built and tested against local Supabase — `docs/ENVIRONMENTS.md`.
