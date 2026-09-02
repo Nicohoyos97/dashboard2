@@ -148,4 +148,4 @@ MCP: copy `.mcp.json.example` → `.mcp.json` with the cloud project ref (read-o
 
 ## 8. Current phase
 
-> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). **Phase 0 — Discovery** per `INITIAL_PROMPT.md` §12: inspect the repo, read the Anthropic docs, write `docs/PLAN.md`, and **stop at Checkpoint 1**. The cloud Supabase project for 2.0 is not created yet — see `docs/ENVIRONMENTS.md`.
+> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). **Phase 0 — Discovery is complete (2026-09-02):** `docs/PLAN.md` is written. **Stopped at Checkpoint 1** — waiting for plan approval and the open decisions in `docs/PLAN.md` §9. Next: **Phase 1 — Foundations** (`INITIAL_PROMPT.md` §12). The cloud Supabase project for 2.0 is not created yet — see `docs/ENVIRONMENTS.md`.
