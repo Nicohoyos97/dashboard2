@@ -1,9 +1,10 @@
 // Shared top-level navigation for the client portal shell (the (dashboard) group),
 // per INITIAL_PROMPT.md §7. Framework-free so isActiveNav stays pure and
-// unit-testable; labels are i18n keys resolved in SidebarNav. Items marked
+// unit-testable; labels are i18n keys resolved in NavList. Items marked
 // `disabled` are not built yet (Phases 3–5) and render non-interactive — never a
 // dead link. Sales Taxes additionally becomes visibility-gated by
-// `sales_tax_enabled` once that column exists (Phase 5).
+// `sales_tax_enabled` once the module ships (Phase 5). The firm portal's list
+// lives in lib/admin-nav.ts and shares these types.
 export type NavChild = {
   href: string;
   labelKey: string;
@@ -14,6 +15,7 @@ export type NavItem = {
   href: string;
   labelKey: string;
   disabled?: boolean;
+  exact?: boolean; // active only on the exact path (a root like /admin)
   children?: NavChild[];
 };
 
@@ -39,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
 // /statements/profit-and-loss, while a child matches exactly. NOT a naive
 // startsWith: "/statements-foo" must not activate "/statements". next-intl's
 // usePathname returns the locale-stripped path, so the hrefs here are locale-less.
-export function isActiveNav(pathname: string, href: string): boolean {
+export function isActiveNav(pathname: string, href: string, exact = false): boolean {
+  if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -59,10 +59,11 @@ You are working on a production financial application. Read this file at the sta
 |---|---|
 | Sign-up / sign-in with **Google** and email + password, password reset, email confirmation | `lib/auth/actions.ts`, `components/auth/*`, `app/callback/route.ts` |
 | **Profile photo upload** (2 MB, png/jpg/webp) to the `avatars` bucket | `components/settings/ProfileForm.tsx`, bucket policies in `0001_baseline.sql` |
-| Session helpers | `getCurrentUser()`, `getCurrentEntity()`, `requireEntity()` in `lib/auth/` |
+| Session helpers | `getCurrentUser()`, `getCurrentEntity()` / `listEntities()` (entity switcher cookie `hb_entity`), `requireEntity()` in `lib/auth/` |
+| Firm helpers (Phase 1) | `getFirmMembership()`, `getAssuranceLevel()`, `requireFirmMember()` / `requireFirmAdmin()` in `lib/auth/` — the `/admin` gate (firm role + TOTP `aal2`) |
 | Supabase clients | `createClient()` (RLS-scoped) in `lib/supabase/server.ts`; `createAdminClient()` (service role, `server-only`) in `lib/supabase/admin.ts` |
 | Audit | `logAccess()` in `lib/audit/logAccess.ts` |
-| Baseline schema | `supabase/migrations/0001_baseline.sql` — `profiles`, `business_entities`, `entity_memberships`, `chat_sessions`, `chat_messages`, `audit_logs`, `avatars` bucket, RLS helpers |
+| Baseline schema | `supabase/migrations/0001_baseline.sql` — `profiles`, `business_entities`, `entity_memberships`, `chat_sessions`, `chat_messages`, `audit_logs`, `avatars` bucket, RLS helpers. Phase 1 adds `0002`–`0005` (firm, documents, financials, taxes/reminders) — inventory in `docs/DATABASE.md` |
 | i18n | `messages/{en,es}.json`, `i18n/` — every user-facing string goes through next-intl |
 
 **Onboarding model:** a user may create their own account (Google or email). Businesses are provisioned by the firm; a user with no `entity_memberships` row sees a pending state on the Overview — never an auto-created workspace.
@@ -79,13 +80,17 @@ You are working on a production financial application. Read this file at the sta
 │   │   ├── dashboard/            # Overview (route stays /dashboard; nav label "Overview")
 │   │   ├── chat/                 # Insights with Nick (Phase 4)
 │   │   └── settings/             # profile · business · members
+│   ├── [locale]/admin/           # Firm portal — layout requires firm role; (gated)/ requires aal2
+│   │   ├── (gated)/              # dashboard (+ clients, upload, documents, audit in Phase 2)
+│   │   └── mfa/                  # TOTP enroll / verify (reachable at aal1)
 │   ├── callback/                 # OAuth / email-confirm / recovery return (not localized)
 │   ├── api/                      # Route Handlers (jobs, downloads) — not localized
 │   ├── fonts.ts · globals.css    # Inter + §6 design tokens
-├── components/ {auth, dashboard, settings, ui, icons}
-├── lib/ {auth, supabase, audit, settings, ai, nav.ts, utils}
+├── components/ {auth, dashboard, admin, shell, settings, ui, icons}
+├── lib/ {auth, supabase, audit, settings, entities, ai, nav.ts, admin-nav.ts, utils}
+├── scripts/                      # bootstrap-firm-admin.ts (pnpm firm:admin)
 ├── i18n/ · messages/             # next-intl
-├── supabase/ {migrations, config.toml, seed.sql}
+├── supabase/ {migrations 0001–0005, config.toml, seed.sql}
 ├── docs/                         # see §5
 ├── .claude/skills/               # multi-tenant-data-access · writing-rls-policies
 └── tests/ {unit, e2e}
@@ -126,6 +131,7 @@ pnpm supabase:stop
 pnpm db:migrate           # apply migrations locally
 pnpm db:reset             # wipe local DB, re-apply migrations + seed
 pnpm db:types             # regenerate lib/supabase/types.ts — commit the result
+pnpm firm:admin -- <email> [--password <pw>]   # grant master_admin (service role); first admin only
 
 npx supabase link --project-ref <ref>   # cloud (once)
 npx supabase db push                    # apply migrations to cloud
@@ -148,4 +154,4 @@ MCP: copy `.mcp.json.example` → `.mcp.json` with the cloud project ref (read-o
 
 ## 8. Current phase
 
-> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). **Phase 0 — Discovery is complete (2026-09-02):** `docs/PLAN.md` is written. **Stopped at Checkpoint 1** — waiting for plan approval and the open decisions in `docs/PLAN.md` §9. Next: **Phase 1 — Foundations** (`INITIAL_PROMPT.md` §12). The cloud Supabase project for 2.0 is not created yet — see `docs/ENVIRONMENTS.md`.
+> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). Phase 0 (plan) and **Phase 1 — Foundations are complete (2026-09-02)**: migrations `0002`–`0005`, firm helpers + `/admin` MFA gate, entity switcher, responsive shells for both portals, RLS suite (26 e2e). **Stopped at Checkpoint 2** — migrations and RLS results presented; waiting for approval. Next: **Phase 2 — Admin + ingestion** (`INITIAL_PROMPT.md` §12), which needs no further stop. The cloud Supabase project for 2.0 is not created yet — see `docs/ENVIRONMENTS.md`.

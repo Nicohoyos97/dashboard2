@@ -9,7 +9,7 @@ We run against **two separate Supabase instances**. Knowing which one you're poi
 | **Local dev** (your machine) | Docker Supabase (`pnpm supabase:start`, project id `dashboard2`) | `.env.local` |
 | **Vercel preview / production** | Cloud project for 2.0 — **not created yet** (see below) | Vercel env vars |
 
-- **Local for dev.** Test users never pollute the cloud DB, auth emails land in Inbucket (`http://127.0.0.1:54324`), and `pnpm db:reset` is free.
+- **Local for dev.** Test users never pollute the cloud DB, auth emails land in the local mail catcher (Mailpit, `http://127.0.0.1:54324`), and `pnpm db:reset` is free.
 - **Cloud for Vercel.** Preview and production read their own environment variables from the Vercel dashboard — never from a file here.
 - **Never mix.** Don't point local dev at the cloud project; don't bake cloud secrets into the repo.
 

@@ -1,42 +1,48 @@
-// Authenticated app shell sidebar: brand, top-level nav, business badge, and sign-out.
-// The nav lives in SidebarNav (client) so it can highlight the active route and
-// expand the Reports group.
-import Image from 'next/image';
+import { getTranslations } from 'next-intl/server';
 
-import { signOut } from '@/lib/auth/actions';
+import { EntitySwitcher } from '@/components/shell/EntitySwitcher';
+import { NavList } from '@/components/shell/NavList';
+import { type ShellUser, UserBlock } from '@/components/shell/UserBlock';
+import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';
+import { NAV_ITEMS } from '@/lib/nav';
 
-import { SidebarNav } from './SidebarNav';
+// Client-portal sidebar body (INITIAL_PROMPT.md §7): nav, then the selected
+// business (a switcher when the user belongs to several), then the user.
+// Rendered by AppShell both in the desktop aside and in the mobile drawer.
+export async function Sidebar({
+  entities,
+  currentEntity,
+  user,
+}: {
+  entities: CurrentEntity[];
+  currentEntity: CurrentEntity | null;
+  user: ShellUser;
+}) {
+  const t = await getTranslations('Shell');
+  const roleLabel =
+    currentEntity?.role === 'client_owner'
+      ? t('roleOwner')
+      : currentEntity?.role === 'client_viewer'
+        ? t('roleViewer')
+        : '';
 
-export function Sidebar({ email, entityName }: { email: string; entityName: string }) {
   return (
-    <aside className="border-border bg-card flex w-64 shrink-0 flex-col border-r p-5">
-      <Image
-        src="/brand/logo-wordmark.png"
-        alt="Hoyos Baker"
-        width={160}
-        height={160}
-        className="mb-6 h-10 w-auto"
-      />
+    <>
+      <NavList items={NAV_ITEMS} namespace="Nav" />
 
-      {entityName && (
-        <p className="bg-secondary text-ink mb-6 truncate rounded-[10px] px-3 py-2 text-[13px] font-semibold">
-          {entityName}
-        </p>
+      {currentEntity && entities.length > 1 && (
+        <div className="mt-3">
+          <EntitySwitcher entities={entities} currentId={currentEntity.id} />
+        </div>
+      )}
+      {currentEntity && entities.length === 1 && (
+        <div className="bg-secondary mt-3 rounded-xl px-3 py-2">
+          <p className="text-muted-foreground text-[11px] font-medium">{t('business')}</p>
+          <p className="text-ink truncate text-[13.5px] font-semibold">{currentEntity.name}</p>
+        </div>
       )}
 
-      <SidebarNav />
-
-      <div className="border-border mt-auto border-t pt-4">
-        <p className="text-muted-foreground mb-2 truncate px-3 text-[12.5px]">{email}</p>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="text-foreground hover:bg-secondary hover:text-danger w-full rounded-[10px] px-3 py-2 text-left text-[14px] font-medium transition"
-          >
-            Sign out
-          </button>
-        </form>
-      </div>
-    </aside>
+      <UserBlock user={user} roleLabel={roleLabel} profileHref="/settings/profile" />
+    </>
   );
 }

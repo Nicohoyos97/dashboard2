@@ -7,7 +7,7 @@ import Image from 'next/image';
 export function AuthSplit({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-paper flex min-h-screen items-center justify-center p-4 md:p-8">
-      <main className="border-line bg-card flex min-h-[600px] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border shadow-[0_10px_25px_-5px_rgba(11,26,58,0.05),0_8px_10px_-6px_rgba(11,26,58,0.05)] md:flex-row">
+      <main className="border-line bg-card flex min-h-[600px] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border shadow-[0_10px_25px_-5px_rgba(15,23,42,0.05),0_8px_10px_-6px_rgba(15,23,42,0.05)] md:flex-row">
         <VisualPanel />
         <section className="bg-card flex w-full flex-col justify-center p-8 md:w-1/2 md:p-12">
           <div className="mx-auto w-full max-w-[380px]">{children}</div>

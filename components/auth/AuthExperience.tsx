@@ -51,7 +51,7 @@ export function AuthExperience({
       {error && (
         <div
           role="alert"
-          className="mt-6 flex items-start justify-between gap-3 rounded-[12px] border border-[rgba(186,26,26,0.3)] bg-[rgba(186,26,26,0.06)] px-4 py-3 text-[13.5px] text-[#ba1a1a]"
+          className="mt-6 flex items-start justify-between gap-3 rounded-[12px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] px-4 py-3 text-[13.5px] text-danger"
         >
           <span>{error}</span>
           <button

@@ -1,8 +1,9 @@
 import { type APIRequestContext, expect, test } from '@playwright/test';
 
-// Full Phase 1 auth flow against local Supabase: sign up, confirm the email
-// (read from Inbucket), sign in, and sign out. Requires `pnpm supabase:start`.
-const INBUCKET = 'http://127.0.0.1:54324';
+// Full auth flow against local Supabase: sign up, confirm the email (read from
+// the local mail catcher — Mailpit, shipped by Supabase CLI v2), sign in, and
+// sign out. Requires `pnpm supabase:start`.
+const MAILPIT = 'http://127.0.0.1:54324';
 const PASSWORD = 'Str0ng!Pass1';
 
 test('signup → email confirm → signin → signout', async ({ page, request }) => {
@@ -19,8 +20,8 @@ test('signup → email confirm → signin → signout', async ({ page, request }
   await page.getByRole('button', { name: /create my account/i }).click();
   await expect(page.getByText(/check your email/i)).toBeVisible();
 
-  // ── Confirm via the Inbucket message ─────────────────────────────────
-  const confirmUrl = await confirmationLink(request, mailbox);
+  // ── Confirm via the Mailpit message ──────────────────────────────────
+  const confirmUrl = await confirmationLink(request, email);
   await page.goto(confirmUrl);
   await expect(page).toHaveURL(/\/dashboard/);
 
@@ -40,19 +41,19 @@ test('signup → email confirm → signin → signout', async ({ page, request }
   await expect(page).toHaveURL(/\/signin/);
 });
 
-async function confirmationLink(request: APIRequestContext, mailbox: string): Promise<string> {
+async function confirmationLink(request: APIRequestContext, email: string): Promise<string> {
   for (let attempt = 0; attempt < 30; attempt++) {
-    const list = await request.get(`${INBUCKET}/api/v1/mailbox/${mailbox}`);
-    const messages = (await list.json()) as Array<{ id: string }>;
-    const latest = messages.at(-1);
+    const list = await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
+    const { messages } = (await list.json()) as { messages: Array<{ ID: string }> };
+    const latest = messages[0];
     if (latest) {
-      const detail = await request.get(`${INBUCKET}/api/v1/mailbox/${mailbox}/${latest.id}`);
-      const body = (await detail.json()) as { body?: { html?: string; text?: string } };
-      const html = body.body?.html ?? body.body?.text ?? '';
+      const detail = await request.get(`${MAILPIT}/api/v1/message/${latest.ID}`);
+      const body = (await detail.json()) as { HTML?: string; Text?: string };
+      const html = body.HTML || body.Text || '';
       const match = html.match(/https?:\/\/[^\s"']*\/auth\/v1\/verify[^\s"']*/);
       if (match) return match[0].replace(/&amp;/g, '&');
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`No confirmation email arrived in Inbucket for ${mailbox}`);
+  throw new Error(`No confirmation email arrived in Mailpit for ${email}`);
 }

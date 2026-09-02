@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 
-import type { Database } from '../../lib/supabase/types';
+import { Fixtures, anonClient, insertDenied, supabaseEnv } from './helpers/fixtures';
 
 // Cross-tenant isolation — the most important test in the repo. Two real users
 // in two businesses; user A must not be able to read or mutate business B's data
@@ -9,68 +8,17 @@ import type { Database } from '../../lib/supabase/types';
 // fixtures are created through the service role — exactly how the admin portal
 // will do it. Runs against local Supabase (env loaded by playwright.config.ts).
 //
-// Phase 1 extends this file with: firm_memberships / is_firm_admin(), the private
-// documents bucket + signed URLs, every §5 ingestion table, and the aal2 gate.
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const PASSWORD = 'Str0ng!Pass1';
-
-type Tenant = { userId: string; entityId: string; client: SupabaseClient<Database> };
-
+// Firm side, documents / storage, and every §5 ingestion table live in
+// rls-firm.spec.ts, rls-documents.spec.ts and rls-financials.spec.ts.
 test.describe('RLS cross-tenant isolation', () => {
-  test.skip(!URL || !ANON || !SERVICE, 'Supabase env not available');
+  test.skip(!supabaseEnv(), 'Supabase env not available');
 
-  const admin = createClient<Database>(URL!, SERVICE!, { auth: { persistSession: false } });
-  const created: string[] = [];
-
-  test.afterAll(async () => {
-    for (const id of created) await admin.auth.admin.deleteUser(id);
-  });
-
-  async function makeUser(label: string): Promise<{ id: string; email: string }> {
-    const email = `rls-${label}-${Date.now()}@example.com`;
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password: PASSWORD,
-      email_confirm: true,
-    });
-    if (error || !data.user) throw new Error(`createUser: ${error?.message}`);
-    created.push(data.user.id);
-    return { id: data.user.id, email };
-  }
-
-  async function signedInClient(email: string): Promise<SupabaseClient<Database>> {
-    const client = createClient<Database>(URL!, ANON!, { auth: { persistSession: false } });
-    const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD });
-    if (error) throw new Error(`signIn: ${error.message}`);
-    return client;
-  }
-
-  // A user + a business they own, provisioned the way the firm admin portal will.
-  async function makeTenant(label: string): Promise<Tenant> {
-    const user = await makeUser(label);
-    const { data: entity, error: entErr } = await admin
-      .from('business_entities')
-      .insert({ name: `${label} Business` })
-      .select('id')
-      .single();
-    if (entErr || !entity) throw new Error(`insert entity: ${entErr?.message}`);
-    const { error: memErr } = await admin
-      .from('entity_memberships')
-      .insert({ business_entity_id: entity.id, user_id: user.id, role: 'client_owner' });
-    if (memErr) throw new Error(`insert membership: ${memErr.message}`);
-    return { userId: user.id, entityId: entity.id, client: await signedInClient(user.email) };
-  }
-
-  // Insert is denied either by an explicit error or by 0 rows affected
-  // (RLS-blocked inserts may surface as data:[] in some client versions).
-  const insertDenied = (r: { error: unknown; data: unknown[] | null }) =>
-    r.error !== null || (r.data ?? []).length === 0;
+  const fx = new Fixtures();
+  test.afterAll(() => fx.cleanup());
 
   test('user A cannot read or mutate business B via any verb', async () => {
-    const a = await makeTenant('a');
-    const b = await makeTenant('b');
+    const a = await fx.makeTenant('a');
+    const b = await fx.makeTenant('b');
 
     // Sanity: A can see its own business (policies aren't simply denying everything).
     const own = await a.client.from('business_entities').select('id').eq('id', a.entityId);
@@ -102,7 +50,7 @@ test.describe('RLS cross-tenant isolation', () => {
     const delOwn = await a.client.from('business_entities').delete().eq('id', a.entityId).select();
     expect(delOwn.data ?? []).toHaveLength(0);
 
-    // 5. INSERT self into B's business → denied (no INSERT policy on memberships).
+    // 5. INSERT self into B's business → denied (no client INSERT policy on memberships).
     const ins = await a.client
       .from('entity_memberships')
       .insert({ business_entity_id: b.entityId, user_id: a.userId, role: 'client_viewer' })
@@ -110,7 +58,10 @@ test.describe('RLS cross-tenant isolation', () => {
     expect(insertDenied(ins)).toBe(true);
 
     // 6. INSERT a new business as a client → denied (firm-provisioned only).
-    const insEntity = await a.client.from('business_entities').insert({ name: 'rogue' }).select();
+    const insEntity = await a.client
+      .from('business_entities')
+      .insert({ name: 'rogue', client_id: a.clientId })
+      .select();
     expect(insertDenied(insEntity)).toBe(true);
 
     // B's business is untouched (read back as B).
@@ -123,12 +74,10 @@ test.describe('RLS cross-tenant isolation', () => {
   });
 
   test('client_viewer can read but not edit the business profile', async () => {
-    const owner = await makeTenant('vo');
-    const viewer = await makeUser('vv');
-    await admin
-      .from('entity_memberships')
-      .insert({ business_entity_id: owner.entityId, user_id: viewer.id, role: 'client_viewer' });
-    const viewerClient = await signedInClient(viewer.email);
+    const owner = await fx.makeTenant('vo');
+    const viewer = await fx.makeUser('vv');
+    await fx.addMembership(owner.entityId, viewer.id, 'client_viewer');
+    const viewerClient = await fx.signedInClient(viewer.email);
 
     const read = await viewerClient
       .from('business_entities')
@@ -152,15 +101,13 @@ test.describe('RLS cross-tenant isolation', () => {
   });
 
   test('chat isolation; audit_logs have no client read path', async () => {
-    const a = await makeTenant('ca');
-    const b = await makeTenant('cb');
+    const a = await fx.makeTenant('ca');
+    const b = await fx.makeTenant('cb');
 
     // A viewer of business B (membership inserted via the service role).
-    const viewer = await makeUser('cm');
-    await admin
-      .from('entity_memberships')
-      .insert({ business_entity_id: b.entityId, user_id: viewer.id, role: 'client_viewer' });
-    const viewerClient = await signedInClient(viewer.email);
+    const viewer = await fx.makeUser('cm');
+    await fx.addMembership(b.entityId, viewer.id, 'client_viewer');
+    const viewerClient = await fx.signedInClient(viewer.email);
 
     // Seed business B: B starts a session; the service role writes a message and
     // an audit row for business B.
@@ -172,13 +119,13 @@ test.describe('RLS cross-tenant isolation', () => {
     expect(sessIns.error).toBeNull();
     const sessionId = sessIns.data!.id;
 
-    await admin.from('chat_messages').insert({
+    await fx.admin.from('chat_messages').insert({
       session_id: sessionId,
       business_entity_id: b.entityId,
       role: 'user',
       content: { text: 'hello' },
     });
-    await admin
+    await fx.admin
       .from('audit_logs')
       .insert({ business_entity_id: b.entityId, action: 'test.event', actor_id: b.userId });
 
@@ -211,7 +158,7 @@ test.describe('RLS cross-tenant isolation', () => {
     expect(insertDenied(insMsg)).toBe(true);
 
     // 5. audit_logs: NO client read path — not the viewer, not even B's owner.
-    //    Firm-admin read arrives with is_firm_admin() in Phase 1.
+    //    The firm reads them via is_firm_member() (rls-firm.spec.ts).
     const viewerAudit = await viewerClient
       .from('audit_logs')
       .select('id')
@@ -232,7 +179,7 @@ test.describe('RLS cross-tenant isolation', () => {
     expect(viewerSess.data ?? []).toHaveLength(1);
 
     // 7. Positive control: the service role reads the audit row it wrote.
-    const adminAudit = await admin
+    const adminAudit = await fx.admin
       .from('audit_logs')
       .select('id')
       .eq('business_entity_id', b.entityId);
@@ -240,8 +187,8 @@ test.describe('RLS cross-tenant isolation', () => {
   });
 
   test('avatars storage: writes are owner-folder-only, read is public', async () => {
-    const a = await makeTenant('sa');
-    const b = await makeTenant('sb');
+    const a = await fx.makeTenant('sa');
+    const b = await fx.makeTenant('sb');
 
     // Tiny valid 1x1 PNG (matches the bucket's allowed_mime_types).
     const png = Buffer.from(
@@ -276,14 +223,11 @@ test.describe('RLS cross-tenant isolation', () => {
   // profile; users in unrelated businesses cannot. Both directions matter — the
   // second is the cross-tenant leak guard.
   test('profiles: co-members see each other; users in other businesses cannot', async () => {
-    const a = await makeTenant('pa'); // owns business A — unrelated to B
-    const b = await makeTenant('pb'); // owns business B
-    const c = await makeTenant('pc'); // owns business C; also a viewer of B
+    const a = await fx.makeTenant('pa'); // owns business A — unrelated to B
+    const b = await fx.makeTenant('pb'); // owns business B
+    const c = await fx.makeTenant('pc'); // owns business C; also a viewer of B
 
-    const { error: memErr } = await admin
-      .from('entity_memberships')
-      .insert({ business_entity_id: b.entityId, user_id: c.userId, role: 'client_viewer' });
-    expect(memErr).toBeNull();
+    await fx.addMembership(b.entityId, c.userId, 'client_viewer');
 
     // Feature: a co-member (C) CAN read B's profile (name + email).
     const seen = await c.client
@@ -305,9 +249,8 @@ test.describe('RLS cross-tenant isolation', () => {
   // "permission denied for function"), never leaked rows and never an unhandled
   // 500. Seed real data first so "0 rows" means "blocked", not "empty table".
   test('anonymous client cannot read tenant tables (function hardening)', async () => {
-    const seeded = await makeTenant('anon-seed');
-
-    const anon = createClient<Database>(URL!, ANON!, { auth: { persistSession: false } });
+    const seeded = await fx.makeTenant('anon-seed');
+    const anon = anonClient();
 
     const assertNoLeak = (r: { data: unknown[] | null; error: { code?: string } | null }) => {
       expect(r.data ?? []).toHaveLength(0);
@@ -327,5 +270,8 @@ test.describe('RLS cross-tenant isolation', () => {
 
     // profiles → profiles_comember_select calls shares_entity_with()
     assertNoLeak(await anon.from('profiles').select('id').eq('id', seeded.userId));
+
+    // firm tables → is_firm_member() (0002)
+    assertNoLeak(await anon.from('clients').select('id').eq('id', seeded.clientId));
   });
 });

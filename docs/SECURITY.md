@@ -24,8 +24,8 @@ This is a financial application handling client books, bank statements and tax d
 - Sessions in `SameSite=Lax`, `Secure` (production) cookies via `@supabase/ssr` (`lib/supabase/env.ts` → `COOKIE_OPTIONS`). Session refresh + route guard in `middleware.ts` / `lib/supabase/middleware.ts`.
 - **Cookies are not `HttpOnly`** — a conscious trade-off required by the `@supabase/ssr` model (browser client reads the session). Mitigated by `SameSite=Lax`, `Secure`, 1 h access tokens with rotation, and the CSP below.
 - Password rules enforced client- and server-side (`lib/auth/schemas.ts`). Error messages never differentiate wrong-password from unknown-email (enumeration).
-- **MFA (TOTP, `aal2`) is required for every firm-admin route and inside `is_firm_admin()`** — Phase 1. TOTP enrollment is enabled in `supabase/config.toml` (`[auth.mfa.totp]`); enable it in the cloud dashboard too. Optional for clients (Phase 5).
-- Rate limiting on auth, upload, download and chat endpoints — Phase 1/2 (spec §3). Record the mechanism here when it lands.
+- **MFA (TOTP, `aal2`) is required for every firm route and inside `is_firm_member()` / `is_firm_admin()`.** `app/[locale]/admin/layout.tsx` checks the firm membership, `admin/(gated)/layout.tsx` requires `aal2` (else `/admin/mfa`, where `MfaGate` enrolls or verifies TOTP through the browser client), and the DB helpers read `auth.jwt() ->> 'aal'` so an aal1 session is not a firm session for RLS. TOTP is enabled in `supabase/config.toml` (`[auth.mfa.totp]`); enable it in the cloud dashboard too. Optional for clients (Phase 5).
+- Rate limiting: Postgres fixed-window counters (`rate_limits` + `consume_rate_limit()`, service-role only, `lib/rate-limit.ts`). Keys are composed server-side (`signin:<ip>`, `chat:<user>`, …). Wired to auth, upload, download and chat as each endpoint lands (Phase 2+).
 
 ### Authorization
 
@@ -33,7 +33,7 @@ This is a financial application handling client books, bank statements and tax d
 - App-level checks (`requireEntity`, role checks in Server Actions) are additional defense, never a substitute.
 - Client roles: `client_owner` (edit business profile, full read) > `client_viewer` (read). Firm roles (`master_admin`, `firm_staff`) live in `firm_memberships` (Phase 1).
 - **Service-role client (`lib/supabase/admin.ts`) bypasses RLS.** Use it only for system writes with no client policy (`logAccess`, jobs that name their tenant, server-maintained counters). Never inside a request handler to read or write tenant data on a user's behalf.
-- `audit_logs` has **no client read path** (default deny); firm admins read it via `is_firm_admin()`.
+- `audit_logs` has **no client read path** (default deny); the firm reads it via `is_firm_member()`. Conversations with Nick (`chat_*`, `chat_citations`) have **no firm read path** — the firm sees `ai_usage_daily` aggregates only.
 
 ### Documents & storage
 

@@ -1,7 +1,6 @@
 import { type Browser, type Page, expect, test } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '../../lib/supabase/types';
+import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
 
 // Settings → Business: the permission layering must be real, not asserted on
 // the admin path alone. Businesses are firm-provisioned (no self-serve RPC), so
@@ -12,32 +11,11 @@ import type { Database } from '../../lib/supabase/types';
 //   - viewer sees the fields disabled + the permission banner, no Save button
 // RLS (entities_owner_update) is the backstop tested in rls.spec; this asserts
 // the UI communicates the permission. Runs against local Supabase.
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const PASSWORD = 'Str0ng!Pass1';
-
 test.describe('Settings → Business permissions', () => {
-  test.skip(!URL || !ANON || !SERVICE, 'Supabase env not available');
+  test.skip(!supabaseEnv(), 'Supabase env not available');
 
-  const admin = createClient<Database>(URL!, SERVICE!, { auth: { persistSession: false } });
-  const created: string[] = [];
-
-  test.afterAll(async () => {
-    for (const id of created) await admin.auth.admin.deleteUser(id);
-  });
-
-  async function makeUser(label: string): Promise<{ id: string; email: string }> {
-    const email = `biz-${label}-${Date.now()}@example.com`;
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password: PASSWORD,
-      email_confirm: true,
-    });
-    if (error || !data.user) throw new Error(`createUser: ${error?.message}`);
-    created.push(data.user.id);
-    return { id: data.user.id, email };
-  }
+  const fx = new Fixtures();
+  test.afterAll(() => fx.cleanup());
 
   async function signIn(page: Page, email: string): Promise<void> {
     await page.goto('/signin');
@@ -55,21 +33,14 @@ test.describe('Settings → Business permissions', () => {
   }
 
   test('owner edits business; viewer sees disabled fields + banner', async ({ browser }) => {
-    const owner = await makeUser('owner');
-    const viewer = await makeUser('viewer');
+    const owner = await fx.makeUser('owner');
+    const viewer = await fx.makeUser('viewer');
 
-    // Firm-provisioned business + memberships (service role, as the admin portal will).
-    const { data: entity, error: entErr } = await admin
-      .from('business_entities')
-      .insert({ name: 'Acme Books' })
-      .select('id')
-      .single();
-    if (entErr || !entity) throw new Error(`insert entity: ${entErr?.message}`);
-    const { error: memErr } = await admin.from('entity_memberships').insert([
-      { business_entity_id: entity.id, user_id: owner.id, role: 'client_owner' },
-      { business_entity_id: entity.id, user_id: viewer.id, role: 'client_viewer' },
-    ]);
-    if (memErr) throw new Error(`insert memberships: ${memErr.message}`);
+    // Firm-provisioned client + business + memberships (service role, as the admin portal will).
+    const clientId = await fx.makeClientRow('acme');
+    const entityId = await fx.makeEntity(clientId, 'Acme Books');
+    await fx.addMembership(entityId, owner.id, 'client_owner');
+    await fx.addMembership(entityId, viewer.id, 'client_viewer');
 
     // ── Owner: edit name + address, expect it to persist ─────────────────
     const ownerPage = await browserSession(browser, owner.email);

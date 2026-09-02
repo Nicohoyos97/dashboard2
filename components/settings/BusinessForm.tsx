@@ -124,7 +124,7 @@ export function BusinessForm({
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 text-[13.5px] text-[#ba1a1a]">
+        <p role="alert" className="mt-4 text-[13.5px] text-danger">
           {error}
         </p>
       )}
