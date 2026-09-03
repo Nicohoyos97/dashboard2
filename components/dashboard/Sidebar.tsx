@@ -4,17 +4,19 @@ import { EntitySwitcher } from '@/components/shell/EntitySwitcher';
 import { NavList } from '@/components/shell/NavList';
 import { type ShellUser, UserBlock } from '@/components/shell/UserBlock';
 import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { BOTTOM_NAV_ITEMS, NAV_ITEMS } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, type NavItem } from '@/lib/nav';
 
 // Client-portal sidebar body (INITIAL_PROMPT.md §7): nav, then the selected
 // business (a switcher when the user belongs to several), then the user with
 // Settings and Help & support under it.
 // Rendered by AppShell both in the desktop aside and in the mobile drawer.
 export async function Sidebar({
+  navItems,
   entities,
   currentEntity,
   user,
 }: {
+  navItems: NavItem[];
   entities: CurrentEntity[];
   currentEntity: CurrentEntity | null;
   user: ShellUser;
@@ -29,7 +31,7 @@ export async function Sidebar({
 
   return (
     <>
-      <NavList items={NAV_ITEMS} namespace="Nav" />
+      <NavList items={navItems} namespace="Nav" />
 
       {currentEntity && entities.length > 1 && (
         <div className="mt-3">

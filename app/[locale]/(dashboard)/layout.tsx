@@ -14,7 +14,8 @@ import { TopBar } from '@/components/shell/TopBar';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
-import { BOTTOM_NAV_ITEMS, NAV_ITEMS } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
+import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -33,13 +34,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const preview = currentEntity?.role === 'firm_preview' ? currentEntity : null;
   const t = preview ? await getTranslations('Overview') : null;
+  // Sales Taxes is hidden for a business the firm has not enabled it for; the
+  // route 404s on the same flag, so a hidden module is not merely a hidden link.
+  const settings = currentEntity ? await loadPortalEntitySettings(supabase, currentEntity.id) : null;
+  const navItems = clientNavItems(settings?.salesTaxEnabled ?? false);
 
   return (
     <AppShell
       brandHref="/dashboard"
       topBar={
         <TopBar
-          items={[...NAV_ITEMS, ...BOTTOM_NAV_ITEMS]}
+          items={[...navItems, ...BOTTOM_NAV_ITEMS]}
           namespace="Nav"
           askNick={!preview}
           helpHref="/help"
@@ -47,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       }
       sidebar={
         <Sidebar
+          navItems={navItems}
           entities={entities}
           currentEntity={currentEntity}
           user={{

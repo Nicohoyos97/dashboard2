@@ -54,3 +54,42 @@ export function statementCsvFilename(report: ReportRow): string {
   const type = report.reportType === 'balance_sheet' ? 'balance-sheet' : 'profit-and-loss';
   return `${type}_${report.periodStart}_${report.periodEnd}.csv`;
 }
+
+const EN_EXPENSE_HEADERS = ['Date', 'Description', 'Category', 'Vendor', 'Recurring', 'Amount'] as const;
+const EXPENSE_HEADERS: Record<string, readonly string[]> = {
+  en: EN_EXPENSE_HEADERS,
+  es: ['Fecha', 'Descripción', 'Categoría', 'Proveedor', 'Recurrente', 'Monto'],
+};
+
+export type ExpenseCsvRow = {
+  date: string;
+  description: string;
+  categoryName: string | null;
+  vendor: string | null;
+  isRecurring: boolean | null;
+  amountCents: number;
+};
+
+export type ExpenseCsvOptions = { locale?: string; yes?: string; no?: string; unknown?: string };
+
+/**
+ * The filtered expense rows exactly as the table shows them, one per line.
+ * Descriptions and vendor names come from an uploaded document, so they go
+ * through `spreadsheetText` before anything else can read them as a formula.
+ */
+export function expensesCsv(rows: readonly ExpenseCsvRow[], { locale = 'en', yes = 'Yes', no = 'No', unknown = '' }: ExpenseCsvOptions = {}): string {
+  const header = EXPENSE_HEADERS[locale.slice(0, 2)] ?? EN_EXPENSE_HEADERS;
+  const body = rows.map((row) => [
+    row.date,
+    spreadsheetText(row.description),
+    spreadsheetText(row.categoryName ?? ''),
+    spreadsheetText(row.vendor ?? ''),
+    row.isRecurring === null ? unknown : row.isRecurring ? yes : no,
+    fromCents(row.amountCents),
+  ]);
+  return [header, ...body].map((row) => row.map(csvField).join(',')).join('\r\n');
+}
+
+export function expensesCsvFilename(range: { start: string; end: string }): string {
+  return `expenses_${range.start}_${range.end}.csv`;
+}

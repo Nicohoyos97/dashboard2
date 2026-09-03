@@ -7,6 +7,9 @@ export const NICK_PAGES = [
   'overview',
   'profit_and_loss',
   'balance_sheet',
+  'expenses',
+  'income_tax',
+  'sales_tax',
   'reports',
   'chat',
 ] as const;

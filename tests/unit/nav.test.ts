@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BOTTOM_NAV_ITEMS, NAV_ITEMS, isActiveNav } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, NAV_ITEMS, clientNavItems, isActiveNav } from '@/lib/nav';
 
 describe('isActiveNav', () => {
   it('activates on an exact path match (a statement sub-item)', () => {
@@ -36,12 +36,19 @@ describe('NAV_ITEMS', () => {
 
   it('only links to routes that exist — everything else is disabled, never a dead link', () => {
     const live = NAV_ITEMS.filter((i) => !i.disabled && !i.children).map((i) => i.href);
-    expect(live).toEqual(['/dashboard', '/chat']);
+    expect(live).toEqual(['/dashboard', '/expenses', '/taxes/income', '/taxes/sales', '/chat']);
     expect(BOTTOM_NAV_ITEMS.every((i) => !i.disabled)).toBe(true);
     const liveChildren = NAV_ITEMS.flatMap((i) => i.children ?? []).filter((c) => !c.disabled);
     expect(liveChildren.map((c) => c.href)).toEqual([
       '/statements/profit-and-loss',
       '/statements/balance-sheet',
     ]);
+  });
+
+  it('hides Sales Taxes for a business the firm has not enabled the module for', () => {
+    expect(clientNavItems(true).map((i) => i.href)).toEqual(NAV_ITEMS.map((i) => i.href));
+    expect(clientNavItems(false).map((i) => i.href)).not.toContain('/taxes/sales');
+    // Nothing else moves: hiding one module must not reorder the rest.
+    expect(clientNavItems(false).map((i) => i.href)).toEqual(['/dashboard', '/statements', '/expenses', '/taxes/income', '/chat']);
   });
 });

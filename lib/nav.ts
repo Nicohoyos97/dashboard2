@@ -1,10 +1,11 @@
 // Shared top-level navigation for the client portal shell (the (dashboard) group),
 // per INITIAL_PROMPT.md §7. Framework-free so isActiveNav stays pure and
 // unit-testable; labels are i18n keys resolved in NavList. Items marked
-// `disabled` are not built yet (Phase 5) and render non-interactive — never a
-// dead link. Sales Taxes additionally becomes visibility-gated by
-// `sales_tax_enabled` once the module ships (Phase 5). The firm portal's list
-// lives in lib/admin-nav.ts and shares these types.
+// `disabled` render non-interactive — never a dead link. Sales Taxes is
+// visibility-gated by the business's `sales_tax_enabled`: see clientNavItems,
+// which the layout calls; the route 404s for the same reason, so the nav and
+// the URL always agree. The firm portal's list lives in lib/admin-nav.ts and
+// shares these types.
 export type NavChild = {
   href: string;
   labelKey: string;
@@ -29,11 +30,16 @@ export const NAV_ITEMS: NavItem[] = [
       { href: '/statements/balance-sheet', labelKey: 'statementsBalanceSheet' },
     ],
   },
-  { href: '/expenses', labelKey: 'expenses', disabled: true },
-  { href: '/taxes/income', labelKey: 'incomeTaxes', disabled: true },
-  { href: '/taxes/sales', labelKey: 'salesTaxes', disabled: true },
+  { href: '/expenses', labelKey: 'expenses' },
+  { href: '/taxes/income', labelKey: 'incomeTaxes' },
+  { href: '/taxes/sales', labelKey: 'salesTaxes' },
   { href: '/chat', labelKey: 'nick' },
 ];
+
+/** The nav a given business sees: Sales Taxes only when the firm enabled the module for it. */
+export function clientNavItems(salesTaxEnabled: boolean): NavItem[] {
+  return salesTaxEnabled ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.href !== '/taxes/sales');
+}
 
 // Utility links under the user block at the bottom of the sidebar (§7:
 // Settings · Profile · Help & FAQs).

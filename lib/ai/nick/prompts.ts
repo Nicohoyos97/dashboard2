@@ -40,6 +40,9 @@ const PAGE_NAMES: Record<ResolvedContext['page'], string> = {
   overview: 'Overview',
   profit_and_loss: 'Profit & Loss statement',
   balance_sheet: 'Balance Sheet',
+  expenses: 'Expenses (debits on published bank statements)',
+  income_tax: 'Income Taxes',
+  sales_tax: 'Sales Taxes',
   reports: 'Reports library',
   chat: 'Insights with Nick (full-page chat)',
 };
