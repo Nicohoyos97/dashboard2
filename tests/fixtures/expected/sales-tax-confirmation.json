@@ -1,0 +1,17 @@
+{
+  "tax_type": "sales",
+  "jurisdiction": "Colorado Department of Revenue",
+  "filing_period_start": "2026-04-01",
+  "filing_period_end": "2026-06-30",
+  "due_date": "2026-07-20",
+  "amount_paid": "2860.00",
+  "amount_payable": "0.00",
+  "taxable_sales": "98400.00",
+  "non_taxable_sales": "12250.00",
+  "tax_collected": "2860.00",
+  "payment_date": "2026-07-15",
+  "status": "paid",
+  "confirmation_number": "CO-2026-778812",
+  "page": 1,
+  "confidence": 1
+}

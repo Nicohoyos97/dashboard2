@@ -18,6 +18,10 @@ try {
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+  // Several specs drive TOTP enrolment, Mailpit round-trips and server actions
+  // through one dev server at once; give each test room beyond the defaults.
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   use: {
     // Single dev origin = localhost (Next/next-intl force it in dev) — see
     // docs/ENVIRONMENTS.md. Using 127.0.0.1 here would make every navigation

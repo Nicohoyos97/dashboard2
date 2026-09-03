@@ -1,0 +1,12 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "kind": "financial_statement",
+      "report_type": "sales_tax",
+      "period_start": "2026-04-01",
+      "period_end": "2026-06-30",
+      "confidence": 0.95
+    }
+  ]
+}

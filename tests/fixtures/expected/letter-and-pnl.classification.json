@@ -1,0 +1,25 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "kind": "firm_letter",
+      "confidence": 0.98
+    },
+    {
+      "page": 2,
+      "kind": "financial_statement",
+      "report_type": "profit_and_loss",
+      "period_start": "2026-01-01",
+      "period_end": "2026-06-30",
+      "confidence": 0.97
+    },
+    {
+      "page": 3,
+      "kind": "financial_statement",
+      "report_type": "profit_and_loss",
+      "period_start": "2026-01-01",
+      "period_end": "2026-06-30",
+      "confidence": 0.97
+    }
+  ]
+}

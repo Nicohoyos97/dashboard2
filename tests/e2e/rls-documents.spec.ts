@@ -204,12 +204,20 @@ test.describe('RLS documents and storage', () => {
     const asFirm = await admin.client.rpc('claim_processing_jobs', { batch_size: 1 });
     expect(asFirm.error).not.toBeNull();
 
-    // Positive control: the worker (service role) claims the pending job.
-    const claimed = await fx.admin.rpc('claim_processing_jobs', { batch_size: 1 });
+    // Positive control: the worker (service role) claims pending jobs. Other
+    // specs may have queued jobs of their own at the same moment, so claim a
+    // batch, check ours is in it, and hand the rest straight back.
+    const claimed = await fx.admin.rpc('claim_processing_jobs', { batch_size: 50 });
     expect(claimed.error).toBeNull();
-    expect(claimed.data).toHaveLength(1);
-    expect(claimed.data?.[0]?.id).toBe(s.jobId);
-    expect(claimed.data?.[0]?.status).toBe('running');
+    const mine = (claimed.data ?? []).find((j) => j.id === s.jobId);
+    expect(mine?.status).toBe('running');
+    const others = (claimed.data ?? []).filter((j) => j.id !== s.jobId);
+    for (const job of others) {
+      await fx.admin
+        .from('document_processing_jobs')
+        .update({ status: 'pending', locked_at: null, attempts: Math.max(0, job.attempts - 1) })
+        .eq('id', job.id);
+    }
   });
 
   test('documents bucket: signed reads follow publication; writes are firm-admin only', async () => {

@@ -25,7 +25,7 @@ This is a financial application handling client books, bank statements and tax d
 - **Cookies are not `HttpOnly`** — a conscious trade-off required by the `@supabase/ssr` model (browser client reads the session). Mitigated by `SameSite=Lax`, `Secure`, 1 h access tokens with rotation, and the CSP below.
 - Password rules enforced client- and server-side (`lib/auth/schemas.ts`). Error messages never differentiate wrong-password from unknown-email (enumeration).
 - **MFA (TOTP, `aal2`) is required for every firm route and inside `is_firm_member()` / `is_firm_admin()`.** `app/[locale]/admin/layout.tsx` checks the firm membership, `admin/(gated)/layout.tsx` requires `aal2` (else `/admin/mfa`, where `MfaGate` enrolls or verifies TOTP through the browser client), and the DB helpers read `auth.jwt() ->> 'aal'` so an aal1 session is not a firm session for RLS. TOTP is enabled in `supabase/config.toml` (`[auth.mfa.totp]`); enable it in the cloud dashboard too. Optional for clients (Phase 5).
-- Rate limiting: Postgres fixed-window counters (`rate_limits` + `consume_rate_limit()`, service-role only, `lib/rate-limit.ts`). Keys are composed server-side (`signin:<ip>`, `chat:<user>`, …). Wired to auth, upload, download and chat as each endpoint lands (Phase 2+).
+- Rate limiting: Postgres fixed-window counters (`rate_limits` + `consume_rate_limit()`, service-role only, `lib/rate-limit.ts`). Keys are composed server-side (`signin:<ip>`, `chat:<user>`, …). Wired to document upload (`upload:<user>`) and download (`download:<user>`); auth and chat follow with their endpoints.
 
 ### Authorization
 
@@ -39,7 +39,7 @@ This is a financial application handling client books, bank statements and tax d
 
 - Every document bucket is **private**; only `avatars` is public-read (low sensitivity, members list).
 - Path layout `documents/{business_entity_id}/{document_id}/v{n}/{original_filename}`; storage RLS mirrors table RLS. Bytes are immutable; replacements are new versions.
-- Downloads go through a route handler that checks membership + publication status, calls `logAccess`, and returns a signed URL with **≤ 60 s** expiry.
+- Downloads go through `app/api/documents/[versionId]/download`: the RLS-scoped client decides visibility (member of the business and the document's current published version, or a firm user at aal2), `logAccess` records it, and a signed URL with **60 s** expiry is returned as a redirect.
 - Uploads validated by size, MIME **and** real file signature (`%PDF-` magic bytes; CSV heuristics). Malware scanning if a scanner is available; otherwise a documented limitation.
 - **Never persist an Anthropic file ID.** PDFs are sent per request as base64 document blocks; if a Files API upload is unavoidable it is deleted immediately and never reused across tenants.
 

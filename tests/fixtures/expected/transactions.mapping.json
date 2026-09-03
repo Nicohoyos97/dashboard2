@@ -1,0 +1,12 @@
+{
+  "columns": {
+    "date": "Date",
+    "description": "Description",
+    "debit": null,
+    "credit": null,
+    "amount": "Amount",
+    "balance": "Balance"
+  },
+  "date_format": "MM/DD/YYYY",
+  "sign_convention": "signed_amount"
+}

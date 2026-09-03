@@ -5,7 +5,7 @@ import type { NavItem } from './nav';
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: '/admin', labelKey: 'navDashboard', exact: true },
   { href: '/admin/clients', labelKey: 'navClients' },
-  { href: '/admin/upload', labelKey: 'navUpload', disabled: true },
+  { href: '/admin/upload', labelKey: 'navUpload' },
   { href: '/admin/documents', labelKey: 'navDocuments' },
   { href: '/admin/audit', labelKey: 'navAudit' },
 ];

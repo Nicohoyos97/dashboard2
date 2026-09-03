@@ -1,0 +1,118 @@
+{
+  "institution": "First Harbor Bank",
+  "masked_account": "****4821",
+  "period_start": "2026-06-01",
+  "period_end": "2026-06-30",
+  "beginning_balance": "41375.90",
+  "ending_balance": "36836.86",
+  "transactions": [
+    {
+      "date": "2026-06-02",
+      "description": "Deposit - Client payment INV-1042",
+      "debit": null,
+      "credit": "8450.00",
+      "running_balance": "49825.90",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-03",
+      "description": "ACH - Harbor Property Mgmt rent",
+      "debit": "4000.00",
+      "credit": null,
+      "running_balance": "45825.90",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-05",
+      "description": "Card - Office Depot",
+      "debit": "214.60",
+      "credit": null,
+      "running_balance": "45611.30",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-08",
+      "description": "Deposit - Square settlement",
+      "debit": null,
+      "credit": "3120.45",
+      "running_balance": "48731.75",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-10",
+      "description": "Payroll - Gusto",
+      "debit": "9720.00",
+      "credit": null,
+      "running_balance": "39011.75",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-12",
+      "description": "ACH - Blue Shield insurance",
+      "debit": "1025.00",
+      "credit": null,
+      "running_balance": "37986.75",
+      "page": 1,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-15",
+      "description": "Deposit - Client payment INV-1047",
+      "debit": null,
+      "credit": "12300.00",
+      "running_balance": "50286.75",
+      "page": 2,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-18",
+      "description": "Card - Amazon supplies",
+      "debit": "389.99",
+      "credit": null,
+      "running_balance": "49896.76",
+      "page": 2,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-20",
+      "description": "Wire - Subcontractor Lopez",
+      "debit": "6200.00",
+      "credit": null,
+      "running_balance": "43696.76",
+      "page": 2,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-24",
+      "description": "Payroll - Gusto",
+      "debit": "9720.00",
+      "credit": null,
+      "running_balance": "33976.76",
+      "page": 2,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-26",
+      "description": "Deposit - Square settlement",
+      "debit": null,
+      "credit": "2875.10",
+      "running_balance": "36851.86",
+      "page": 2,
+      "confidence": 1
+    },
+    {
+      "date": "2026-06-30",
+      "description": "Fee - Monthly service fee",
+      "debit": "15.00",
+      "credit": null,
+      "running_balance": "36836.86",
+      "page": 2,
+      "confidence": 1
+    }
+  ]
+}

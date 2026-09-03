@@ -12,6 +12,7 @@ import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import type { EnabledModules } from '@/lib/firm/entities';
 import { createClient } from '@/lib/supabase/server';
+import { formatPeriod } from '@/lib/utils/dates';
 
 function modulesOf(value: unknown): EnabledModules {
   const v = (value ?? {}) as Partial<Record<keyof EnabledModules, unknown>>;
@@ -86,7 +87,6 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         .join(' · ') || '—',
     ],
   ];
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
@@ -163,11 +163,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
             {(documents ?? []).map((d) => (
               <li key={d.id} className="flex flex-wrap items-center gap-3 py-3 text-[14px]">
                 <span className="text-ink min-w-0 flex-1 truncate font-semibold">{d.title}</span>
-                <span className="text-muted-foreground">
-                  {d.period_start && d.period_end
-                    ? `${dateFmt.format(new Date(d.period_start))} – ${dateFmt.format(new Date(d.period_end))}`
-                    : ''}
-                </span>
+                <span className="text-muted-foreground">{formatPeriod(d.period_start, d.period_end, locale)}</span>
                 <span className={statusPill(d.status)}>{d.status.replace('_', ' ')}</span>
               </li>
             ))}
