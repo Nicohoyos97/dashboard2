@@ -4,8 +4,11 @@
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
+import Script from 'next/script';
 
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { routing } from '@/i18n/routing';
+import { THEME_INIT_SCRIPT } from '@/lib/theme/constants';
 
 import { inter } from '../fonts';
 import '../globals.css';
@@ -31,9 +34,14 @@ export default async function LocaleLayout({
   if (!hasLocale(routing.locales, locale)) notFound();
 
   return (
-    <html lang={locale} className={inter.variable}>
+    <html lang={locale} className={inter.variable} suppressHydrationWarning>
+      <Script id="theme-init" strategy="beforeInteractive">
+        {THEME_INIT_SCRIPT}
+      </Script>
       <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

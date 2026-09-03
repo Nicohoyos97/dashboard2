@@ -9,7 +9,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { COOKIE_OPTIONS, supabaseEnv } from './env';
+import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE, supabaseEnv } from './env';
 import type { Database } from './types';
 
 // Protected route groups. Checked against the locale-stripped path, so
@@ -35,6 +35,7 @@ export async function updateSession(
   response: NextResponse,
 ): Promise<NextResponse> {
   const { url, anonKey } = supabaseEnv();
+  const sessionOnly = request.cookies.get(REMEMBER_SESSION_COOKIE)?.value === '0';
   const supabase = createServerClient<Database>(url, anonKey, {
     cookieOptions: COOKIE_OPTIONS,
     cookies: {
@@ -43,9 +44,16 @@ export async function updateSession(
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          if (!sessionOnly) {
+            response.cookies.set(name, value, options);
+            return;
+          }
+          const sessionOptions = { ...options };
+          delete sessionOptions.expires;
+          delete sessionOptions.maxAge;
+          response.cookies.set(name, value, sessionOptions);
+        });
       },
     },
   });

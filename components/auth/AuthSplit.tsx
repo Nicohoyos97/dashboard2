@@ -1,53 +1,44 @@
-// Auth shell (inherited from v1; restyle to INITIAL_PROMPT.md §6 in Phase 1). A centered card
-// split into a left visual panel (photo + glass value-prop) and a right form
-// column (children). Tokens from app/globals.css (INITIAL_PROMPT.md §6); pill controls.
-import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
+import { Link } from '@/i18n/navigation';
+
+import { ThemeToggle } from '../theme/ThemeToggle';
+import { TestimonialPanel } from './TestimonialPanel';
+
+// Shared authentication shell: a focused 44% form column and a 56% visual
+// story on larger screens. On mobile the form remains first and the visual
+// becomes a compact social-proof card below it.
 export function AuthSplit({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-paper flex min-h-screen items-center justify-center p-4 md:p-8">
-      <main className="border-line bg-card flex min-h-[600px] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border shadow-[0_10px_25px_-5px_rgba(15,23,42,0.05),0_8px_10px_-6px_rgba(15,23,42,0.05)] md:flex-row">
-        <VisualPanel />
-        <section className="bg-card flex w-full flex-col justify-center p-8 md:w-1/2 md:p-12">
-          <div className="mx-auto w-full max-w-[380px]">{children}</div>
+    <div className="bg-paper min-h-svh overflow-x-hidden lg:p-3">
+      <main className="mx-auto grid min-h-svh w-full max-w-[1680px] grid-cols-1 lg:min-h-[calc(100svh-24px)] lg:grid-cols-[minmax(430px,44fr)_56fr] lg:gap-3">
+        <section className="bg-card flex min-h-svh flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-10 lg:min-h-0 lg:rounded-[28px] lg:px-12 lg:py-8 xl:px-16">
+          <header className="flex items-center justify-between gap-4">
+            <Link
+              href="/"
+              aria-label="Hoyos Baker"
+              className="focus-visible:ring-blue/40 inline-flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-3"
+            >
+              <Image
+                src="/brand/logo-wordmark.png"
+                alt=""
+                width={44}
+                height={44}
+                priority
+                className="size-11 rounded-full"
+              />
+              <span className="text-ink text-[15px] font-bold tracking-[-0.01em]">Hoyos Baker</span>
+            </Link>
+            <ThemeToggle compact />
+          </header>
+
+          <div className="flex flex-1 items-center py-12 sm:py-16 lg:py-10">
+            <div className="mx-auto w-full max-w-[420px]">{children}</div>
+          </div>
         </section>
+
+        <TestimonialPanel />
       </main>
     </div>
-  );
-}
-
-function VisualPanel() {
-  const t = useTranslations('Auth');
-  return (
-    <section className="relative flex min-h-[300px] w-full flex-col justify-between overflow-hidden p-8 md:min-h-full md:w-1/2">
-      {/* PLACEHOLDER PHOTO — unlicensed Stitch/Google stock. Replace with a
-          licensed image before production (tracked in docs/ASSUMPTIONS.md). */}
-      <Image
-        src="/auth/owner-placeholder.png"
-        alt=""
-        fill
-        priority
-        sizes="(min-width: 768px) 50vw, 100vw"
-        className="object-cover object-center"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"
-      />
-
-      <span className="relative text-[15px] font-bold tracking-tight text-white">Hoyos Baker</span>
-
-      <div className="relative rounded-[18px] border border-white/30 bg-white/20 p-6 backdrop-blur-md">
-        <h2 className="text-[28px] leading-tight font-bold tracking-tight text-white">
-          {t('valuePropTitle')}
-        </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-white/85">{t('valuePropBody')}</p>
-      </div>
-    </section>
   );
 }

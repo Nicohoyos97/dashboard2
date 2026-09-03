@@ -36,15 +36,15 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* Brand tokens — utilities: bg-paper, text-ink, text-blue, border-line, … */
-  --color-blue: #2563eb; /* primary */
-  --color-blue-soft: #1d4ed8; /* primary hover */
-  --color-blue-pale: #eef5ff; /* active nav pill / soft icon squares */
-  --color-ink: #0f172a; /* headings */
-  --color-paper: #f7f9fc; /* page background */
-  --color-paper-2: #f1f5f9; /* subtle alt surface */
-  --color-line: #e6ecf4; /* borders, dividers */
-  --color-line-soft: #eef2f7;
-  --color-muted-ink: #64748b; /* muted text */
+  --color-blue: var(--brand-primary); /* primary */
+  --color-blue-soft: var(--brand-primary-hover); /* primary hover */
+  --color-blue-pale: var(--brand-primary-soft); /* active nav pill / soft icon squares */
+  --color-ink: var(--heading); /* headings */
+  --color-paper: var(--page); /* page background */
+  --color-paper-2: var(--page-alt); /* subtle alt surface */
+  --color-line: var(--border); /* borders, dividers */
+  --color-line-soft: var(--border-soft);
+  --color-muted-ink: var(--muted-foreground); /* muted text */
   --color-success: #10b981; /* positive */
   --color-warning: #f59e0b;
   --color-danger: #ef4444; /* critical */
@@ -56,6 +56,23 @@
 /* Light theme — shadcn tokens mapped onto the §6 palette. */
 :root {
   --radius: 1rem; /* 16px — cards use 14–16px per §6 */
+
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-primary-soft: #eef5ff;
+  --heading: #0f172a;
+  --page: #f7f9fc;
+  --page-alt: #f1f5f9;
+  --border-soft: #eef2f7;
+  --chart-grid: #e6ecf4;
+  --chart-axis: #64748b;
+  --chart-surface: #ffffff;
+  --chart-cursor: rgba(37, 99, 235, 0.06);
+  --chart-blue: #2563eb;
+  --chart-teal: #0d9488;
+  --chart-purple: #7c3aed;
+  --chart-amber: #d97706;
+  --chart-pink: #db2777;
 
   --background: #f7f9fc;
   --foreground: #0f172a;
@@ -77,27 +94,42 @@
   --ring: #2563eb;
 }
 
-/* Dark theme — not part of the MVP spec; slate defaults keep shadcn components
-   legible if `.dark` is ever applied. */
+/* Dark theme keeps brand blue stable while moving neutral surfaces to navy. */
 .dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
-  --popover: #1e293b;
-  --popover-foreground: #f1f5f9;
-  --primary: #3b82f6;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #3b82f6;
+  --brand-primary-soft: #142b55;
+  --heading: #f8fafc;
+  --page: #08111f;
+  --page-alt: #0c1728;
+  --border-soft: #1b2a40;
+  --background: #08111f;
+  --foreground: #e7edf6;
+  --card: #0f1b2d;
+  --card-foreground: #f8fafc;
+  --popover: #111f33;
+  --popover-foreground: #f8fafc;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f1f5f9;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #1e3a8a;
+  --secondary: #152238;
+  --secondary-foreground: #e7edf6;
+  --muted: #142136;
+  --muted-foreground: #9aabc1;
+  --accent: #142b55;
   --accent-foreground: #bfdbfe;
   --destructive: #ef4444;
-  --border: rgba(241, 245, 249, 0.12);
-  --input: rgba(241, 245, 249, 0.16);
-  --ring: #60a5fa;
+  --border: #26364d;
+  --input: #30415b;
+  --ring: #3b82f6;
+  --chart-grid: #26364d;
+  --chart-axis: #9aabc1;
+  --chart-surface: #0f1b2d;
+  --chart-cursor: rgba(59, 130, 246, 0.12);
+  --chart-blue: #60a5fa;
+  --chart-teal: #2dd4bf;
+  --chart-purple: #a78bfa;
+  --chart-amber: #fbbf24;
+  --chart-pink: #f472b6;
 }
 
 @layer base {
@@ -107,5 +139,16 @@
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
+    min-width: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  [data-slot='card'] {
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      border-color 180ms ease;
   }
 }

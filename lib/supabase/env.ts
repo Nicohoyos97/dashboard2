@@ -21,3 +21,5 @@ export const COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   secure: process.env.NODE_ENV === 'production',
 };
+
+export const REMEMBER_SESSION_COOKIE = 'hb_remember';

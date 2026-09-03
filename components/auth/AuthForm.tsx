@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { type Resolver, useForm } from 'react-hook-form';
@@ -18,6 +19,7 @@ type FormValues = {
   lastName?: string;
   email: string;
   password: string;
+  remember?: boolean;
 };
 
 export function AuthForm({
@@ -42,6 +44,7 @@ export function AuthForm({
   } = useForm<FormValues>({
     resolver: zodResolver(isSignup ? signUpSchema : signInSchema) as Resolver<FormValues>,
     mode: 'onBlur',
+    defaultValues: isSignup ? {} : { remember: true },
   });
 
   const onSubmit = handleSubmit((values) => {
@@ -54,7 +57,10 @@ export function AuthForm({
             email: values.email,
             password: values.password,
           })
-        : await signInWithPassword({ email: values.email, password: values.password }, redirectTo);
+        : await signInWithPassword(
+            { email: values.email, password: values.password, remember: values.remember ?? true },
+            redirectTo,
+          );
 
       // signInWithPassword redirects on success and never returns here.
       if (result.ok && result.needsConfirmation) setConfirmation(true);
@@ -99,14 +105,17 @@ export function AuthForm({
       )}
 
       <Field id="email" label={t('emailLabel')} error={errors.email?.message}>
-        <input
-          id="email"
-          type="email"
-          placeholder={t('emailPlaceholder')}
-          autoComplete="email"
-          className={fieldClass}
-          {...register('email')}
-        />
+        <div className="relative">
+          <Mail className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2" aria-hidden="true" />
+          <input
+            id="email"
+            type="email"
+            placeholder={t('emailPlaceholder')}
+            autoComplete="email"
+            className={`${fieldClass} pl-11`}
+            {...register('email')}
+          />
+        </div>
       </Field>
 
       <PasswordField
@@ -115,24 +124,33 @@ export function AuthForm({
         autoComplete={isSignup ? 'new-password' : 'current-password'}
         error={errors.password?.message}
         registration={register('password')}
-        action={
-          isSignup ? undefined : (
-            <Link
-              href="/forgot-password"
-              className="text-blue text-[13px] font-semibold hover:underline"
-            >
-              {t('forgotPassword')}
-            </Link>
-          )
-        }
       />
+
+      {!isSignup && (
+        <div className="mb-4 flex items-center justify-between gap-4 text-[13px]">
+          <label className="text-muted-foreground flex min-h-11 cursor-pointer items-center gap-2.5 font-medium">
+            <input
+              type="checkbox"
+              className="border-input text-blue focus-visible:ring-blue/35 size-4 rounded border bg-card accent-blue outline-none focus-visible:ring-3"
+              {...register('remember')}
+            />
+            <span>{t('keepSignedIn')}</span>
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-blue focus-visible:ring-blue/35 rounded-sm font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-3"
+          >
+            {t('forgotPassword')}
+          </Link>
+        </div>
+      )}
 
       {isSignup && <StrengthMeter value={watch('password') ?? ''} />}
 
       <button
         type="submit"
         disabled={isPending}
-        className="bg-blue hover:bg-blue-soft mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        className="bg-blue hover:bg-blue-soft focus-visible:ring-blue/35 mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-6 text-[15px] font-semibold text-white shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
           <>

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 
 import { usePathname } from '@/i18n/navigation';
 
+import { ThemeToggle } from '../theme/ThemeToggle';
 import { Brand } from './Brand';
 
 export function AppShell({
@@ -40,8 +41,9 @@ export function AppShell({
         aria-label={t('navigation')}
         className="border-line bg-card sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r px-4 pt-6 pb-4 md:flex"
       >
-        <div className="px-2">
+        <div className="flex items-center justify-between gap-2 px-2">
           <Brand {...brandProps} />
+          <ThemeToggle compact />
         </div>
         {sidebar}
       </aside>
@@ -80,6 +82,9 @@ export function AppShell({
           </Dialog.Portal>
         </Dialog.Root>
         <Brand {...brandProps} compact />
+        <div className="ml-auto">
+          <ThemeToggle compact />
+        </div>
       </header>
 
       <div className="min-w-0 flex-1">{children}</div>

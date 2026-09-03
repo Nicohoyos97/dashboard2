@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 
@@ -27,25 +28,15 @@ export function AuthExperience({
 
   return (
     <AuthSplit>
-      <Link
-        href="/"
-        className="text-muted-foreground hover:text-blue mb-8 inline-flex items-center gap-1.5 text-[14px] font-semibold transition-colors"
-      >
-        <BackArrow />
-        {t('backToWebsite')}
-      </Link>
+      <div className="border-line bg-blue-pale text-blue mb-5 inline-flex size-11 items-center justify-center rounded-[14px] border">
+        <ShieldCheck className="size-5" aria-hidden="true" />
+      </div>
 
-      <h1 className="text-ink text-[32px] leading-tight font-bold tracking-[-0.01em]">
+      <h1 className="text-ink text-[34px] leading-tight font-bold tracking-[-0.025em]">
         {isSignup ? t('signupTitle') : t('signinTitle')}
       </h1>
-      <p className="text-muted-foreground mt-1.5 text-[16px]">
-        {isSignup ? t('haveAccount') : t('noAccount')}{' '}
-        <Link
-          href={isSignup ? '/signin' : '/signup'}
-          className="text-blue font-bold hover:underline"
-        >
-          {isSignup ? t('signIn') : t('createAccount')}
-        </Link>
+      <p className="text-muted-foreground mt-2 text-[15px] leading-relaxed">
+        {isSignup ? t('signupLede') : t('signinLede')}
       </p>
 
       {error && (
@@ -73,6 +64,16 @@ export function AuthExperience({
 
       <SocialRow redirectTo={redirectTo} onError={setError} />
 
+      <p className="text-muted-foreground mt-6 text-center text-[13.5px]">
+        {isSignup ? t('haveAccount') : t('noAccount')}{' '}
+        <Link
+          href={isSignup ? '/signin' : '/signup'}
+          className="text-blue font-semibold underline-offset-4 hover:underline"
+        >
+          {isSignup ? t('signIn') : t('createAccount')}
+        </Link>
+      </p>
+
       <footer className="border-line text-muted-foreground mt-10 flex flex-wrap justify-center gap-6 border-t pt-8 text-[12px] font-medium">
         <Link href="/privacy" className="hover:text-blue transition-colors">
           {t('footerPrivacy')}
@@ -85,22 +86,5 @@ export function AuthExperience({
         </Link>
       </footer>
     </AuthSplit>
-  );
-}
-
-function BackArrow() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-[18px]"
-      aria-hidden="true"
-    >
-      <path d="M19 12H5M12 19l-7-7 7-7" />
-    </svg>
   );
 }

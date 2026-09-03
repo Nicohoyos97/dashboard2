@@ -6,8 +6,7 @@ import { useTransition } from 'react';
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { signInWithGoogle } from '@/lib/auth/actions';
 
-// Generic provider row. Google-only for the MVP, but the map keeps it trivial
-// to add Apple/Facebook in Phase 7 without restructuring.
+// Google is intentionally the only social provider supported by the product.
 const PROVIDERS = [
   {
     id: 'google' as const,
@@ -44,7 +43,7 @@ export function SocialRow({
               }
             })
           }
-          className="border-line bg-card text-foreground hover:bg-paper inline-flex h-12 items-center justify-center gap-3 rounded-full border px-3 text-[14px] font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="border-line bg-card text-foreground hover:bg-secondary focus-visible:ring-blue/35 inline-flex h-12 items-center justify-center gap-3 rounded-xl border px-3 text-[14px] font-semibold shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Icon className="size-5 shrink-0" />
           <span>{isPending ? t('connecting') : t(labelKey)}</span>

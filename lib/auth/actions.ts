@@ -1,10 +1,11 @@
 'use server';
 
 import { getLocale, getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { createClient } from '@/lib/supabase/server';
+import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE } from '@/lib/supabase/env';
 
 import {
   type SignInValues,
@@ -52,6 +53,22 @@ export async function signInWithPassword(
 
   // Do not differentiate wrong-password from unknown-email (enumeration).
   if (error) return { ok: false, error: t('invalidCredentials') };
+
+  const remember = parsed.data.remember ?? true;
+  const cookieStore = await cookies();
+  const sharedOptions = { ...COOKIE_OPTIONS, path: '/' };
+  cookieStore.set(
+    REMEMBER_SESSION_COOKIE,
+    remember ? '1' : '0',
+    remember ? { ...sharedOptions, maxAge: 60 * 60 * 24 * 365 } : sharedOptions,
+  );
+  if (!remember) {
+    // Supabase may have written persistent auth cookies during sign-in. Write
+    // the same values once more without an expiry to make them session-only.
+    for (const cookie of cookieStore.getAll()) {
+      if (cookie.name.startsWith('sb-')) cookieStore.set(cookie.name, cookie.value, sharedOptions);
+    }
+  }
 
   // redirectTo (from the guard's redirectedFrom) is already locale-prefixed.
   redirect(redirectTo && redirectTo.startsWith('/') ? redirectTo : await localePath('/dashboard'));

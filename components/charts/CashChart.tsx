@@ -40,7 +40,7 @@ export function CashChart({ months, currency }: { months: CashMonth[]; currency:
               tickFormatter={(v: number) => compactMoney(v, currency, locale)}
             />
             <Tooltip
-              cursor={{ fill: 'rgba(37,99,235,0.06)' }}
+              cursor={{ fill: 'var(--chart-cursor)' }}
               content={({ active, label, payload }) => (
                 <ChartTooltip
                   active={active}
