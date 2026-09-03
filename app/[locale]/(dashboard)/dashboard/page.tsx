@@ -1,6 +1,5 @@
 // Client Overview (INITIAL_PROMPT.md §7): published data only, source-safe
 // KPIs, complete-period cash, deterministic insights, reminders and originals.
-import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, Wallet } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { CashChart } from '@/components/charts/CashChart';
@@ -32,7 +31,7 @@ import { leafItems } from '@/lib/portal/statement-page';
 import { type Metric, type ReportRow } from '@/lib/reports';
 import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
 import { cashByMonth, cashComparison, cashTotals } from '@/lib/reports/cash';
-import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/reports/periods';
+import { availablePeriods, bankAccountsCoverPeriod, coveredTrailingMonths, priorPeriod } from '@/lib/reports/periods';
 import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
@@ -40,6 +39,14 @@ import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
 type Delta = { cents: number | null; deltaCents: number | null; deltaPct: number | null };
+
+/** How far back a KPI sparkline looks, in whole months. */
+const TREND_MONTHS = 6;
+
+/** Fallback trend when no monthly source exists: the two real figures the delta already compares. */
+function priorAndCurrent(cents: number | null | undefined, deltaCents: number | null | undefined): number[] {
+  return cents === null || cents === undefined || deltaCents === null || deltaCents === undefined ? [] : [cents - deltaCents, cents];
+}
 
 function exactReport(reports: ReportRow[], type: ReportRow['reportType'], range: { start: string; end: string }): ReportRow | null {
   return reports.find((report) => report.reportType === type && report.periodStart === range.start && report.periodEnd === range.end) ?? null;
@@ -124,20 +131,24 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const balanceReport = reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null;
   const currency = currentPnlReport?.currency ?? settings.currency;
   const currencyStatements = bankStatements.filter((statement) => statement.currency === currency);
-  const cashCovered = bankAccountsCoverPeriod(
-    currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd })),
-    selected,
-  );
-  const priorCashCovered = priorRange ? bankAccountsCoverPeriod(
-    currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd })),
-    priorRange,
-  ) : false;
+  const accountRanges = currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd }));
+  const cashCovered = bankAccountsCoverPeriod(accountRanges, selected);
+  const priorCashCovered = priorRange ? bankAccountsCoverPeriod(accountRanges, priorRange) : false;
+  // KPI sparklines run over the last fully covered months so the shape is real
+  // monthly cash, not the selected period stretched into a line.
+  const trendWindow = coveredTrailingMonths(accountRanges, selected.end, TREND_MONTHS);
+  const trendStart = trendWindow.at(0);
+  const trendEnd = trendWindow.at(-1);
+  const trendRange = trendWindow.length >= 2 && trendStart && trendEnd ? { start: trendStart.start, end: trendEnd.end } : null;
+  const cashRange = trendRange
+    ? { start: trendRange.start < selected.start ? trendRange.start : selected.start, end: trendRange.end > selected.end ? trendRange.end : selected.end }
+    : selected;
 
   const [currentLines, priorLines, balanceLines, currentTransactions, priorTransactions] = await Promise.all([
     currentPnlReport ? loadReportLines(supabase, entity.id, currentPnlReport.id) : Promise.resolve([]),
     priorPnlReport ? loadReportLines(supabase, entity.id, priorPnlReport.id) : Promise.resolve([]),
     balanceReport ? loadReportLines(supabase, entity.id, balanceReport.id) : Promise.resolve([]),
-    cashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, selected) : Promise.resolve([]),
+    cashCovered || trendRange ? loadPublishedBankTransactions(supabase, entity.id, currency, cashRange) : Promise.resolve([]),
     priorRange && priorCashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, priorRange) : Promise.resolve([]),
   ]);
 
@@ -148,6 +159,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const netIncome = metricDelta(currentPnl?.netIncome, priorPnl?.netIncome);
   const revenue = metricDelta(currentPnl?.revenue, priorPnl?.revenue);
   const months = cashCovered ? cashByMonth(currentTransactions, selected) : [];
+  const trendMonths = trendRange ? cashByMonth(currentTransactions, trendRange) : [];
   const priorMonths = priorRange && priorCashCovered ? cashByMonth(priorTransactions, priorRange) : [];
   const cash = cashCovered ? cashComparison(months, priorMonths) : null;
   const totals = cashCovered ? cashTotals(months) : null;
@@ -181,10 +193,10 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       }
     >
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label={t('kpiCashIn')} cents={cash?.cashIn.currentCents ?? null} currency={currency} deltaCents={cash?.cashIn.deltaCents ?? null} deltaPct={cash?.cashIn.deltaPct ?? null} upIsGood periodLabel={priorLabel} source="bank" how={t('howCashIn')} href="/dashboard#cash-chart" icon={ArrowDownToLine} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
-        <KpiCard label={t('kpiCashOut')} cents={cash?.cashOut.currentCents ?? null} currency={currency} deltaCents={cash?.cashOut.deltaCents ?? null} deltaPct={cash?.cashOut.deltaPct ?? null} upIsGood={false} periodLabel={priorLabel} source="bank" how={t('howCashOut')} href="/dashboard#cash-chart" icon={ArrowUpFromLine} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
-        <KpiCard label={t('kpiNetCash')} cents={cash?.netCash.currentCents ?? null} currency={currency} deltaCents={cash?.netCash.deltaCents ?? null} deltaPct={cash?.netCash.deltaPct ?? null} upIsGood periodLabel={priorLabel} source="bank" how={t('howNetCash')} href="/dashboard#cash-chart" icon={Wallet} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
-        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} source={currentPnlReport?.source === 'firm_entry' ? 'firm_entry' : 'pnl'} how={t('howNetIncome')} href="/statements/profit-and-loss" icon={TrendingUp} />
+        <KpiCard label={t('kpiCashIn')} cents={cash?.cashIn.currentCents ?? null} currency={currency} deltaCents={cash?.cashIn.deltaCents ?? null} deltaPct={cash?.cashIn.deltaPct ?? null} upIsGood periodLabel={priorLabel} how={t('howCashIn')} href="/dashboard#cash-chart" trend={trendMonths.length >= 2 ? trendMonths.map((month) => month.inCents) : priorAndCurrent(cash?.cashIn.currentCents, cash?.cashIn.deltaCents)} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiCashOut')} cents={cash?.cashOut.currentCents ?? null} currency={currency} deltaCents={cash?.cashOut.deltaCents ?? null} deltaPct={cash?.cashOut.deltaPct ?? null} upIsGood={false} periodLabel={priorLabel} how={t('howCashOut')} href="/dashboard#cash-chart" trend={trendMonths.length >= 2 ? trendMonths.map((month) => month.outCents) : priorAndCurrent(cash?.cashOut.currentCents, cash?.cashOut.deltaCents)} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiNetCash')} cents={cash?.netCash.currentCents ?? null} currency={currency} deltaCents={cash?.netCash.deltaCents ?? null} deltaPct={cash?.netCash.deltaPct ?? null} upIsGood periodLabel={priorLabel} how={t('howNetCash')} href="/dashboard#cash-chart" trend={trendMonths.length >= 2 ? trendMonths.map((month) => month.netCents) : priorAndCurrent(cash?.netCash.currentCents, cash?.netCash.deltaCents)} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} how={t('howNetIncome')} href="/statements/profit-and-loss" trend={priorAndCurrent(netIncome.cents, netIncome.deltaCents)} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">

@@ -1,17 +1,18 @@
-import { ArrowDownRight, ArrowUpRight, type LucideIcon } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
+import { Sparkline, type SparklineTone } from '@/components/charts/Sparkline';
 import { Link } from '@/i18n/navigation';
 
 import { InfoTip } from './InfoTip';
 
-export type KpiSource = 'bank' | 'pnl' | 'balance_sheet' | 'firm_entry';
-
 // KPI card contract (INITIAL_PROMPT.md §7): value, period, change vs the prior
-// comparable period ($ and %), trend direction, source label, "how is this
-// calculated", link to the detail page. Color is contextual (`upIsGood`) and
-// never the only signal — the arrow and the sign carry it too. A metric that
-// cannot be derived shows the reason instead of a number.
+// comparable period, trend direction, "how is this calculated", link to the
+// detail page — the whole card is that link. Color is contextual (`upIsGood`)
+// and never the only signal — the arrow and the sign carry it too, so rising
+// Cash Out reads red while rising Cash In reads green. A metric that cannot be
+// derived shows the reason instead of a number; `trend` is only ever real
+// published figures, and with fewer than two of them no sparkline is drawn.
 export async function KpiCard({
   label,
   cents,
@@ -20,10 +21,9 @@ export async function KpiCard({
   deltaPct,
   upIsGood,
   periodLabel,
-  source,
   how,
   href,
-  icon: Icon,
+  trend = [],
   unavailableReason,
 }: {
   label: string;
@@ -33,10 +33,9 @@ export async function KpiCard({
   deltaPct: number | null;
   upIsGood: boolean;
   periodLabel: string;
-  source: KpiSource;
   how: string;
   href: string;
-  icon: LucideIcon;
+  trend?: readonly number[];
   unavailableReason?: string;
 }) {
   const [t, locale] = await Promise.all([getTranslations('Overview'), getLocale()]);
@@ -45,45 +44,41 @@ export async function KpiCard({
   const down = deltaCents !== null && deltaCents < 0;
   const good = (up && upIsGood) || (down && !upIsGood);
   const bad = (up && !upIsGood) || (down && upIsGood);
-  const tone = good ? 'bg-success/10 text-success' : bad ? 'bg-danger/10 text-danger' : 'bg-secondary text-muted-foreground';
+  const tone: SparklineTone = good ? 'positive' : bad ? 'negative' : 'neutral';
+  const pill = good ? 'bg-success/10 text-success' : bad ? 'bg-danger/10 text-danger' : 'bg-secondary text-muted-foreground';
 
   return (
-    <article className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-muted-foreground flex items-center gap-1 text-[13px] font-medium">
-            {label}
-            <InfoTip text={how} label={t('howCalculated')} />
-          </p>
-          {cents === null ? (
-            <p className="text-muted-foreground mt-2 text-[14px] leading-snug">{unavailableReason ?? t('noDataPeriod')}</p>
-          ) : (
-            <p className="text-ink mt-1.5 text-[26px] leading-none font-bold tracking-[-0.02em]">{money(cents)}</p>
-          )}
-        </div>
-        <span className="bg-blue-pale text-blue flex size-10 shrink-0 items-center justify-center rounded-xl">
-          <Icon className="size-5" aria-hidden="true" />
-        </span>
-      </div>
-      {cents !== null && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
-          {deltaCents !== null ? (
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${tone}`}>
-              {up ? <ArrowUpRight className="size-3.5" aria-hidden="true" /> : down ? <ArrowDownRight className="size-3.5" aria-hidden="true" /> : null}
-              {deltaPct !== null ? `${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}%` : `${deltaCents > 0 ? '+' : ''}${money(deltaCents)}`}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{t('noPrior')}</span>
-          )}
-          {deltaCents !== null && <span className="text-muted-foreground">{t('vsPrior', { period: periodLabel })}</span>}
-        </div>
+    <article className="group border-line bg-card focus-within:border-blue/40 hover:border-blue/30 relative flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow] hover:shadow-[0_8px_24px_rgba(15,23,42,0.07)]">
+      <p className="text-muted-foreground relative z-10 flex items-center gap-1 text-[13px] font-medium">
+        {label}
+        <InfoTip text={how} label={t('howCalculated')} />
+      </p>
+      {cents === null ? (
+        <p className="text-muted-foreground mt-3 text-[13.5px] leading-snug">{unavailableReason ?? t('noDataPeriod')}</p>
+      ) : (
+        <>
+          <p className="text-ink mt-2 text-[28px] leading-none font-bold tracking-[-0.02em]">{money(cents)}</p>
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              {deltaCents === null ? (
+                <p className="text-muted-foreground text-[12px]">{t('noPrior')}</p>
+              ) : (
+                <>
+                  <span className={`inline-flex items-center gap-0.5 rounded-full py-0.5 pr-2 pl-1.5 text-[12.5px] font-semibold ${pill}`}>
+                    {up ? <ArrowUpRight className="size-3.5" aria-hidden="true" /> : down ? <ArrowDownRight className="size-3.5" aria-hidden="true" /> : null}
+                    {deltaPct !== null ? `${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}%` : `${deltaCents > 0 ? '+' : ''}${money(deltaCents)}`}
+                  </span>
+                  <p className="text-muted-foreground mt-1.5 truncate text-[11.5px]">{t('vsPrior', { period: periodLabel })}</p>
+                </>
+              )}
+            </div>
+            <Sparkline values={trend} tone={tone} />
+          </div>
+        </>
       )}
-      <div className="mt-3 flex items-center justify-between gap-3 text-[12px]">
-        <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 font-medium">{t(`source_${source}`)}</span>
-        <Link href={href} className="text-blue font-semibold hover:underline">
-          {t('viewDetail')}
-        </Link>
-      </div>
+      <Link href={href} className="focus-visible:ring-blue/40 absolute inset-0 rounded-2xl outline-none focus-visible:ring-3">
+        <span className="sr-only">{t('viewDetail')}</span>
+      </Link>
     </article>
   );
 }
