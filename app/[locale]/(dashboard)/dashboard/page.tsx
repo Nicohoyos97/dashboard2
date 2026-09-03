@@ -4,6 +4,7 @@ import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, Wallet } from 'lucide-rea
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { CashChart } from '@/components/charts/CashChart';
+import { NickPanel } from '@/components/chat/NickPanel';
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
 import { IncomeBehaviorCard } from '@/components/dashboard/IncomeBehaviorCard';
@@ -112,6 +113,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <EmptyState title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
         <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={settings.currency} /></div>
         <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
+        <NickPanel page="overview" businessName={entity.name} />
       </OverviewShell>
     );
   }
@@ -205,6 +207,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
       <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} /></div>
       <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
+      <NickPanel page="overview" period={periodParam(selected)} businessName={entity.name} />
     </OverviewShell>
   );
 }

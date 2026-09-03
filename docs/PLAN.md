@@ -1,6 +1,6 @@
 # Dashboard 2.0 — Implementation plan (Phase 0 deliverable)
 
-> Written 2026-09-02 at the end of Phase 0 (`INITIAL_PROMPT.md` §12). **Status 2026-09-02:** Checkpoint 1 approved with every §9 recommendation; Phase 1 delivered (see `CLAUDE.md` §8, `docs/DATABASE.md`). Sources: the repo as bootstrapped (`docs/ASSUMPTIONS.md`), the spec, and the Anthropic docs fetched today (models overview, PDF support, structured outputs, Files API). **Checkpoint 1:** this plan needs approval before Phase 1 starts; the open decisions are in §9.
+> Written 2026-09-02 at the end of Phase 0 (`INITIAL_PROMPT.md` §12). **Status 2026-09-02:** Checkpoint 1 approved with every §9 recommendation; Phase 1 delivered (see `CLAUDE.md` §8, `docs/DATABASE.md`). **Status 2026-09-03:** Phases 2–4 delivered; §3.7 is implemented under `lib/ai/nick/` (the loop is manual and streaming, the router uses `output_config.format`, sensitive tools gate on a router-confirmed pending action) — details in `docs/ASSUMPTIONS.md` (2026-09-03 entries). Sources: the repo as bootstrapped (`docs/ASSUMPTIONS.md`), the spec, and the Anthropic docs fetched today (models overview, PDF support, structured outputs, Files API). **Checkpoint 1:** this plan needs approval before Phase 1 starts; the open decisions are in §9.
 
 ---
 

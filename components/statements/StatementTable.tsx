@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 
 import { inputClass } from '@/components/admin/ui';
+import { useNickSelection } from '@/components/chat/NickContext';
 
 import { LineDrawer } from './LineDrawer';
 
@@ -61,6 +62,11 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
   const [query, setQuery] = useState('');
   const [hideZero, setHideZero] = useState(false);
   const [selected, setSelected] = useState<Flat | null>(null);
+  const nick = useNickSelection();
+  const select = (node: StatementNode, parent: StatementNode | null) => {
+    setSelected({ node, parent, visible: true });
+    nick?.setLine({ id: node.id, name: node.accountName });
+  };
 
   const rows = useMemo(() => {
     const out: Flat[] = [];
@@ -127,8 +133,8 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
                 <tr
                   key={node.id}
                   tabIndex={0}
-                  onClick={() => setSelected({ node, parent, visible: true })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ node, parent, visible: true }); } }}
+                  onClick={() => select(node, parent)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(node, parent); } }}
                   className={`hover:bg-blue-pale/60 focus-visible:bg-blue-pale/60 cursor-pointer outline-none transition ${node.isTotal ? 'bg-paper' : ''}`}
                 >
                   <td className="px-3 py-2" style={{ paddingLeft: `${12 + node.depth * 18}px` }}>

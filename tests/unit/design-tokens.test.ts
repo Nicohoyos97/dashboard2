@@ -9,16 +9,25 @@ import { describe, expect, it } from 'vitest';
 const css = readFileSync(resolve(process.cwd(), 'app/globals.css'), 'utf8');
 
 describe('design tokens', () => {
-  it('defines the §6 palette', () => {
-    expect(css).toContain('--color-blue: #2563eb');
-    expect(css).toContain('--color-blue-soft: #1d4ed8');
-    expect(css).toContain('--color-blue-pale: #eef5ff');
-    expect(css).toContain('--color-paper: #f7f9fc');
-    expect(css).toContain('--color-ink: #0f172a');
-    expect(css).toContain('--color-line: #e6ecf4');
+  // Since the light/dark theme, the utilities point at theme variables; the
+  // light values are still the §6 palette.
+  it('defines the §6 palette (light theme) behind theme-aware utilities', () => {
+    expect(css).toContain('--color-blue: var(--brand-primary)');
+    expect(css).toContain('--color-blue-soft: var(--brand-primary-hover)');
+    expect(css).toContain('--color-blue-pale: var(--brand-primary-soft)');
+    expect(css).toContain('--color-paper: var(--page)');
+    expect(css).toContain('--color-ink: var(--heading)');
+    expect(css).toContain('--color-line: var(--border)');
     expect(css).toContain('--color-success: #10b981');
     expect(css).toContain('--color-danger: #ef4444');
-    expect(css).toContain('--primary: #2563eb');
+    const light = css.slice(0, css.indexOf('\n.dark {'));
+    expect(light).toContain('--brand-primary: #2563eb');
+    expect(light).toContain('--brand-primary-hover: #1d4ed8');
+    expect(light).toContain('--brand-primary-soft: #eef5ff');
+    expect(light).toContain('--page: #f7f9fc');
+    expect(light).toContain('--heading: #0f172a');
+    expect(light).toContain('--border: #e6ecf4');
+    expect(light).toContain('--primary: #2563eb');
   });
 
   it('uses Inter as the single typeface', () => {

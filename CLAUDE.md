@@ -78,7 +78,7 @@ You are working on a production financial application. Read this file at the sta
 │   ├── [locale]/(auth)/          # /signin, /signup, /forgot-password, /reset-password
 │   ├── [locale]/(dashboard)/     # Client portal — layout enforces session
 │   │   ├── dashboard/            # Overview (route stays /dashboard; nav label "Overview")
-│   │   ├── chat/                 # Insights with Nick (Phase 4)
+│   │   ├── chat/                 # Insights with Nick — full-page chat (+ contextual panel on primary pages)
 │   │   └── settings/             # profile · business · members
 │   ├── [locale]/admin/           # Firm portal — layout requires firm role; (gated)/ requires aal2
 │   │   ├── (gated)/              # dashboard (+ clients, upload, documents, audit in Phase 2)
@@ -87,7 +87,7 @@ You are working on a production financial application. Read this file at the sta
 │   ├── api/                      # Route Handlers (jobs, downloads) — not localized
 │   ├── fonts.ts · globals.css    # Inter + §6 design tokens
 ├── components/ {auth, dashboard, admin, shell, settings, ui, icons}
-├── lib/ {auth, supabase, audit, settings, entities, ai, nav.ts, admin-nav.ts, utils}
+├── lib/ {auth, supabase, audit, settings, entities, ai/nick (router, tools, loop, citations, persist), nav.ts, admin-nav.ts, utils}
 ├── scripts/                      # bootstrap-firm-admin.ts (pnpm firm:admin)
 ├── i18n/ · messages/             # next-intl
 ├── supabase/ {migrations 0001–0005, config.toml, seed.sql}
@@ -154,4 +154,4 @@ MCP: copy `.mcp.json.example` → `.mcp.json` with the cloud project ref (read-o
 
 ## 8. Current phase
 
-> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). Phases 0–2 complete; Checkpoint 2 approved. **Phase 3 — Client core (2026-09-02):** source-safe Overview KPIs and cash chart, deterministic insights, P&L and Balance Sheet read models + interactive tables/charts/drawers, published reports library, audited original-PDF and CSV downloads, reminders, and exact firm preview. Next per §12: **Phase 4 — Nick** (permission-aware tools, router, citations, contextual panels, chat and exports), working autonomously — no further checkpoints. The cloud Supabase project for 2.0 is deferred until the first deploy — see `docs/ENVIRONMENTS.md`.
+> Bootstrapped 2026-09-02 from Hoyos-Baker-Dashboard v1 (`7d32144`). Phases 0–3 complete; Checkpoint 2 approved. **Phase 4 — Nick (2026-09-03):** `lib/ai/nick/` — fast-model router, eleven strict read-only tools closed over the session entity, per-turn citation registry with a server-side gate (no citation, no number; one corrective retry), streaming manual loop capped at 8 iterations, confirmation turns for downloads/exports, persistence to `chat_sessions`/`chat_messages`/`chat_citations`/`ai_usage_daily`, rate limit + daily token budget, `POST /api/chat` (SSE), `/api/exports/[id]/download`; UI: full-page `/chat` with conversations, contextual "Ask Nick" panel on Overview/P&L/Balance Sheet with page suggestions and "ask about this line" from the drawer. Next per §12: **Phase 5 — Remaining modules** (Expenses, Income Taxes, Sales Taxes, notifications, settings/profile/help, export + deletion requests), working autonomously — no further checkpoints. The cloud Supabase project for 2.0 is deferred until the first deploy — see `docs/ENVIRONMENTS.md`.

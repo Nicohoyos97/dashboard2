@@ -36,7 +36,7 @@ describe('NAV_ITEMS', () => {
 
   it('only links to routes that exist — everything else is disabled, never a dead link', () => {
     const live = NAV_ITEMS.filter((i) => !i.disabled && !i.children).map((i) => i.href);
-    expect(live).toEqual(['/dashboard', '/settings']);
+    expect(live).toEqual(['/dashboard', '/chat', '/settings']);
     const liveChildren = NAV_ITEMS.flatMap((i) => i.children ?? []).filter((c) => !c.disabled);
     expect(liveChildren.map((c) => c.href)).toEqual(['/statements/profit-and-loss', '/statements/balance-sheet']);
   });

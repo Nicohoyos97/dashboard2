@@ -4,6 +4,8 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { CompositionBars } from '@/components/charts/CompositionBars';
+import { NickProvider } from '@/components/chat/NickContext';
+import { NickPanel } from '@/components/chat/NickPanel';
 import { TrendBars } from '@/components/charts/TrendBars';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
@@ -58,6 +60,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id });
 
   return (
+    <NickProvider>
     <Page
       title={typeLabel}
       lede={`${entity.name} · ${periodLabel}${basis}${comparative}`}
@@ -110,6 +113,8 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
         <StatementTable roots={roots} meta={{ reportType: 'profit_and_loss', currency: report.currency, hasPrior, source: report.source, versionId: report.documentVersionId }} />
       </section>
     </Page>
+    <NickPanel page="profit_and_loss" period={periodParam({ start: report.periodStart, end: report.periodEnd })} businessName={entity.name} />
+    </NickProvider>
   );
 }
 

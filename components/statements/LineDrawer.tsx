@@ -1,8 +1,10 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
+
+import { useNickSelection } from '@/components/chat/NickContext';
 
 import type { StatementMeta, StatementNode } from './StatementTable';
 
@@ -10,7 +12,9 @@ import type { StatementMeta, StatementNode } from './StatementTable';
 // where it sits in the hierarchy and the source page of the published PDF.
 export function LineDrawer({ selected, parent, meta, onClose }: { selected: StatementNode | null; parent: StatementNode | null; meta: StatementMeta; onClose: () => void }) {
   const t = useTranslations('Statements');
+  const tNick = useTranslations('Nick');
   const locale = useLocale();
+  const nick = useNickSelection();
   const money = (cents: number | null) =>
     cents === null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency: meta.currency }).format(cents / 100);
   const node = selected;
@@ -81,6 +85,20 @@ export function LineDrawer({ selected, parent, meta, onClose }: { selected: Stat
                   </a>
                 )}
               </div>
+
+              {nick && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    nick.open({ id: node.id, name: node.accountName });
+                    onClose();
+                  }}
+                  className="bg-blue-pale text-blue hover:bg-blue hover:text-white focus-visible:ring-blue/40 mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-[14px] font-semibold transition outline-none focus-visible:ring-3"
+                >
+                  <Sparkles className="size-4" aria-hidden="true" />
+                  {tNick('askAboutLine')}
+                </button>
+              )}
             </>
           )}
         </Dialog.Content>

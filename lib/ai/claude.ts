@@ -1,1 +1,4 @@
-// Anthropic client + streaming tool-use loop for Nick. Phase 4 (INITIAL_PROMPT.md §10).
+// Nick's entry point for server code (INITIAL_PROMPT.md §10). The engine
+// lives in ./nick; this module keeps the path docs/PLAN.md names.
+export { runNickTurn } from './nick/chat';
+export type { TurnInput } from './nick/chat';
