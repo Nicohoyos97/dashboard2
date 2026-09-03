@@ -1,6 +1,6 @@
 'use client';
 
-import { Maximize2, Sparkles, X } from 'lucide-react';
+import { Maximize2, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
 import { useMemo, useState } from 'react';
@@ -9,6 +9,7 @@ import { Link } from '@/i18n/navigation';
 import type { NickPage, PageContext } from '@/lib/ai/nick/types';
 
 import { useNickSelection } from './NickContext';
+import { NickOrb } from './NickOrb';
 import { NickThread } from './NickThread';
 import { LINE_SUGGESTIONS, SUGGESTIONS } from './suggestions';
 import { useNickChat } from './useNickChat';
@@ -51,10 +52,10 @@ export function NickPanel({
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="bg-blue hover:bg-blue-soft focus-visible:ring-blue/40 fixed right-5 bottom-5 z-30 inline-flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-semibold text-white shadow-lg transition outline-none focus-visible:ring-3 print:hidden"
+          className="border-line bg-card text-ink hover:border-blue/50 focus-visible:ring-blue/40 fixed right-5 bottom-5 z-30 inline-flex h-14 items-center gap-2.5 rounded-full border py-1 pr-5 pl-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.14)] transition outline-none hover:shadow-[0_12px_28px_rgba(15,23,42,0.18)] focus-visible:ring-3 print:hidden"
         >
-          <Sparkles className="size-[18px]" aria-hidden="true" />
-          {t('openPanel')}
+          <NickOrb size={44} active={chat.streaming} />
+          <span className="text-[14px] font-semibold">{t('openPanel')}</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -62,9 +63,7 @@ export function NickPanel({
         <Dialog.Content className="bg-paper data-[state=open]:animate-in data-[state=open]:slide-in-from-right sm:border-line fixed inset-0 z-50 flex flex-col p-4 outline-none sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[480px] sm:max-w-[94vw] sm:border-l sm:p-5 sm:shadow-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="bg-blue-pale text-blue flex size-9 shrink-0 items-center justify-center rounded-xl">
-                <Sparkles className="size-[18px]" aria-hidden="true" />
-              </span>
+              <NickOrb size={38} active={chat.streaming} />
               <div className="min-w-0">
                 <Dialog.Title className="text-ink text-[16px] font-bold">
                   {t('panelTitle')}

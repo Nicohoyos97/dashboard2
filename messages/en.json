@@ -711,7 +711,22 @@
     "deleteConfirm": "Delete this conversation?",
     "delete": "Delete",
     "cancel": "Cancel",
-    "deleteFailed": "The conversation couldn't be deleted."
+    "deleteFailed": "The conversation couldn't be deleted.",
+    "greetingMorning": "Good morning, {name}",
+    "greetingAfternoon": "Good afternoon, {name}",
+    "greetingEvening": "Good evening, {name}",
+    "greetingPlain": "Hello, {name}",
+    "greetingMorningAnon": "Good morning",
+    "greetingAfternoonAnon": "Good afternoon",
+    "greetingEveningAnon": "Good evening",
+    "greetingPlainAnon": "Hello",
+    "heroQuestionLead": "What's on ",
+    "heroQuestionAccent": "your mind?",
+    "history": "History",
+    "openHistory": "Show conversation history",
+    "closeHistory": "Hide conversation history",
+    "composerHint": "Enter to send · Shift + Enter for a new line",
+    "examplesTitle": "Get started with an example"
   },
   "Help": {
     "title": "Help & support",

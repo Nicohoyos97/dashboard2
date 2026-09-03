@@ -1,12 +1,10 @@
 // Insights with Nick — full-page chat (INITIAL_PROMPT.md §7, §10). The
 // caller's own conversations and the selected thread are read through RLS;
 // the firm's preview role has no conversation path and sees a notice.
-import { MessageSquarePlus } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
 import { NickWorkspace } from '@/components/chat/NickWorkspace';
-import { Link } from '@/i18n/navigation';
 import { NICK_LIMITS } from '@/lib/ai/nick/config';
 import { listSessions, loadSession, loadThread } from '@/lib/ai/nick/persist';
 import { logAccess } from '@/lib/audit/logAccess';
@@ -51,7 +49,11 @@ export default async function ChatPage({
       ? loadSession(supabase, entity.id, user.id, requested.data)
       : Promise.resolve(null),
   ]);
-  const thread = active ? await loadThread(supabase, active.id) : [];
+  const [thread, { data: profile }] = await Promise.all([
+    active ? loadThread(supabase, active.id) : Promise.resolve([]),
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+  ]);
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? '';
   const question =
     !active && typeof params.q === 'string'
       ? params.q.trim().slice(0, NICK_LIMITS.maxMessageChars)
@@ -65,30 +67,18 @@ export default async function ChatPage({
   });
 
   return (
-    <Page
-      title={t('title')}
-      lede={t('lede', { business: entity.name })}
-      controls={
-        <Link
-          href="/chat"
-          className="border-line bg-card text-ink hover:border-blue/50 hover:text-blue inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13.5px] font-semibold transition lg:hidden"
-        >
-          <MessageSquarePlus className="size-4" aria-hidden="true" />
-          {t('newConversation')}
-        </Link>
-      }
-    >
-      <div className="mt-6 flex min-h-[70vh] flex-col">
-        <NickWorkspace
-          key={active?.id ?? 'new'}
-          sessions={sessions}
-          activeSessionId={active?.id ?? null}
-          initialThread={thread}
-          businessName={entity.name}
-          initialQuestion={question || null}
-        />
-      </div>
-    </Page>
+    <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1200px] flex-col px-4 py-4 md:px-8 md:py-6">
+      <h1 className="sr-only">{t('title')}</h1>
+      <NickWorkspace
+        key={active?.id ?? 'new'}
+        sessions={sessions}
+        activeSessionId={active?.id ?? null}
+        initialThread={thread}
+        businessName={entity.name}
+        firstName={firstName}
+        initialQuestion={question || null}
+      />
+    </main>
   );
 }
 

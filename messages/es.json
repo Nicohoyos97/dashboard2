@@ -711,7 +711,22 @@
     "deleteConfirm": "¿Eliminar esta conversación?",
     "delete": "Eliminar",
     "cancel": "Cancelar",
-    "deleteFailed": "No se pudo eliminar la conversación."
+    "deleteFailed": "No se pudo eliminar la conversación.",
+    "greetingMorning": "Buenos días, {name}",
+    "greetingAfternoon": "Buenas tardes, {name}",
+    "greetingEvening": "Buenas noches, {name}",
+    "greetingPlain": "Hola, {name}",
+    "greetingMorningAnon": "Buenos días",
+    "greetingAfternoonAnon": "Buenas tardes",
+    "greetingEveningAnon": "Buenas noches",
+    "greetingPlainAnon": "Hola",
+    "heroQuestionLead": "¿Qué tienes ",
+    "heroQuestionAccent": "en mente?",
+    "history": "Historial",
+    "openHistory": "Mostrar el historial de conversaciones",
+    "closeHistory": "Ocultar el historial",
+    "composerHint": "Enter para enviar · Shift + Enter para un salto de línea",
+    "examplesTitle": "Empieza con un ejemplo"
   },
   "Help": {
     "title": "Ayuda y soporte",

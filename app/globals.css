@@ -143,12 +143,99 @@
   }
 }
 
+/* Nick's orb (DESIGN.md → Nick): the owner's gradient blob breathes at rest and
+   quickens while Nick is working. The image rotates slowly on its own layer so the
+   asymmetric gradient reads as a morphing surface; the halo pulses underneath. */
+.nick-orb {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+.nick-orb__glow {
+  position: absolute;
+  inset: 6%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(251, 146, 60, 0.55),
+    rgba(244, 114, 182, 0.28) 55%,
+    transparent 74%
+  );
+  filter: blur(10px);
+  animation: nick-glow 5s ease-in-out infinite;
+}
+.nick-orb__spin {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  /* The PNG's pale surround must never read as a square while it rotates. */
+  mask-image: radial-gradient(circle, #000 52%, transparent 71%);
+  -webkit-mask-image: radial-gradient(circle, #000 52%, transparent 71%);
+  animation: nick-drift 48s linear infinite;
+}
+.nick-orb__image {
+  object-fit: contain;
+  animation: nick-breathe 5s ease-in-out infinite;
+  will-change: transform;
+}
+.nick-orb[data-active='true'] .nick-orb__glow {
+  animation-duration: 1.4s;
+}
+.nick-orb[data-active='true'] .nick-orb__spin {
+  animation-duration: 10s;
+}
+.nick-orb[data-active='true'] .nick-orb__image {
+  animation-duration: 1.4s;
+}
+@keyframes nick-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+@keyframes nick-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes nick-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nick-orb__glow,
+  .nick-orb__spin,
+  .nick-orb__image {
+    animation: none;
+  }
+}
+
 /* Sidebar: a faint brand-blue glow rising from the foot of the rail (DESIGN.md → Navigation). */
 .sidebar-glow {
-  background-image: radial-gradient(70% 38% at 35% 100%, color-mix(in oklch, var(--brand-primary) 13%, transparent), transparent 72%);
+  background-image: radial-gradient(
+    70% 38% at 35% 100%,
+    color-mix(in oklch, var(--brand-primary) 13%, transparent),
+    transparent 72%
+  );
 }
 .dark .sidebar-glow {
-  background-image: radial-gradient(70% 38% at 35% 100%, color-mix(in oklch, var(--brand-primary) 24%, transparent), transparent 72%);
+  background-image: radial-gradient(
+    70% 38% at 35% 100%,
+    color-mix(in oklch, var(--brand-primary) 24%, transparent),
+    transparent 72%
+  );
 }
 
 @media (prefers-reduced-motion: no-preference) {

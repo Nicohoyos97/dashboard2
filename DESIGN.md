@@ -114,9 +114,9 @@ Citation and status chips: pill, 11.5–12px semibold, soft background with colo
 
 248px sidebar on `md+`, card surface with a faint brand-blue radial glow at the bottom, 1px right border. Items: outlined lucide icon (18px, stroke 1.75) + 14px/400 label, 10px radius; active item is a filled blue pill with white text; hover is the secondary tint. Bottom block: hairline divider, then the user (avatar, name, role) and the utility links (Settings, Help & support). Top bar: search (⌘K), theme toggle, help. On mobile the sidebar is a Radix drawer and the top bar shows the hamburger and brand.
 
-### Nick panel (signature)
+### Nick (signature)
 
-Floating "Ask Nick" pill bottom-right; a 480px side panel on desktop and a full-screen sheet on phones; assistant bubbles on card surface with compact inline citation chips and a Sources row.
+Nick is represented by the orb (`public/brand/nick-orb.png`, `components/chat/NickOrb.tsx`): a soft orange–pink gradient blob that breathes slowly at rest and quickens while Nick is thinking or answering, with a pulsing halo behind it; motion stops under reduced motion. It appears in the floating "Ask Nick" trigger (white pill, orb + label), the panel header, beside every answer, and as the 116 px hero of an empty conversation. The full page opens on that hero: orb, a time-of-day greeting with the second line's accent in brand blue, the large composer, then four example cards; the conversation history is a sub-sidebar hidden by default and opened with the panel-left button. The contextual panel is a 480 px side sheet on desktop and full-screen on phones; assistant bubbles carry compact inline citation chips and a Sources row.
 
 ## 6. Do's and Don'ts
 

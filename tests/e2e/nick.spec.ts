@@ -118,7 +118,7 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     ).newPage();
     await signIn(page);
     await page.goto('/chat');
-    await expect(page.getByRole('heading', { name: /^ask nick$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /show conversation history/i })).toBeVisible();
 
     const composer = page.locator('#nick-composer');
     await expect(composer).toHaveCount(1);
