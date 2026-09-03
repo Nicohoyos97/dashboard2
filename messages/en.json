@@ -227,6 +227,8 @@
     "reportsUnavailable": "Original file unavailable",
     "insightsTitle": "Insights",
     "insightsEmpty": "Nothing to flag for this period.",
+    "insightDismiss": "Mark as seen",
+    "insightDismissFailed": "Couldn't save that. Try again.",
     "expensesTitle": "Important expenses",
     "expensesLede": "Largest expense lines on the Profit & Loss, share of total expenses.",
     "expensesEmpty": "Publish a Profit & Loss to see expense composition.",
@@ -823,7 +825,7 @@
     "sales_tax_due_soon_body": "{title} is due on {dueDate}.",
     "outflow_exceeded_inflow_title": "More cash went out than came in",
     "outflow_exceeded_inflow_body": "Net cash flow was {net} for the period.",
-    "margin_changed_title": "{margin} margin moved {points} points",
+    "margin_changed_title": "Your {margin} margin moved {points} points",
     "margin_changed_body": "From {priorPct}% to {currentPct}%.",
     "report_needs_review_title": "A report is being reviewed",
     "report_needs_review_body": "{count, plural, one {# document is} other {# documents are}} with your accountant for review and will appear once published."

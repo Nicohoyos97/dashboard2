@@ -227,6 +227,8 @@
     "reportsUnavailable": "Archivo original no disponible",
     "insightsTitle": "Insights",
     "insightsEmpty": "Nada que señalar en este periodo.",
+    "insightDismiss": "Marcar como visto",
+    "insightDismissFailed": "No se pudo guardar. Inténtalo de nuevo.",
     "expensesTitle": "Gastos importantes",
     "expensesLede": "Líneas de gasto más grandes del estado de resultados, participación sobre el total.",
     "expensesEmpty": "Publica un estado de resultados para ver la composición de gastos.",
@@ -823,7 +825,7 @@
     "sales_tax_due_soon_body": "{title} vence el {dueDate}.",
     "outflow_exceeded_inflow_title": "Salió más efectivo del que entró",
     "outflow_exceeded_inflow_body": "El flujo de caja neto fue {net} en el periodo.",
-    "margin_changed_title": "El margen {margin} se movió {points} puntos",
+    "margin_changed_title": "Tu margen {margin} se movió {points} puntos",
     "margin_changed_body": "De {priorPct}% a {currentPct}%.",
     "report_needs_review_title": "Un reporte está en revisión",
     "report_needs_review_body": "{count, plural, one {# documento está} other {# documentos están}} en revisión con tu contador y aparecerá al publicarse."

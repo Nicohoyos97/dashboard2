@@ -15,14 +15,15 @@ import { ReportTiles } from '@/components/dashboard/ReportTiles';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { generateInsights } from '@/lib/insights/rules';
-import type { PnlInput } from '@/lib/insights/types';
+import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
+import { MAX_INSIGHTS, type PnlInput } from '@/lib/insights/types';
 import {
   loadPortalEntitySettings,
   loadPublishedBankStatements,
   loadPublishedBankTransactions,
   loadPublishedDocuments,
   loadPublishedReports,
+  loadInsightDismissals,
   loadReminders,
   loadReportLines,
 } from '@/lib/portal/load';
@@ -90,13 +91,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   }
 
   const supabase = await createClient();
-  const [settings, reports, bankStatements, documents, reminders, incomeTaxes] = await Promise.all([
+  const [settings, reports, bankStatements, documents, reminders, incomeTaxes, dismissedInsights] = await Promise.all([
     loadPortalEntitySettings(supabase, entity.id),
     loadPublishedReports(supabase, entity.id),
     loadPublishedBankStatements(supabase, entity.id),
     loadPublishedDocuments(supabase, entity.id),
     loadReminders(supabase, entity.id),
     loadTaxObligations(supabase, entity.id, 'income'),
+    loadInsightDismissals(supabase, entity.id),
   ]);
 
   const defaultCurrencyStatements = bankStatements.filter((statement) => statement.currency === settings.currency);
@@ -165,7 +167,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const operatingExpenses = metricDelta(currentPnl?.operatingExpenses, priorPnl?.operatingExpenses);
   // A period whose statement does not print a total contributes nothing rather
   // than a zero, so a gap never reads as a collapse to nil.
-  const pnlTrend = pnlTrendReports.map((report, index) => pnlMetrics(report, buildTree(pnlTrendLines[index] ?? [])));
+  const pnlTrendTrees = pnlTrendReports.map((_, index) => buildTree(pnlTrendLines[index] ?? []));
+  const pnlTrend = pnlTrendReports.map((report, index) => pnlMetrics(report, pnlTrendTrees[index] ?? []));
   const pnlSeries = (pick: (m: PnlMetrics) => Metric): number[] => {
     const points = pnlTrend.flatMap((metrics) => {
       const cents = pick(metrics).current?.cents;
@@ -181,17 +184,37 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     lines: currentRoots,
     ...(priorPnl ? { prior: priorPnl, priorLines: priorRoots } : {}),
   } : undefined;
-  const insights = generateInsights({
-    ...(pnlInput ? { pnl: pnlInput } : {}),
-    ...(totals ? { cash: { current: totals, ...(priorCashCovered ? { prior: cashTotals(priorMonths) } : {}), months } } : {}),
-    ...(balanceReport ? { balance: balanceSheetMetrics(balanceReport, buildTree(balanceLines)) } : {}),
-    reminders,
-    reportsNeedingReview: 0,
-    today: new Date().toISOString().slice(0, 10),
-  });
+  const today = new Date().toISOString().slice(0, 10);
+  // Insights run over the last few published periods, not only the selected
+  // one: the earlier periods get the statement rules (their cash and balance
+  // figures are not loaded), and the selected period gets the full set. Rows
+  // this user has already checked off are dropped here.
+  const earlierPeriods: InsightPeriod[] = pnlTrendReports.flatMap((report, index) => {
+    const metrics = pnlTrend[index];
+    if (!metrics || report.periodEnd >= selected.end) return [];
+    return [{
+      start: report.periodStart,
+      end: report.periodEnd,
+      label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale),
+      metrics,
+      lines: pnlTrendTrees[index] ?? [],
+    }];
+  }).slice(-(INSIGHT_PERIODS - 1));
+  const insights = insightsAcrossPeriods(
+    { start: selected.start, end: selected.end, label: selected.label },
+    earlierPeriods,
+    {
+      ...(pnlInput ? { pnl: pnlInput } : {}),
+      ...(totals ? { cash: { current: totals, ...(priorCashCovered ? { prior: cashTotals(priorMonths) } : {}), months } } : {}),
+      ...(balanceReport ? { balance: balanceSheetMetrics(balanceReport, buildTree(balanceLines)) } : {}),
+      reminders,
+      reportsNeedingReview: 0,
+      today,
+    },
+    MAX_INSIGHTS + INSIGHT_PERIODS,
+  ).filter((insight) => !dismissedInsights.has(insight.key));
   const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
   const priorLabel = priorRange?.label ?? selected.label;
-  const today = new Date().toISOString().slice(0, 10);
   // Income and expenses come from the same statement, period by period; a
   // period that prints neither total is dropped rather than drawn at zero.
   const incomeExpense = pnlTrendReports.flatMap((report, index) => {

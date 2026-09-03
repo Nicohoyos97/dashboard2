@@ -263,3 +263,17 @@ export async function loadReminders(supabase: Db, entityId: string): Promise<Rem
     source: r.source,
   }));
 }
+
+/**
+ * Insight rows this user has already checked off, as `ruleKey|start|end` keys
+ * (see lib/insights/periods.ts). Per user: another member's ticks never hide a
+ * line from this one.
+ */
+export async function loadInsightDismissals(supabase: Db, entityId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('insight_dismissals')
+    .select('rule_key, period_start, period_end')
+    .eq('business_entity_id', entityId);
+  if (error) throw readError('portal_insight_dismissals_read_failed');
+  return new Set((data ?? []).map((row) => `${row.rule_key}|${row.period_start}|${row.period_end}`));
+}

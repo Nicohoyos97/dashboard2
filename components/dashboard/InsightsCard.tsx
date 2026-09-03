@@ -4,13 +4,25 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { formatIsoDate } from '@/lib/utils/dates';
 
-export type InsightView = { ruleKey: string; severity: 'info' | 'warning' | 'critical'; params: Record<string, string | number>; linkPath: string };
+import { DismissInsight } from './DismissInsight';
+
+export type InsightView = {
+  ruleKey: string;
+  severity: 'info' | 'warning' | 'critical';
+  params: Record<string, string | number>;
+  linkPath: string;
+  periodStart: string;
+  periodEnd: string;
+  periodLabel: string;
+};
 
 const ICON = { info: Info, warning: AlertTriangle, critical: OctagonAlert } as const;
 const TONE = { info: 'bg-blue-pale text-blue', warning: 'bg-warning/10 text-warning', critical: 'bg-danger/10 text-danger' } as const;
 
-// 3–5 prioritized insights from the deterministic rule set (§7). The rule
-// decides whether an insight exists; the text here only phrases it.
+// Prioritized insights from the deterministic rule set across the last few
+// published periods (§7). The rule decides whether an insight exists; the text
+// here only phrases it. Each row carries the period it was raised for and a
+// circle that checks it off for this user.
 export async function InsightsCard({ insights, currency }: { insights: InsightView[]; currency: string }) {
   const [t, tI, tR, locale] = await Promise.all([
     getTranslations('Overview'),
@@ -63,18 +75,23 @@ export async function InsightsCard({ insights, currency }: { insights: InsightVi
             const Icon = ICON[i.severity];
             const params = textParams(i);
             return (
-              <li key={i.ruleKey} className="flex items-start gap-3">
-                <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg ${TONE[i.severity]}`}>
-                  <Icon className="size-4" aria-hidden="true" />
+              <DismissInsight key={`${i.ruleKey}-${i.periodStart}-${i.periodEnd}`} ruleKey={i.ruleKey} periodStart={i.periodStart} periodEnd={i.periodEnd}>
+                <span className="flex items-start gap-3">
+                  <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg ${TONE[i.severity]}`}>
+                    <Icon className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 text-[13.5px]">
+                    <span className="text-ink block font-semibold">{tI(`${i.ruleKey}_title`, params)}</span>
+                    <span className="text-muted-foreground block">{tI(`${i.ruleKey}_body`, params)}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium">{i.periodLabel}</span>
+                      <Link href={i.linkPath} className="text-blue text-[12.5px] font-semibold hover:underline">
+                        {t('viewDetail')}
+                      </Link>
+                    </span>
+                  </span>
                 </span>
-                <span className="min-w-0 text-[13.5px]">
-                  <span className="text-ink block font-semibold">{tI(`${i.ruleKey}_title`, params)}</span>
-                  <span className="text-muted-foreground block">{tI(`${i.ruleKey}_body`, params)}</span>
-                  <Link href={i.linkPath} className="text-blue mt-0.5 inline-block text-[12.5px] font-semibold hover:underline">
-                    {t('viewDetail')}
-                  </Link>
-                </span>
-              </li>
+              </DismissInsight>
             );
           })}
         </ul>

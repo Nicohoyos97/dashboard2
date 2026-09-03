@@ -174,7 +174,10 @@ async function main(): Promise<void> {
   const random = rng(20_260_903);
   let balance = 48_000;
   const revenueByMonth = new Map<string, number>();
-  const opexByMonth = new Map<string, number>();
+  // Per category, per month: the P&L lines mirror what actually left the bank,
+  // so one category can move on its own and the insight rules have something
+  // real to find.
+  const spendByMonth = new Map<string, Map<string, number>>();
 
   for (const month of period) {
     const beginning = balance;
@@ -203,10 +206,14 @@ async function main(): Promise<void> {
     revenueByMonth.set(month.key, money(revenue));
 
     let day = 3;
-    let opex = 0;
+    const spend = new Map<string, number>();
+    // One month carries a payroll bonus, so the demo has a category that
+    // genuinely moved rather than a flat line the rules cannot see.
+    const bonus = period.indexOf(month) === period.length - 2 ? 1.28 : 1;
     for (const category of CATEGORIES) {
-      const amount = money(category.monthly * (0.9 + random() * 0.2));
-      if (category.kind !== 'cogs') opex += amount;
+      const swing = category.name === 'Payroll' ? bonus : 1;
+      const amount = money(category.monthly * (0.9 + random() * 0.2) * swing);
+      spend.set(category.name, amount);
       balance -= amount;
       transactions.push({
         business_entity_id: entityId,
@@ -225,7 +232,7 @@ async function main(): Promise<void> {
       });
       day += 3;
     }
-    opexByMonth.set(month.key, money(opex));
+    spendByMonth.set(month.key, spend);
 
     const { data: statement, error: statementError } = await admin
       .from('bank_statements')
@@ -257,9 +264,9 @@ async function main(): Promise<void> {
     const revenue = revenueByMonth.get(month.key) ?? 0;
     const priorMonth = (index > 0 ? period[index - 1] : null) ?? null;
     const priorRevenue = priorMonth ? (revenueByMonth.get(priorMonth.key) ?? null) : null;
-    const opex = opexByMonth.get(month.key) ?? 0;
-    const priorOpex = priorMonth ? (opexByMonth.get(priorMonth.key) ?? null) : null;
-    await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, opex, priorOpex, publishedAt });
+    const spend = spendByMonth.get(month.key) ?? new Map<string, number>();
+    const priorSpend = priorMonth ? (spendByMonth.get(priorMonth.key) ?? null) : null;
+    await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, spend, priorSpend, publishedAt });
   }
   await insertBalanceSheet(admin, { entityId, asOf: last.end, publishedAt });
 
@@ -408,17 +415,20 @@ async function insertPnl(
     priorMonth: { start: string; end: string } | null;
     revenue: number;
     priorRevenue: number | null;
-    /** The month's own operating expenses, so two months are never identical. */
-    opex: number;
-    priorOpex: number | null;
+    /** What each category actually cost this month, and last, keyed by name. */
+    spend: ReadonlyMap<string, number>;
+    priorSpend: ReadonlyMap<string, number> | null;
     publishedAt: string;
   },
 ): Promise<void> {
-  const { entityId, month, priorMonth, revenue, priorRevenue, opex, priorOpex, publishedAt } = input;
+  const { entityId, month, priorMonth, revenue, priorRevenue, spend, priorSpend, publishedAt } = input;
   const cogs = money(revenue * 0.31);
   const priorCogs = priorRevenue === null ? null : money(priorRevenue * 0.31);
-  const share = (base: number, total: number, ref: number | null) => (ref === null ? null : money(ref * (base / total)));
-  const opexBase = CATEGORIES.filter((c) => c.kind !== 'cogs').reduce((sum, c) => sum + c.monthly, 0);
+  const operating = CATEGORIES.filter((c) => c.kind !== 'cogs');
+  const sum = (source: ReadonlyMap<string, number> | null) =>
+    source === null ? null : money(operating.reduce((total, c) => total + (source.get(c.name) ?? 0), 0));
+  const opex = sum(spend) ?? 0;
+  const priorOpex = sum(priorSpend);
 
   const { data: report, error } = await admin
     .from('financial_reports')
@@ -468,11 +478,11 @@ async function insertPnl(
     {
       name: 'Expenses', section: 'expenses', isSection: true, current: null, prior: null,
       children: [
-        ...CATEGORIES.filter((c) => c.kind !== 'cogs').map((c) => ({
+        ...operating.map((c) => ({
           name: c.name,
           section: 'expenses',
-          current: share(c.monthly, opexBase, opex) ?? 0,
-          prior: share(c.monthly, opexBase, priorOpex),
+          current: spend.get(c.name) ?? 0,
+          prior: priorSpend?.get(c.name) ?? null,
         })),
         { name: 'Total Expenses', section: 'expenses', isTotal: true, current: money(opex), prior: priorOpex },
       ],

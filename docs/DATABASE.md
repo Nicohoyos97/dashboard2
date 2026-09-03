@@ -33,6 +33,7 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0005 | `rate_limits` | Fixed-window counters | server-only | no policies; `consume_rate_limit()` is service-role only |
 | 0007 | `notification_preferences` | Per user, per business: which alerts they want | C | self SELECT/INSERT/UPDATE **and** member of the business; no firm read (delivery settings, not tenant data) |
 | 0007 | `account_requests` | Data-export / account-deletion requests queued for the firm | B | owner + firm SELECT; owner INSERT (`pending` only); owner UPDATE limited to `pending → cancelled` by `account_requests_guard()`; firm admin UPDATE; **no DELETE** |
+| 0008 | `insight_dismissals` | Which insights a user has checked off, keyed by rule + period | C | self SELECT/INSERT/DELETE **and** member of the business; no UPDATE (un-ticking is a delete) |
 
 ## Storage buckets
 
@@ -67,7 +68,7 @@ There is **no self-serve `create_organization()`**. A user who signs up has a `p
 
 - **A — server-write only.** Members read; no client write policy; the service role (jobs, `logAccess`) writes. Firm admins may correct.
 - **B — members read, role-gated writes.** Every `INSERT`/`UPDATE` policy has a `WITH CHECK` mirroring `USING`. Client-visible rows are the **published** ones; the firm sees drafts.
-- **C — self-only.** `profiles`, `notifications`, `notification_preferences`.
+- **C — self-only.** `profiles`, `notifications`, `notification_preferences`, `insight_dismissals`.
 
 ## Adding a table — checklist
 

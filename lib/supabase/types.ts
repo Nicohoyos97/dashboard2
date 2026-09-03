@@ -1398,6 +1398,41 @@ export type Database = {
           },
         ]
       }
+      insight_dismissals: {
+        Row: {
+          business_entity_id: string
+          dismissed_at: string
+          period_end: string
+          period_start: string
+          rule_key: string
+          user_id: string
+        }
+        Insert: {
+          business_entity_id: string
+          dismissed_at?: string
+          period_end: string
+          period_start: string
+          rule_key: string
+          user_id: string
+        }
+        Update: {
+          business_entity_id?: string
+          dismissed_at?: string
+          period_end?: string
+          period_start?: string
+          rule_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insight_dismissals_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insights: {
         Row: {
           body: string

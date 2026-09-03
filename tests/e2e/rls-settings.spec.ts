@@ -131,4 +131,27 @@ test.describe('RLS — notification preferences and account requests', () => {
     expect(stillThere.data?.status).toBe('cancelled');
     expect(stillThere.data?.message).toBe('please include 2026');
   });
+
+  test('an insight tick is the ticker\'s own and stays inside their business', async () => {
+    const a = await fx.makeTenant('id-a');
+    const b = await fx.makeTenant('id-b');
+    const row = { rule_key: 'margin_changed', period_start: '2026-07-01', period_end: '2026-07-31' };
+
+    const own = await a.client.from('insight_dismissals').insert({ ...row, user_id: a.userId, business_entity_id: a.entityId }).select();
+    expect(own.error).toBeNull();
+
+    // Not for a business A does not belong to, and not on someone else's behalf.
+    expect(insertDenied(await a.client.from('insight_dismissals').insert({ ...row, user_id: a.userId, business_entity_id: b.entityId }).select())).toBe(true);
+    expect(insertDenied(await a.client.from('insight_dismissals').insert({ ...row, user_id: b.userId, business_entity_id: a.entityId }).select())).toBe(true);
+
+    // A co-member's ticks never hide a line from another member.
+    const mate = await fx.makeUser('id-m');
+    await fx.addMembership(a.entityId, mate.id, 'client_viewer');
+    const mateClient = await fx.signedInClient(mate.email);
+    expect((await mateClient.from('insight_dismissals').select('rule_key').eq('business_entity_id', a.entityId)).data ?? []).toHaveLength(0);
+
+    // Un-ticking is a delete of your own row; B cannot remove A's.
+    expect((await b.client.from('insight_dismissals').delete().eq('business_entity_id', a.entityId).select()).data ?? []).toHaveLength(0);
+    expect((await a.client.from('insight_dismissals').delete().eq('business_entity_id', a.entityId).select()).data ?? []).toHaveLength(1);
+  });
 });
