@@ -31,6 +31,8 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0005 | `chat_citations` | One row per `[cN]` marker Nick emits | A | member SELECT only (no firm) |
 | 0005 | `ai_usage_daily` | Per-entity daily token budget | A | firm SELECT only |
 | 0005 | `rate_limits` | Fixed-window counters | server-only | no policies; `consume_rate_limit()` is service-role only |
+| 0007 | `notification_preferences` | Per user, per business: which alerts they want | C | self SELECT/INSERT/UPDATE **and** member of the business; no firm read (delivery settings, not tenant data) |
+| 0007 | `account_requests` | Data-export / account-deletion requests queued for the firm | B | owner + firm SELECT; owner INSERT (`pending` only); owner UPDATE limited to `pending → cancelled` by `account_requests_guard()`; firm admin UPDATE; **no DELETE** |
 
 ## Storage buckets
 
@@ -55,6 +57,7 @@ Downloads never expose a bucket URL: a route handler checks membership + publica
 | `document_object_is_client_visible(text)`, `object_entity_id(text)` | storage path parsing (never raise) | authenticated, service_role | storage policies |
 | `claim_processing_jobs(int)` | claims runnable jobs (`FOR UPDATE SKIP LOCKED`) | **service_role only** | the worker |
 | `consume_rate_limit(text, int, interval)` | under the limit? | **service_role only** | `lib/rate-limit.ts` |
+| `account_requests_guard()` (trigger) | freezes every column but `status` for a client update | trigger | `account_requests_self_cancel` |
 
 EXECUTE is revoked from `public`/`anon` on every helper. Trigger functions (`handle_new_user`, `set_updated_at`, `guard_entity_firm_columns`) are executable by nobody. The `aal` claim comes from `auth.jwt() ->> 'aal'`: a firm admin who has not completed TOTP in this session is not a firm admin for RLS.
 
@@ -64,7 +67,7 @@ There is **no self-serve `create_organization()`**. A user who signs up has a `p
 
 - **A — server-write only.** Members read; no client write policy; the service role (jobs, `logAccess`) writes. Firm admins may correct.
 - **B — members read, role-gated writes.** Every `INSERT`/`UPDATE` policy has a `WITH CHECK` mirroring `USING`. Client-visible rows are the **published** ones; the firm sees drafts.
-- **C — self-only.** `profiles`, `notifications`.
+- **C — self-only.** `profiles`, `notifications`, `notification_preferences`.
 
 ## Adding a table — checklist
 

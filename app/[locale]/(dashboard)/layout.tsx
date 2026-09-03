@@ -16,6 +16,7 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
 import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
+import { loadNotifications } from '@/lib/portal/notifications';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // route 404s on the same flag, so a hidden module is not merely a hidden link.
   const settings = currentEntity ? await loadPortalEntitySettings(supabase, currentEntity.id) : null;
   const navItems = clientNavItems(settings?.salesTaxEnabled ?? false);
+  // A firm user previewing the portal sees the client's chrome but their own
+  // notifications would be noise here, so the bell is client-side only.
+  const notifications = preview ? [] : await loadNotifications(currentEntity?.id ?? null);
 
   return (
     <AppShell
@@ -48,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           namespace="Nav"
           askNick={!preview}
           helpHref="/help"
+          notifications={notifications}
         />
       }
       sidebar={

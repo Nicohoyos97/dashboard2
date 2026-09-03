@@ -34,6 +34,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_requests: {
+        Row: {
+          business_entity_id: string
+          firm_note: string | null
+          id: string
+          kind: string
+          message: string | null
+          requested_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          business_entity_id: string
+          firm_note?: string | null
+          id?: string
+          kind: string
+          message?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          business_entity_id?: string
+          firm_note?: string | null
+          id?: string
+          kind?: string
+          message?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_requests_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage_daily: {
         Row: {
           business_entity_id: string
@@ -1400,6 +1447,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "insights_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          business_entity_id: string
+          document_activity: boolean
+          email_digest: boolean
+          new_reports: boolean
+          reminders: boolean
+          tax_deadlines: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_entity_id: string
+          document_activity?: boolean
+          email_digest?: boolean
+          new_reports?: boolean
+          reminders?: boolean
+          tax_deadlines?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_entity_id?: string
+          document_activity?: boolean
+          email_digest?: boolean
+          new_reports?: boolean
+          reminders?: boolean
+          tax_deadlines?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_business_entity_id_fkey"
             columns: ["business_entity_id"]
             isOneToOne: false
             referencedRelation: "business_entities"

@@ -3,7 +3,7 @@
 import { CircleHelp, MessageSquareLock } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
-const QUESTIONS = ['1', '2', '3', '4', '5'] as const;
+const QUESTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 
 export default async function HelpPage() {
   const t = await getTranslations('Help');

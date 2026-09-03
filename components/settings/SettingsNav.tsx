@@ -4,12 +4,13 @@ import { useTranslations } from 'next-intl';
 
 import { Link, usePathname } from '@/i18n/navigation';
 
-// Settings sub-nav (client portal). Notification preferences, data export and
-// account-deletion requests arrive in Phase 5 (INITIAL_PROMPT.md §7).
+// Settings sub-nav (client portal), per INITIAL_PROMPT.md §7.
 const ITEMS = [
   { href: '/settings/profile', key: 'navProfile' },
   { href: '/settings/business', key: 'navBusiness' },
   { href: '/settings/members', key: 'navMembers' },
+  { href: '/settings/notifications', key: 'navNotifications' },
+  { href: '/settings/privacy', key: 'navPrivacy' },
 ] as const;
 
 export function SettingsNav() {

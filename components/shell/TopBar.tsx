@@ -1,15 +1,18 @@
 'use client';
 
-// Desktop top bar (INITIAL_PROMPT.md §6 header): search on the left, theme
-// toggle and Help on the right. Page-level actions (period, downloads) stay
-// in each page's own header. On phones AppShell's compact bar takes over.
+// Desktop top bar (INITIAL_PROMPT.md §6 header): search on the left, then
+// notifications, theme toggle and Help on the right. Page-level actions
+// (period, downloads) stay in each page's own header. On phones AppShell's
+// compact bar takes over.
 import { CircleHelp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Link } from '@/i18n/navigation';
 import type { NavItem } from '@/lib/nav';
+import type { PortalNotification } from '@/lib/portal/notifications';
 
 import { ThemeToggle } from '../theme/ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 import { SearchBar, type SearchTarget } from './SearchBar';
 
 const iconButton =
@@ -20,11 +23,13 @@ export function TopBar({
   namespace,
   askNick,
   helpHref,
+  notifications,
 }: {
   items: NavItem[];
   namespace: 'Nav' | 'Admin';
   askNick: boolean;
   helpHref: string | null;
+  notifications?: PortalNotification[];
 }) {
   const t = useTranslations(namespace);
   const tShell = useTranslations('Shell');
@@ -44,6 +49,7 @@ export function TopBar({
     >
       <SearchBar targets={targets} askNick={askNick} />
       <div className="ml-auto flex items-center gap-1">
+        {notifications && <NotificationBell notifications={notifications} />}
         <ThemeToggle variant="icon" />
         {helpHref && (
           <Link
