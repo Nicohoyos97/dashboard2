@@ -218,6 +218,7 @@
     "incomeTaxProjected": "Projected",
     "incomeTaxPaid": "Paid so far",
     "incomeTaxRemaining": "Remaining",
+    "incomeTaxSummary": "Projected against paid, across {count, plural, one {# published tax year} other {# published tax years}}.",
     "reportsTitle": "Available reports & documents",
     "reportsEmpty": "No documents published yet.",
     "reportsViewAll": "View all",

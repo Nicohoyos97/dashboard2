@@ -218,6 +218,7 @@
     "incomeTaxProjected": "Proyectado",
     "incomeTaxPaid": "Pagado hasta ahora",
     "incomeTaxRemaining": "Pendiente",
+    "incomeTaxSummary": "Proyectado frente a pagado, en {count, plural, one {# año fiscal publicado} other {# años fiscales publicados}}.",
     "reportsTitle": "Reportes y documentos disponibles",
     "reportsEmpty": "Aún no hay documentos publicados.",
     "reportsViewAll": "Ver todos",
