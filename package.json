@@ -23,6 +23,7 @@
     "firm:admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bootstrap-firm-admin.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.123.0",
     "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
@@ -31,6 +32,8 @@
     "lucide-react": "^1.17.0",
     "next": "^15.3.0",
     "next-intl": "^4.13.0",
+    "papaparse": "5.7.0",
+    "pdf-lib": "1.17.1",
     "radix-ui": "^1.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -42,12 +45,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.0",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/node": "^22.0.0",
+    "@types/papaparse": "5.5.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.3.0",
@@ -57,6 +62,7 @@
     "husky": "^9.1.7",
     "jsdom": "^25.0.0",
     "lint-staged": "^17.0.7",
+    "msw": "^2.15.0",
     "postcss": "^8.4.0",
     "prettier": "^3.3.0",
     "prettier-plugin-tailwindcss": "^0.6.0",

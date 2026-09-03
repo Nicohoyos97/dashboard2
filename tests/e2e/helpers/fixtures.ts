@@ -61,6 +61,12 @@ export class Fixtures {
     }
   }
 
+  // Register a user created outside makeUser (e.g. through the invite flow)
+  // so cleanup() deletes it too.
+  track(userId: string): void {
+    this.userIds.push(userId);
+  }
+
   async makeUser(label: string): Promise<{ id: string; email: string }> {
     const email = `e2e-${label}-${this.run}@example.com`;
     const { data, error } = await this.admin.auth.admin.createUser({

@@ -15,6 +15,9 @@ type LogInput = {
   resourceType?: string;
   resourceId?: string;
   metadata?: Json; // SMALL — no PII, no financial figures
+  // Firm actions name the tenant they act on (a firm admin has no membership,
+  // so getCurrentEntity() would yield null). Client actions leave it unset.
+  businessEntityId?: string | null;
 };
 
 export async function logAccess(input: LogInput): Promise<void> {
@@ -33,7 +36,7 @@ export async function logAccess(input: LogInput): Promise<void> {
       .from('audit_logs')
       .insert({
         actor_id: user?.id ?? null,
-        business_entity_id: entity?.id ?? null,
+        business_entity_id: input.businessEntityId ?? entity?.id ?? null,
         action: input.action,
         resource_type: input.resourceType ?? null,
         resource_id: input.resourceId ?? null,
