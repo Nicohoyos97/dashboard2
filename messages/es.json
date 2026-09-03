@@ -168,7 +168,9 @@
     "requestStatus_in_progress": "Tu contador la está trabajando",
     "requestStatus_completed": "Completada",
     "requestStatus_declined": "Rechazada",
-    "requestStatus_cancelled": "Retirada"
+    "requestStatus_cancelled": "Retirada",
+    "notifyEyebrow": "Cuenta",
+    "privacyEyebrow": "Cuenta"
   },
   "Notifications": {
     "title": "Notificaciones",
@@ -683,6 +685,7 @@
     "other": "Otros",
     "trendTitle": "Gasto mensual",
     "trendSummary": "{months} meses, {total} en total.",
+    "trendSingleMonth": "Un mes no tiene forma mensual propia — elige un trimestre o un año en el selector de período para ver la tendencia.",
     "byCategoryTitle": "Por categoría",
     "byVendorTitle": "Por proveedor",
     "recurringTitle": "Recurrentes vs puntuales",

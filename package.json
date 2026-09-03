@@ -20,7 +20,8 @@
     "db:migrate": "supabase migration up --local",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > lib/supabase/types.ts",
-    "firm:admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bootstrap-firm-admin.ts"
+    "firm:admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bootstrap-firm-admin.ts",
+    "seed:demo": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.123.0",

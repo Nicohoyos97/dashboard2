@@ -59,8 +59,11 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
                       <span className={`text-ink text-[13.5px] font-semibold ${notification.readAt === null ? '' : 'ml-3.5'}`}>{notification.title}</span>
                     </span>
                     {notification.body && <span className="text-muted-foreground mt-0.5 ml-3.5 block text-[12.5px] leading-[1.45]">{notification.body}</span>}
+                    {/* An absolute timestamp, not a relative one: "2 hours ago"
+                        needs a reference time the server and the browser agree
+                        on, and getting that wrong shifts every row on hydration. */}
                     <span className="text-muted-foreground mt-1 ml-3.5 block text-[11.5px]">
-                      {format.relativeTime(new Date(notification.createdAt))}
+                      {format.dateTime(new Date(notification.createdAt), { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </>
                 );

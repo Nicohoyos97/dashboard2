@@ -85,10 +85,13 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     o.periodStart && o.periodEnd ? formatPeriod(o.periodStart, o.periodEnd, locale) : String(o.taxYear ?? ''),
   ).slice(-TREND_LIMIT);
   const trend = series.length >= 2 ? series.map((point) => ({ label: point.label, a: point.collectedCents, b: point.paidCents })) : null;
+  // Taxable next to non-taxable, both printed on the filing — a legend entry
+  // for a series the filings never state would read as "zero non-taxable sales".
   const salesTrend =
     series.filter((point) => point.taxableSalesCents !== null).length >= 2
-      ? series.map((point) => ({ label: point.label, a: point.taxableSalesCents, b: null }))
+      ? series.map((point) => ({ label: point.label, a: point.taxableSalesCents, b: point.nonTaxableSalesCents }))
       : null;
+  const showsNonTaxable = series.some((point) => point.nonTaxableSalesCents !== null);
 
   return (
     <>
@@ -127,7 +130,13 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
           </Section>
           <Section title={t('taxableSalesTitle')}>
             {salesTrend ? (
-              <TrendBars points={salesTrend} currency={currency} seriesA={t('amountTaxableSales')} seriesB={t('amountNonTaxableSales')} summary={t('taxableSalesSummary', { count: salesTrend.length })} />
+              <TrendBars
+                points={showsNonTaxable ? salesTrend : salesTrend.map((point) => ({ label: point.label, a: point.a, b: null }))}
+                currency={currency}
+                seriesA={t('amountTaxableSales')}
+                seriesB={showsNonTaxable ? t('amountNonTaxableSales') : ''}
+                summary={t('taxableSalesSummary', { count: salesTrend.length })}
+              />
             ) : (
               <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
             )}

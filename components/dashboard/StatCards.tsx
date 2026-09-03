@@ -57,7 +57,9 @@ export async function StatCards({ items, columns = 4 }: { items: readonly StatCa
               <p className="text-ink mt-1.5 text-[22px] leading-none font-bold tracking-[-0.02em] tabular-nums">{item.value}</p>
             )}
             {item.detail && <p className="text-muted-foreground mt-1.5 truncate text-[12.5px]">{item.detail}</p>}
-            {(delta !== null || item.badge || (item.trend?.length ?? 0) >= 2) && (
+            {/* A card with no figure has nothing to qualify: a status badge or a
+                delta next to "not available" would read as if the value existed. */}
+            {item.value !== null && (delta !== null || item.badge || (item.trend?.length ?? 0) >= 2) && (
               <div className="mt-auto flex items-end justify-between gap-3 pt-3">
                 <div className="min-w-0">
                   {item.badge && (

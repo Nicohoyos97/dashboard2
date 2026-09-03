@@ -1,7 +1,7 @@
 // Settings → Data & privacy (INITIAL_PROMPT.md §7). Both actions are requests
 // queued for the firm: the portal never exports or deletes on its own, because
 // the firm has retention obligations the client cannot override.
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getFormatter, getTranslations } from 'next-intl/server';
 
 import { AccountRequests, type AccountRequestRow } from '@/components/settings/AccountRequests';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
@@ -9,14 +9,12 @@ import { ACCOUNT_REQUEST_KINDS, type AccountRequestKind } from '@/lib/settings/t
 import { createClient } from '@/lib/supabase/server';
 
 export default async function PrivacyPage() {
-  const [t, locale, entity] = await Promise.all([getTranslations('Settings'), getLocale(), getCurrentEntity()]);
-  const formatDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(iso));
+  const [t, format, entity] = await Promise.all([getTranslations('Settings'), getFormatter(), getCurrentEntity()]);
 
   if (!entity) {
     return (
       <section className="max-w-[640px]">
-        <Heading eyebrow={t('sectionSettings')} title={t('navPrivacy')} lede={t('privacyLede')} />
+        <Heading eyebrow={t('privacyEyebrow')} title={t('navPrivacy')} lede={t('privacyLede')} />
         <p className="text-muted-foreground mt-6 text-[14px]">{t('notifyNoBusiness')}</p>
       </section>
     );
@@ -37,15 +35,17 @@ export default async function PrivacyPage() {
     status: row.status,
     message: row.message,
     firmNote: row.firm_note,
-    requestedAt: row.requested_at,
+    // Formatted here: a Server Component cannot hand a formatter function to a
+    // Client Component, and the request list needs no other date arithmetic.
+    requestedAt: format.dateTime(new Date(row.requested_at), { dateStyle: 'medium', timeZone: 'UTC' }),
   }));
   const canRequest = entity.role !== 'firm_preview';
 
   return (
     <section className="max-w-[640px]">
-      <Heading eyebrow={t('sectionSettings')} title={t('navPrivacy')} lede={t('privacyLede')} />
+      <Heading eyebrow={t('privacyEyebrow')} title={t('navPrivacy')} lede={t('privacyLede')} />
       {ACCOUNT_REQUEST_KINDS.map((kind) => (
-        <AccountRequests key={kind} kind={kind} canRequest={canRequest} requests={requests} formatDate={formatDate} />
+        <AccountRequests key={kind} kind={kind} canRequest={canRequest} requests={requests} />
       ))}
     </section>
   );

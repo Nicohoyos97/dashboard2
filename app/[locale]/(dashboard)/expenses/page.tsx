@@ -90,7 +90,14 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
   const unavailable = covered ? undefined : t('incompletePeriod');
   const deltaOf = (currentCents: number, priorCents: number | null) => expenseDelta(currentCents, priorCents).deltaPct;
-  const trend = months.length >= 2 ? months.map((month) => month.cents) : [];
+  // A one-month period has no shape of its own, so the card falls back to the
+  // two real totals the delta already compares — same rule as the Overview KPIs.
+  const trend =
+    months.length >= 2
+      ? months.map((month) => month.cents)
+      : priorTotals === null
+        ? []
+        : [priorTotals.totalCents, totals.totalCents];
   const priorLabel = prior ? t('vsPrior', { period: prior.label }) : undefined;
 
   const cards: StatCardItem[] = [
@@ -213,10 +220,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[3fr_2fr]">
           <Section title={t('trendTitle')}>
-            {months.length > 0 ? (
+            {months.length >= 2 ? (
               <MonthlySpendChart months={months} currency={currency} seriesLabel={t('cardTotal')} summary={t('trendSummary', { months: months.length, total: money(totals.totalCents) })} />
             ) : (
-              <Muted text={t('tableEmpty')} />
+              <Muted text={months.length === 1 ? t('trendSingleMonth') : t('tableEmpty')} />
             )}
           </Section>
           <Section title={t('byCategoryTitle')}>

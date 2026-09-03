@@ -13,6 +13,7 @@ export type AccountRequestRow = {
   status: string;
   message: string | null;
   firmNote: string | null;
+  /** Already formatted for the locale — see the privacy page. */
   requestedAt: string;
 };
 
@@ -27,12 +28,10 @@ export function AccountRequests({
   kind,
   canRequest,
   requests,
-  formatDate,
 }: {
   kind: AccountRequestKind;
   canRequest: boolean;
   requests: AccountRequestRow[];
-  formatDate: (iso: string) => string;
 }) {
   const t = useTranslations('Settings');
   const [message, setMessage] = useState('');
@@ -50,7 +49,7 @@ export function AccountRequests({
       {open ? (
         <div className="border-line bg-secondary/50 mt-4 rounded-xl border p-4">
           <p className="text-ink text-[13.5px] font-semibold">{t(`requestStatus_${open.status}`)}</p>
-          <p className="text-muted-foreground mt-1 text-[12.5px]">{t('requestedOn', { date: formatDate(open.requestedAt) })}</p>
+          <p className="text-muted-foreground mt-1 text-[12.5px]">{t('requestedOn', { date: open.requestedAt })}</p>
           {open.message && <p className="text-muted-foreground mt-2 text-[13px] leading-[1.5]">{open.message}</p>}
           {open.firmNote && (
             <p className="text-ink mt-2 text-[13px] leading-[1.5]">
@@ -64,6 +63,7 @@ export function AccountRequests({
               disabled={isPending}
               onClick={() => {
                 setError(null);
+                setSent(false);
                 startTransition(async () => {
                   const result = await cancelAccountRequest({ id: open.id });
                   if (!result.ok) setError(result.error);
@@ -121,7 +121,7 @@ export function AccountRequests({
               .map((request) => (
                 <li key={request.id} className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-[13px]">
                   <span className="text-ink font-medium">{t(`requestStatus_${request.status}`)}</span>
-                  <span>· {formatDate(request.requestedAt)}</span>
+                  <span>· {request.requestedAt}</span>
                   {request.firmNote && <span>· {request.firmNote}</span>}
                 </li>
               ))}

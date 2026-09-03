@@ -168,7 +168,9 @@
     "requestStatus_in_progress": "Your accountant is working on it",
     "requestStatus_completed": "Completed",
     "requestStatus_declined": "Declined",
-    "requestStatus_cancelled": "Withdrawn"
+    "requestStatus_cancelled": "Withdrawn",
+    "notifyEyebrow": "Account",
+    "privacyEyebrow": "Account"
   },
   "Notifications": {
     "title": "Notifications",
@@ -683,6 +685,7 @@
     "other": "Other",
     "trendTitle": "Monthly spend",
     "trendSummary": "{months} months, {total} in total.",
+    "trendSingleMonth": "A month has no monthly shape of its own — pick a quarter or a year in the period selector to see the trend.",
     "byCategoryTitle": "By category",
     "byVendorTitle": "By vendor",
     "recurringTitle": "Recurring vs one-off",

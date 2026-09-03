@@ -132,6 +132,8 @@ pnpm db:migrate           # apply migrations locally
 pnpm db:reset             # wipe local DB, re-apply migrations + seed
 pnpm db:types             # regenerate lib/supabase/types.ts — commit the result
 pnpm firm:admin -- <email> [--password <pw>]   # grant master_admin (service role); first admin only
+pnpm seed:demo                                 # local "Demo" business with 6 months of data
+pnpm seed:demo -- --remove                     # and remove it again
 
 npx supabase link --project-ref <ref>   # cloud (once)
 npx supabase db push                    # apply migrations to cloud

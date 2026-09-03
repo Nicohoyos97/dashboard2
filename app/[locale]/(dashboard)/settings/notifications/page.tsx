@@ -14,7 +14,7 @@ export default async function NotificationsPage() {
   if (!entity) {
     return (
       <section className="max-w-[560px]">
-        <Heading eyebrow={t('sectionSettings')} title={t('navNotifications')} lede={t('notifyLede')} />
+        <Heading eyebrow={t('notifyEyebrow')} title={t('navNotifications')} lede={t('notifyLede')} />
         <p className="text-muted-foreground mt-6 text-[14px]">{t('notifyNoBusiness')}</p>
       </section>
     );
@@ -37,7 +37,7 @@ export default async function NotificationsPage() {
 
   return (
     <section className="max-w-[560px]">
-      <Heading eyebrow={t('sectionSettings')} title={t('navNotifications')} lede={t('notifyLede')} />
+      <Heading eyebrow={t('notifyEyebrow')} title={t('navNotifications')} lede={t('notifyLede')} />
       <NotificationForm businessName={entity.name} canEdit={entity.role !== 'firm_preview'} initial={initial} />
     </section>
   );
