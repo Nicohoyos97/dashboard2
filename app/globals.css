@@ -68,6 +68,7 @@
   --chart-axis: #64748b;
   --chart-surface: #ffffff;
   --chart-cursor: rgba(37, 99, 235, 0.06);
+  --chart-tooltip-bg: #0f172a;
   --chart-blue: #2563eb;
   --chart-teal: #0d9488;
   --chart-purple: #7c3aed;
@@ -125,6 +126,7 @@
   --chart-axis: #9aabc1;
   --chart-surface: #0f1b2d;
   --chart-cursor: rgba(59, 130, 246, 0.12);
+  --chart-tooltip-bg: #1e293b;
   --chart-blue: #60a5fa;
   --chart-teal: #2dd4bf;
   --chart-purple: #a78bfa;

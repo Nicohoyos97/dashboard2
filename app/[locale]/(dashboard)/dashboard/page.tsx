@@ -2,11 +2,11 @@
 // KPIs, complete-period cash, deterministic insights, reminders and originals.
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { CashChart } from '@/components/charts/CashChart';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { CompositionBars } from '@/components/charts/CompositionBars';
+import { IncomeExpenseChart } from '@/components/charts/IncomeExpenseChart';
 import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
-import { IncomeBehaviorCard } from '@/components/dashboard/IncomeBehaviorCard';
+import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
@@ -30,11 +30,12 @@ import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
 import { leafItems } from '@/lib/portal/statement-page';
 import { type Metric, type ReportRow } from '@/lib/reports';
 import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
-import { cashByMonth, cashComparison, cashTotals } from '@/lib/reports/cash';
-import { availablePeriods, bankAccountsCoverPeriod, periodKind, priorPeriod } from '@/lib/reports/periods';
+import { cashByMonth, cashTotals } from '@/lib/reports/cash';
+import { availablePeriods, bankAccountsCoverPeriod, periodKind, periodLabel, priorPeriod } from '@/lib/reports/periods';
 import { PNL_SYNONYMS, type PnlMetrics, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
+import { loadTaxObligations } from '@/lib/portal/taxes';
 import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
@@ -89,12 +90,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   }
 
   const supabase = await createClient();
-  const [settings, reports, bankStatements, documents, reminders] = await Promise.all([
+  const [settings, reports, bankStatements, documents, reminders, incomeTaxes] = await Promise.all([
     loadPortalEntitySettings(supabase, entity.id),
     loadPublishedReports(supabase, entity.id),
     loadPublishedBankStatements(supabase, entity.id),
     loadPublishedDocuments(supabase, entity.id),
     loadReminders(supabase, entity.id),
+    loadTaxObligations(supabase, entity.id, 'income'),
   ]);
 
   const defaultCurrencyStatements = bankStatements.filter((statement) => statement.currency === settings.currency);
@@ -173,7 +175,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   };
   const months = cashCovered ? cashByMonth(currentTransactions, selected) : [];
   const priorMonths = priorRange && priorCashCovered ? cashByMonth(priorTransactions, priorRange) : [];
-  const cash = cashCovered ? cashComparison(months, priorMonths) : null;
   const totals = cashCovered ? cashTotals(months) : null;
   const pnlInput: PnlInput | undefined = currentPnl ? {
     current: currentPnl,
@@ -190,6 +191,21 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   });
   const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
   const priorLabel = priorRange?.label ?? selected.label;
+  const today = new Date().toISOString().slice(0, 10);
+  // Income and expenses come from the same statement, period by period; a
+  // period that prints neither total is dropped rather than drawn at zero.
+  const incomeExpense = pnlTrendReports.flatMap((report, index) => {
+    const metrics = pnlTrend[index];
+    const income = metrics?.revenue.current?.cents ?? null;
+    const expense = metrics?.operatingExpenses.current?.cents ?? null;
+    if (income === null && expense === null) return [];
+    // periodLabel, not the full range: "May 2026" fits an axis tick where
+    // "May 1, 2026 – May 31, 2026" would crowd every other label off it.
+    return [{ label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale), incomeCents: income, expenseCents: expense }];
+  });
+  const netForPeriod = revenue.cents !== null && operatingExpenses.cents !== null ? revenue.cents - operatingExpenses.cents : null;
+
+  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
 
   await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
 
@@ -211,23 +227,39 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} how={t('howNetIncome')} href="/statements/profit-and-loss" trend={pnlSeries((m) => m.netIncome).length >= 2 ? pnlSeries((m) => m.netIncome) : priorAndCurrent(netIncome.cents, netIncome.deltaCents)} unavailableReason={t('notPrintedOnPnl')} />
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <section id="cash-chart" className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('cashChartTitle')}</h2>
-          <p className="text-muted-foreground mt-1 text-[13px]">{t('cashChartLede')}</p>
-          <div className="mt-4">{cashCovered && months.length > 0 ? <CashChart months={months} currency={currency} /> : <p className="text-muted-foreground text-[14px]">{t('cashIncompletePeriod')}</p>}</div>
-        </section>
-        <InsightsCard insights={insights} currency={currency} />
-      </div>
-
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <IncomeBehaviorCard revenueCents={revenue.cents} cashInCents={cash?.cashIn.currentCents ?? null} currency={currency} />
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <section id="income-expense" className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-muted-foreground text-[13px] font-medium">{t('incomeExpenseTitle')}</h2>
+              <p className="text-ink mt-1 text-[26px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+                {netForPeriod === null ? t('notPrintedOnPnl') : money(netForPeriod)}
+              </p>
+              <p className="text-muted-foreground mt-1.5 text-[12px]">{t('incomeExpenseNet', { period: selected.label })}</p>
+            </div>
+            <ul className="flex items-center gap-4 text-[12.5px]">
+              <Swatch color="var(--chart-teal)" label={t('seriesIncome')} />
+              <Swatch color="var(--chart-amber)" label={t('seriesExpense')} />
+            </ul>
+          </div>
+          <div className="mt-4 flex-1">
+            {incomeExpense.length >= 2 ? (
+              <IncomeExpenseChart points={incomeExpense} currency={currency} summary={t('incomeExpenseSummary', { count: incomeExpense.length })} />
+            ) : (
+              <p className="text-muted-foreground text-[14px]">{t('incomeExpenseUnavailable')}</p>
+            )}
+          </div>
+        </section>
+        <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <h2 className="text-ink text-[16px] font-semibold">{t('expensesTitle')}</h2>
           <p className="text-muted-foreground mt-1 text-[13px]">{t('expensesLede')}</p>
-          <div className="mt-4">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('expensesEmpty')}</p>}</div>
+          <div className="mt-4 flex-1">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('expensesEmpty')}</p>}</div>
         </section>
       </div>
+
+      <div className="mt-6"><InsightsCard insights={insights} currency={currency} /></div>
+
+      <div className="mt-6"><IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} /></div>
 
       <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} /></div>
       <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
@@ -238,6 +270,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
 function OverviewShell({ greeting, subtitle, actions, children }: { greeting: string; subtitle: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{greeting}</h1><p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p></div>{actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}</div>{children}</main>;
+}
+
+function Swatch({ color, label }: { color: string; label: string }) {
+  return (
+    <li className="text-muted-foreground flex items-center gap-2">
+      <span className="size-3 rounded-[4px]" style={{ background: color }} aria-hidden="true" />
+      {label}
+    </li>
+  );
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {

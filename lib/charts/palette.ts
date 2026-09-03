@@ -7,6 +7,11 @@ export const SERIES = {
   cashIn: 'var(--chart-blue)', // blue — money in
   cashOut: 'var(--chart-amber)', // amber — money out
   net: 'var(--chart-teal)', // teal — net / balance line
+  // Income vs Expense (Overview): the owner's reference pairs a dark line with
+  // a lighter one. Teal and amber keep that contrast while staying in the
+  // validated set — green stays reserved for positive *status*, never a series.
+  income: 'var(--chart-teal)',
+  expense: 'var(--chart-amber)',
   primary: 'var(--chart-blue)',
   secondary: 'var(--chart-teal)',
 } as const;
