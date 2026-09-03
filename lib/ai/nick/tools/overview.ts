@@ -306,13 +306,11 @@ export async function listAvailableReports(
     .map((r) => reportOut(ctx, r));
   const bankRows =
     !filter || filter === 'bank_statement'
-      ? statements
-          .slice(-MAX_LISTED)
-          .map((s) => ({
-            statementId: s.id,
-            period: periodOf(s, ctx.locale),
-            currency: s.currency,
-          }))
+      ? statements.slice(-MAX_LISTED).map((s) => ({
+          statementId: s.id,
+          period: periodOf(s, ctx.locale),
+          currency: s.currency,
+        }))
       : [];
   const documentRows = documents
     .filter((d) => {

@@ -9,6 +9,7 @@ import 'server-only';
 import type { Json } from '@/lib/supabase/types';
 
 import { stripMarkers } from './citations';
+import { titleFromMessage } from './title';
 import type { AdminDb, Db } from './tools/context';
 import {
   type CitationRecord,
@@ -28,7 +29,6 @@ export type SessionRow = {
 
 const SESSION_COLUMNS = 'id, title, created_at, last_message_at';
 const MAX_SESSIONS = 50;
-const TITLE_CHARS = 60;
 
 function toSession(row: {
   id: string;
@@ -57,7 +57,26 @@ export async function listSessions(
     .eq('user_id', userId)
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .limit(MAX_SESSIONS);
-  return (data ?? []).map(toSession);
+  const sessions = (data ?? []).map(toSession);
+  // Rows from before titles were set on the first turn: name them now from
+  // the first question, so no conversation ever reads "New conversation".
+  const untitled = sessions.filter((s) => !s.title).map((s) => s.id);
+  if (untitled.length === 0) return sessions;
+  const { data: firsts } = await supabase
+    .from('chat_messages')
+    .select('session_id, content, created_at')
+    .in('session_id', untitled)
+    .eq('role', 'user')
+    .order('created_at');
+  const titles = new Map<string, string>();
+  for (const row of firsts ?? []) {
+    if (titles.has(row.session_id)) continue;
+    const parsed = storedUserSchema.safeParse(row.content);
+    if (parsed.success && parsed.data.text.trim()) {
+      titles.set(row.session_id, titleFromMessage(parsed.data.text));
+    }
+  }
+  return sessions.map((s) => (s.title ? s : { ...s, title: titles.get(s.id) ?? null }));
 }
 
 export async function loadSession(
@@ -136,6 +155,18 @@ export function lastPendingAction(thread: readonly ThreadMessage[]): PendingActi
   return last && last.role === 'assistant' ? last.pendingAction : null;
 }
 
+/** Names a fresh conversation after its first question, before the answer exists. */
+export async function ensureSessionTitle(
+  admin: AdminDb,
+  input: { sessionId: string; text: string },
+): Promise<void> {
+  await admin
+    .from('chat_sessions')
+    .update({ title: titleFromMessage(input.text) })
+    .eq('id', input.sessionId)
+    .is('title', null);
+}
+
 export async function insertUserMessage(
   admin: AdminDb,
   input: { sessionId: string; entityId: string; text: string },
@@ -170,14 +201,12 @@ export async function insertToolMessage(
     result: input.result,
     ok: input.ok,
   } as Json;
-  await admin
-    .from('chat_messages')
-    .insert({
-      session_id: input.sessionId,
-      business_entity_id: input.entityId,
-      role: 'tool',
-      content,
-    });
+  await admin.from('chat_messages').insert({
+    session_id: input.sessionId,
+    business_entity_id: input.entityId,
+    role: 'tool',
+    content,
+  });
 }
 
 export async function insertAssistantMessage(
@@ -273,10 +302,7 @@ export async function recordUsage(
     .eq('id', input.sessionId)
     .maybeSingle();
   const title =
-    session?.title ??
-    (input.firstUserText
-      ? input.firstUserText.replace(/\s+/g, ' ').trim().slice(0, TITLE_CHARS)
-      : null);
+    session?.title ?? (input.firstUserText ? titleFromMessage(input.firstUserText) : null);
   await admin
     .from('chat_sessions')
     .update({

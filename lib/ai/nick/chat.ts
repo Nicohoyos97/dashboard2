@@ -23,6 +23,7 @@ import { NICK_LIMITS, dailyTokenBudget } from './config';
 import { runToolLoop } from './loop';
 import {
   createSession,
+  ensureSessionTitle,
   insertAssistantMessage,
   insertCitations,
   insertToolMessage,
@@ -81,6 +82,7 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
   const thread = await loadThread(supabase, sessionId);
   const pending = lastPendingAction(thread);
   await insertUserMessage(admin, { sessionId, entityId, text: input.message });
+  if (thread.length === 0) await ensureSessionTitle(admin, { sessionId, text: input.message });
 
   const [settings, reports, statements] = await Promise.all([
     loadPortalEntitySettings(supabase, entityId),

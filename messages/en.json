@@ -642,7 +642,7 @@
     "openPanel": "Ask Nick",
     "closePanel": "Close Nick",
     "fullPage": "Open full-page chat",
-    "newConversation": "New conversation",
+    "newConversation": "New chat",
     "conversations": "Conversations",
     "noConversations": "No conversations yet.",
     "untitled": "New conversation",
@@ -726,7 +726,9 @@
     "openHistory": "Show conversation history",
     "closeHistory": "Hide conversation history",
     "composerHint": "Enter to send · Shift + Enter for a new line",
-    "examplesTitle": "Get started with an example"
+    "examplesTitle": "Get started with an example",
+    "searchHistory": "Search conversations",
+    "noMatches": "No conversations match."
   },
   "Help": {
     "title": "Help & support",

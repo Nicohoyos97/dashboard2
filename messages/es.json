@@ -642,7 +642,7 @@
     "openPanel": "Pregúntale a Nick",
     "closePanel": "Cerrar Nick",
     "fullPage": "Abrir el chat completo",
-    "newConversation": "Nueva conversación",
+    "newConversation": "Chat nuevo",
     "conversations": "Conversaciones",
     "noConversations": "Aún no hay conversaciones.",
     "untitled": "Nueva conversación",
@@ -726,7 +726,9 @@
     "openHistory": "Mostrar el historial de conversaciones",
     "closeHistory": "Ocultar el historial",
     "composerHint": "Enter para enviar · Shift + Enter para un salto de línea",
-    "examplesTitle": "Empieza con un ejemplo"
+    "examplesTitle": "Empieza con un ejemplo",
+    "searchHistory": "Buscar conversaciones",
+    "noMatches": "Ninguna conversación coincide."
   },
   "Help": {
     "title": "Ayuda y soporte",

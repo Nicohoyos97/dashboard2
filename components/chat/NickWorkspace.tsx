@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
+  Search,
   Trash2,
   TrendingUp,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { deleteChatSession } from '@/lib/ai/nick/actions';
 import type { SessionRow } from '@/lib/ai/nick/persist';
+import { matchesKeywords, titleFromMessage } from '@/lib/ai/nick/title';
 import type { ThreadMessage } from '@/lib/ai/nick/types';
 import { cn } from '@/lib/utils/cn';
 
@@ -27,9 +29,10 @@ import { SUGGESTIONS } from './suggestions';
 import { fromThread, useNickChat } from './useNickChat';
 
 const EXAMPLE_ICONS: LucideIcon[] = [TrendingUp, CalendarClock, FileText, Receipt];
+const SIDEBAR_WIDTH = 272;
 
 const iconButton =
-  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-9 items-center justify-center rounded-lg transition outline-none focus-visible:ring-3';
+  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition outline-none focus-visible:ring-3';
 
 type DayPart = 'Morning' | 'Afternoon' | 'Evening';
 
@@ -39,11 +42,13 @@ function dayPart(hour: number): DayPart {
   return 'Evening';
 }
 
-// Ask Nick, full page (spec §7): an empty conversation opens on the orb, a
-// greeting, the big composer and example cards; the history lives in a
-// sub-sidebar that stays hidden until the panel button opens it. A new
-// conversation gets its id from the first streamed event; the URL is updated
-// without a server round-trip so the streaming component is never unmounted.
+// Ask Nick, full page (spec §7). An empty conversation opens on the orb, a
+// greeting, the big composer and example cards. The history is a sidebar in
+// the ChatGPT/Claude mould: closed by default, it slides open from the left
+// and pushes the thread aside, with a new-chat action, a keyword search and
+// the conversations named after their first question. A new conversation
+// gets its id from the first streamed event; the URL is updated without a
+// server round-trip so the streaming component is never unmounted.
 export function NickWorkspace({
   sessions,
   activeSessionId,
@@ -63,7 +68,8 @@ export function NickWorkspace({
   const locale = useLocale() === 'es' ? 'es' : 'en';
   const router = useRouter();
   const [list, setList] = useState(sessions);
-  const [isHistoryOpen, setHistoryOpen] = useState(false);
+  const [isOpen, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState(false);
   const [isDeleting, startDelete] = useTransition();
@@ -78,7 +84,7 @@ export function NickWorkspace({
         : [
             {
               id: sessionId,
-              title: firstMessage.slice(0, 60),
+              title: titleFromMessage(firstMessage),
               createdAt: new Date().toISOString(),
               lastMessageAt: new Date().toISOString(),
             },
@@ -130,7 +136,8 @@ export function NickWorkspace({
     : firstName
       ? t('greetingPlain', { name: firstName })
       : t('greetingPlainAnon');
-  const currentTitle = list.find((s) => s.id === currentId)?.title ?? null;
+  const current = list.find((s) => s.id === currentId) ?? null;
+  const visible = list.filter((s) => matchesKeywords(s.title ?? '', query));
 
   const hero = (send: (text: string) => void, disabled: boolean) => (
     <div className="mx-auto flex w-full max-w-[760px] flex-col items-center px-1 pt-4 sm:pt-10">
@@ -176,81 +183,77 @@ export function NickWorkspace({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-1 px-1 pb-2">
-        <button
-          type="button"
-          aria-expanded={isHistoryOpen}
-          aria-controls="nick-history"
-          aria-label={isHistoryOpen ? t('closeHistory') : t('openHistory')}
-          title={isHistoryOpen ? t('closeHistory') : t('openHistory')}
-          onClick={() => setHistoryOpen((open) => !open)}
-          className={cn(iconButton, isHistoryOpen && 'bg-secondary text-ink')}
-        >
-          {isHistoryOpen ? (
-            <PanelLeftClose className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
-          ) : (
-            <PanelLeftOpen className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
-          )}
-        </button>
-        <Link
-          href="/chat"
-          aria-label={t('newConversation')}
-          title={t('newConversation')}
-          className={iconButton}
-        >
-          <MessageSquarePlus className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
-        </Link>
-        {currentTitle && (
-          <span className="text-muted-foreground ml-1 truncate text-[13px]">{currentTitle}</span>
+    <div className="relative flex min-h-0 flex-1">
+      {/* History sidebar: width animates from 0 on desktop; overlays on phones. */}
+      <aside
+        id="nick-history"
+        aria-label={t('history')}
+        aria-hidden={!isOpen}
+        style={{ width: isOpen ? SIDEBAR_WIDTH : 0 }}
+        className={cn(
+          'border-line bg-card z-10 shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none max-md:absolute max-md:inset-y-0 max-md:left-0 md:relative',
+          isOpen ? 'border-r max-md:shadow-xl' : '',
         )}
-      </div>
-
-      <div className="relative min-h-0 flex-1">
-        {isHistoryOpen && (
-          <button
-            type="button"
-            tabIndex={-1}
-            aria-hidden="true"
-            onClick={() => setHistoryOpen(false)}
-            className="absolute inset-0 z-[5] cursor-default"
-          />
-        )}
-        <aside
-          id="nick-history"
-          aria-label={t('history')}
-          aria-hidden={!isHistoryOpen}
-          className={cn(
-            'border-line bg-card absolute inset-y-0 left-0 z-10 flex w-[300px] max-w-[88%] flex-col rounded-2xl border p-3 shadow-[0_8px_24px_rgba(15,23,42,0.12)] transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none',
-            isHistoryOpen
-              ? 'translate-x-0 opacity-100'
-              : 'pointer-events-none -translate-x-4 opacity-0',
-          )}
-        >
-          <div className="flex items-center justify-between px-1">
-            <p className="text-muted-foreground text-[11.5px] font-semibold tracking-[0.1em] uppercase">
-              {t('history')}
-            </p>
-            <Link
-              href="/chat"
-              tabIndex={isHistoryOpen ? 0 : -1}
-              onClick={() => setHistoryOpen(false)}
-              className="text-blue text-[12.5px] font-semibold hover:underline"
+      >
+        <div className="flex h-full flex-col px-3 py-2" style={{ width: SIDEBAR_WIDTH }}>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls="nick-history"
+              aria-label={t('closeHistory')}
+              title={t('closeHistory')}
+              tabIndex={isOpen ? 0 : -1}
+              onClick={() => setOpen(false)}
+              className={iconButton}
             >
-              {t('newConversation')}
-            </Link>
+              <PanelLeftClose className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+            </button>
           </div>
+
+          <Link
+            href="/chat"
+            tabIndex={isOpen ? 0 : -1}
+            onClick={() => setOpen(false)}
+            className="text-ink hover:bg-secondary focus-visible:ring-blue/40 mt-2 flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-[14px] font-medium transition outline-none focus-visible:ring-3"
+          >
+            <MessageSquarePlus className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+            {t('newConversation')}
+          </Link>
+
+          <label className="relative mt-2 block">
+            <span className="sr-only">{t('searchHistory')}</span>
+            <Search
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              tabIndex={isOpen ? 0 : -1}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('searchHistory')}
+              className="border-line bg-paper text-ink placeholder:text-muted-foreground/70 focus:border-blue focus:bg-card h-10 w-full rounded-lg border pr-3 pl-9 text-[13.5px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+            />
+          </label>
+
+          <p className="text-muted-foreground mt-5 px-2.5 text-[11.5px] font-semibold tracking-[0.1em] uppercase">
+            {t('history')}
+          </p>
           {list.length === 0 ? (
-            <p className="text-muted-foreground mt-3 px-1 text-[13px]">{t('noConversations')}</p>
+            <p className="text-muted-foreground mt-2 px-2.5 text-[13px]">{t('noConversations')}</p>
+          ) : visible.length === 0 ? (
+            <p className="text-muted-foreground mt-2 px-2.5 text-[13px]">{t('noMatches')}</p>
           ) : (
-            <ul className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-              {list.map((session) => {
+            <ul className="mt-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+              {visible.map((session) => {
                 const active = session.id === currentId;
                 if (confirmId === session.id) {
                   return (
                     <li
                       key={session.id}
-                      className="border-line bg-paper rounded-xl border px-3 py-2.5"
+                      className="border-line bg-paper rounded-lg border px-2.5 py-2"
                     >
                       <p className="text-ink text-[13px] font-medium">{t('deleteConfirm')}</p>
                       <div className="mt-2 flex items-center gap-2">
@@ -280,19 +283,20 @@ export function NickWorkspace({
                   );
                 }
                 return (
-                  <li key={session.id} className="group flex items-center gap-1">
+                  <li key={session.id} className="group flex items-center gap-0.5">
                     <Link
                       href={`/chat?session=${session.id}`}
                       aria-current={active ? 'page' : undefined}
-                      tabIndex={isHistoryOpen ? 0 : -1}
-                      className={`block min-w-0 flex-1 rounded-xl px-3 py-2 transition ${active ? 'bg-blue-pale text-blue' : 'text-ink hover:bg-secondary'}`}
+                      tabIndex={isOpen ? 0 : -1}
+                      className={cn(
+                        'block min-w-0 flex-1 rounded-lg px-2.5 py-2 transition',
+                        active ? 'bg-secondary text-ink' : 'text-ink hover:bg-secondary/70',
+                      )}
                     >
-                      <span className="block truncate text-[13.5px] font-medium">
+                      <span className="block truncate text-[13.5px]">
                         {session.title ?? t('untitled')}
                       </span>
-                      <span
-                        className={`block text-[11.5px] ${active ? 'text-blue/80' : 'text-muted-foreground'}`}
-                      >
+                      <span className="text-muted-foreground block text-[11.5px]">
                         {dateOf(session)}
                       </span>
                     </Link>
@@ -300,9 +304,9 @@ export function NickWorkspace({
                       type="button"
                       aria-label={t('deleteConversation')}
                       title={t('deleteConversation')}
-                      tabIndex={isHistoryOpen ? 0 : -1}
+                      tabIndex={isOpen ? 0 : -1}
                       onClick={() => setConfirmId(session.id)}
-                      className="text-muted-foreground/70 hover:bg-danger/10 hover:text-danger focus-visible:ring-blue/40 inline-flex size-9 shrink-0 items-center justify-center rounded-lg opacity-0 transition outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 [@media(hover:none)]:opacity-100"
+                      className="text-muted-foreground/70 hover:bg-danger/10 hover:text-danger focus-visible:ring-blue/40 inline-flex size-8 shrink-0 items-center justify-center rounded-lg opacity-0 transition outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 [@media(hover:none)]:opacity-100"
                     >
                       <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
                     </button>
@@ -311,9 +315,47 @@ export function NickWorkspace({
               })}
             </ul>
           )}
-        </aside>
+        </div>
+      </aside>
 
-        <section className="flex h-full min-h-0 flex-col">
+      {isOpen && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+          className="absolute inset-0 z-[5] cursor-default md:hidden"
+        />
+      )}
+
+      <section className={cn('flex min-w-0 flex-1 flex-col', isOpen && 'md:pl-4')}>
+        <div className="flex items-center gap-1 px-1 pb-2">
+          {!isOpen && (
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls="nick-history"
+              aria-label={t('openHistory')}
+              title={t('openHistory')}
+              onClick={() => setOpen(true)}
+              className={iconButton}
+            >
+              <PanelLeftOpen className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          )}
+          <Link
+            href="/chat"
+            aria-label={t('newConversation')}
+            title={t('newConversation')}
+            className={iconButton}
+          >
+            <MessageSquarePlus className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+          {current?.title && (
+            <span className="text-muted-foreground ml-1 truncate text-[13px]">{current.title}</span>
+          )}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">
           <NickThread
             chat={chat}
             context={{ page: 'chat' }}
@@ -322,8 +364,8 @@ export function NickWorkspace({
             autoFocus
             renderHero={hero}
           />
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
