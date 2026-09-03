@@ -257,9 +257,10 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         </section>
       </div>
 
-      <div className="mt-6"><InsightsCard insights={insights} currency={currency} /></div>
-
-      <div className="mt-6"><IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} /></div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <InsightsCard insights={insights} currency={currency} />
+        <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />
+      </div>
 
       <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} /></div>
       <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>

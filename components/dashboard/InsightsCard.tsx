@@ -50,7 +50,7 @@ export async function InsightsCard({ insights, currency }: { insights: InsightVi
     }
   };
   return (
-    <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
         <Lightbulb className="text-blue size-[18px]" aria-hidden="true" />
         {t('insightsTitle')}

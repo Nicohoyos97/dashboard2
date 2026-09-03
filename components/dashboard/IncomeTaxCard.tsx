@@ -38,21 +38,19 @@ export async function IncomeTaxCard({
   const anyConfirmed = rows.some((o) => o.status === 'firm_confirmed');
 
   return (
-    <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
-            <Landmark className="text-blue size-[18px]" aria-hidden="true" />
-            {t('incomeTaxTitle')}
-          </h2>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45]">
-            {year === null ? t('incomeTaxLede') : t('incomeTaxLedeYear', { year })}
-          </p>
-        </div>
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      {/* The badge rides with the title rather than the far edge, so a narrow
+          column never orphans it onto its own line below the lede. */}
+      <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
+        <Landmark className="text-blue size-[18px] shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate">{t('incomeTaxTitle')}</span>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${anyConfirmed ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
           {anyConfirmed ? tTax('status_firm_confirmed') : tTax('status_estimated')}
         </span>
-      </div>
+      </h2>
+      <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45]">
+        {year === null ? t('incomeTaxLede') : t('incomeTaxLedeYear', { year })}
+      </p>
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground mt-4 text-[14px]">{t('incomeTaxEmpty')}</p>
@@ -68,7 +66,7 @@ export async function IncomeTaxCard({
               {...(remaining ? { note: tTax(`basis_${remaining.basis}`) } : {})}
             />
           </dl>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12.5px]">
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4 text-[12.5px]">
             <span className="text-muted-foreground">
               {due === null ? tTax('noUpcomingDue') : tTax('dueOn', { date: formatIsoDate(due, locale) })}
             </span>
