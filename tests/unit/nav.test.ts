@@ -38,6 +38,6 @@ describe('NAV_ITEMS', () => {
     const live = NAV_ITEMS.filter((i) => !i.disabled && !i.children).map((i) => i.href);
     expect(live).toEqual(['/dashboard', '/settings']);
     const liveChildren = NAV_ITEMS.flatMap((i) => i.children ?? []).filter((c) => !c.disabled);
-    expect(liveChildren).toHaveLength(0);
+    expect(liveChildren.map((c) => c.href)).toEqual(['/statements/profit-and-loss', '/statements/balance-sheet']);
   });
 });

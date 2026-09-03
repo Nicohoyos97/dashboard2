@@ -6,9 +6,11 @@ import { notFound } from 'next/navigation';
 import { EntityDialog } from '@/components/admin/EntityDialog';
 import { MemberManager, type MemberRow } from '@/components/admin/MemberManager';
 import { NotesForm } from '@/components/admin/NotesForm';
+import { type ReminderItem, RemindersManager } from '@/components/admin/RemindersManager';
 import { StatusButton } from '@/components/admin/StatusButton';
 import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
+import { previewEntity } from '@/lib/entities/actions';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import type { EnabledModules } from '@/lib/firm/entities';
 import { createClient } from '@/lib/supabase/server';
@@ -31,7 +33,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     params,
   ]);
   const supabase = await createClient();
-  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }] =
+  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }, { data: reminders }] =
     await Promise.all([
       supabase
         .from('business_entities')
@@ -48,8 +50,26 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         .eq('business_entity_id', id)
         .order('updated_at', { ascending: false })
         .limit(50),
+      supabase
+        .from('reminders')
+        .select('id, reminder_type, title, amount, due_date, status, responsible, action_required, published_at')
+        .eq('business_entity_id', id)
+        .order('due_date')
+        .limit(200),
     ]);
   if (!entity) notFound();
+
+  const reminderItems: ReminderItem[] = (reminders ?? []).map((r) => ({
+    id: r.id,
+    reminderType: r.reminder_type,
+    title: r.title,
+    amount: r.amount === null ? '' : r.amount.toFixed(2),
+    dueDate: r.due_date,
+    status: r.status,
+    responsible: r.responsible === 'firm' ? 'firm' : 'client',
+    actionRequired: r.action_required ?? '',
+    published: r.published_at !== null,
+  }));
 
   const userIds = (memberships ?? []).map((m) => m.user_id);
   const { data: profiles } = userIds.length
@@ -108,6 +128,12 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
             {t('client')}: {entity.clients?.name ?? '—'}
           </p>
         </div>
+        <div className="flex flex-wrap gap-3">
+          <form action={previewEntity.bind(null, { entityId: entity.id })}>
+            <button type="submit" className="border-line bg-card text-ink hover:bg-secondary inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-[14px] font-semibold transition">
+              {t('previewAsClient')}
+            </button>
+          </form>
         {canEdit && (
           <div className="flex gap-3">
             <EntityDialog
@@ -126,6 +152,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
             <StatusButton kind="entity" id={entity.id} status={status} />
           </div>
         )}
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
@@ -152,6 +179,12 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         <h2 className="text-ink text-[17px] font-semibold">{t('membersTitle')}</h2>
         <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('membersLede')}</p>
         <MemberManager entityId={entity.id} members={members} canEdit={canEdit && status === 'active'} />
+      </section>
+
+      <section className={`${card} mt-6`}>
+        <h2 className="text-ink text-[17px] font-semibold">{t('remindersTitle')}</h2>
+        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('remindersLede')}</p>
+        <RemindersManager entityId={entity.id} items={reminderItems} canEdit={canEdit && status === 'active'} />
       </section>
 
       <section className={`${card} mt-6`}>

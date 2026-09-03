@@ -11,10 +11,16 @@ import { cache } from 'react';
 
 import { createClient } from '@/lib/supabase/server';
 
+import { getAssuranceLevel } from './getAssuranceLevel';
 import { getCurrentUser } from './getCurrentUser';
+import { getFirmMembership } from './getFirmMembership';
 
 export const ENTITY_COOKIE = 'hb_entity';
 
+// `firm_preview`: a firm user (aal2) looking at the client portal for a
+// business they are not a member of — "preview as client" (spec §8). RLS
+// already lets the firm read; the loaders filter to published rows so the
+// preview shows exactly what the client sees.
 export type CurrentEntity = { id: string; name: string; role: string };
 
 // Memoized per request: the layout, the page, and logAccess all ask for it.
@@ -38,9 +44,15 @@ export const listEntities = cache(async (): Promise<CurrentEntity[]> => {
 
 export async function getCurrentEntity(): Promise<CurrentEntity | null> {
   const entities = await listEntities();
-  if (entities.length === 0) return null;
-
   const cookieStore = await cookies();
   const preferred = cookieStore.get(ENTITY_COOKIE)?.value;
-  return entities.find((e) => e.id === preferred) ?? entities[0] ?? null;
+  const member = entities.find((e) => e.id === preferred);
+  if (member) return member;
+
+  if (preferred && (await getFirmMembership()) && (await getAssuranceLevel()) === 'aal2') {
+    const supabase = await createClient();
+    const { data } = await supabase.from('business_entities').select('id, name').eq('id', preferred).maybeSingle();
+    if (data) return { id: data.id, name: data.name, role: 'firm_preview' };
+  }
+  return entities[0] ?? null;
 }

@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 
+import { getLocale } from 'next-intl/server';
+import { redirect } from 'next/navigation';
+
 import { ENTITY_COOKIE, listEntities } from '@/lib/auth/getCurrentEntity';
+import { requireFirmMember } from '@/lib/auth/requireFirm';
 
 const switchSchema = z.object({ entityId: z.string().uuid() });
 
@@ -31,4 +35,32 @@ export async function switchEntity(input: unknown): Promise<SwitchEntityResult> 
 
   revalidatePath('/', 'layout');
   return { ok: true };
+}
+
+const COOKIE = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+};
+
+// Firm "preview as client": point the client portal at a business (RLS lets
+// the firm read it; the loaders only show published rows).
+export async function previewEntity(input: unknown): Promise<void> {
+  const parsed = switchSchema.safeParse(input);
+  if (!parsed.success) return;
+  await requireFirmMember();
+  const cookieStore = await cookies();
+  cookieStore.set(ENTITY_COOKIE, parsed.data.entityId, { ...COOKIE, maxAge: 60 * 60 * 8 });
+  const locale = await getLocale();
+  redirect(locale === 'en' ? '/dashboard' : `/${locale}/dashboard`);
+}
+
+export async function exitPreview(input: unknown): Promise<void> {
+  const parsed = switchSchema.safeParse(input);
+  const cookieStore = await cookies();
+  cookieStore.set(ENTITY_COOKIE, '', { ...COOKIE, maxAge: 0 });
+  const locale = await getLocale();
+  const prefix = locale === 'en' ? '' : `/${locale}`;
+  redirect(parsed.success ? `${prefix}/admin/entities/${parsed.data.entityId}` : `${prefix}/admin`);
 }

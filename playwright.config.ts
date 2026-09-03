@@ -18,6 +18,10 @@ try {
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+  // A single Next dev server and local Supabase stack back the suite. More
+  // workers can strand a Server Action during concurrent first-time route
+  // compilation, so cap concurrency for a deterministic auth signal.
+  workers: 2,
   // Several specs drive TOTP enrolment, Mailpit round-trips and server actions
   // through one dev server at once; give each test room beyond the defaults.
   timeout: 60_000,

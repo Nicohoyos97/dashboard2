@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import { type Browser, type Page, expect, test } from '@playwright/test';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
+import { seedPublishedCashMonths } from './helpers/seed-statements';
 import { totp } from './helpers/totp';
 
 // Firm portal gate (INITIAL_PROMPT.md §3, §8, acceptance §14.21) and the
@@ -65,6 +68,53 @@ test.describe('Firm portal gate + entity switcher', () => {
     await again.fill('#totp', totp(secret));
     await again.getByRole('button', { name: /^continue$/i }).click();
     await expect(again).toHaveURL(/\/admin$/);
+  });
+
+  test('firm admin previews the client portal for a business and exits', async ({ browser }) => {
+    const entityId = await fx.makeEntity(await fx.makeClientRow('pv'), 'Preview Co');
+    await seedPublishedCashMonths(fx, entityId);
+    const { data: draftAccount } = await fx.admin
+      .from('bank_accounts')
+      .insert({ business_entity_id: entityId, institution: 'Draft Bank', masked_number: '••••9999', account_type: 'checking', currency: 'USD' })
+      .select('id')
+      .single();
+    if (!draftAccount) throw new Error('preview draft account was not seeded');
+    const { data: draftStatement } = await fx.admin
+      .from('bank_statements')
+      .insert({ business_entity_id: entityId, bank_account_id: draftAccount.id, period_start: '2026-06-01', period_end: '2026-06-30', source: 'firm_entry', status: 'needs_review' })
+      .select('id')
+      .single();
+    if (!draftStatement) throw new Error('preview draft statement was not seeded');
+    const { error: draftTransactionError } = await fx.admin.from('bank_transactions').insert({
+      business_entity_id: entityId,
+      bank_account_id: draftAccount.id,
+      bank_statement_id: draftStatement.id,
+      txn_date: '2026-06-10',
+      description: 'Draft-only deposit',
+      credit: 999999.99,
+      source: 'firm_entry',
+      dedupe_key: randomUUID().replace(/-/g, ''),
+    });
+    if (draftTransactionError) throw new Error('preview draft transaction was not seeded');
+    const firm = await fx.makeFirmUser('pv-admin');
+    const page = await freshPage(browser);
+    await signIn(page, firm.email);
+    await page.goto('/admin');
+    const secret = (await page.locator('code').first().textContent())?.trim() ?? '';
+    await page.fill('#totp', totp(secret));
+    await page.getByRole('button', { name: /activate and continue/i }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await page.goto(`/admin/entities/${entityId}`);
+    await page.getByRole('button', { name: /preview as client/i }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByText(/previewing the client portal for Preview Co/i)).toBeVisible();
+    await expect(page.getByText(/how Preview Co is doing/i)).toBeVisible();
+    await expect(page.getByText('$1,000.00').first()).toBeVisible();
+    await expect(page.getByText('$999,999.99')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /exit preview/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/entities/${entityId}$`));
   });
 
   test('entity switcher changes the current business and persists', async ({ browser }) => {

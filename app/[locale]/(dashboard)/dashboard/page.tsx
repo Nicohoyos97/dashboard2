@@ -1,40 +1,218 @@
-// Overview (INITIAL_PROMPT.md §7). At baseline this renders honest states only —
-// no placeholder charts or hard-coded numbers (§3 "Product"). Phase 3 replaces
-// the body with the real Overview: KPI cards, cash chart, insights, reminders,
-// available-report tiles.
-import { getTranslations } from 'next-intl/server';
+// Client Overview (INITIAL_PROMPT.md §7): published data only, source-safe
+// KPIs, complete-period cash, deterministic insights, reminders and originals.
+import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, Wallet } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
 
+import { CashChart } from '@/components/charts/CashChart';
+import { CompositionBars } from '@/components/charts/CompositionBars';
+import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
+import { IncomeBehaviorCard } from '@/components/dashboard/IncomeBehaviorCard';
+import { InsightsCard } from '@/components/dashboard/InsightsCard';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import { RemindersCard } from '@/components/dashboard/RemindersCard';
+import { ReportTiles } from '@/components/dashboard/ReportTiles';
+import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { generateInsights } from '@/lib/insights/rules';
+import type { PnlInput } from '@/lib/insights/types';
+import {
+  loadPortalEntitySettings,
+  loadPublishedBankStatements,
+  loadPublishedBankTransactions,
+  loadPublishedDocuments,
+  loadPublishedReports,
+  loadReminders,
+  loadReportLines,
+} from '@/lib/portal/load';
+import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
+import { leafItems } from '@/lib/portal/statement-page';
+import { type Metric, type ReportRow } from '@/lib/reports';
+import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
+import { cashByMonth, cashComparison, cashTotals } from '@/lib/reports/cash';
+import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/reports/periods';
+import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
+import { findSection } from '@/lib/reports/sections';
+import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
+import { formatPeriod } from '@/lib/utils/dates';
 
-export default async function OverviewPage() {
-  const t = await getTranslations('Overview');
-  const [user, entity] = await Promise.all([getCurrentUser(), getCurrentEntity()]);
+type Delta = { cents: number | null; deltaCents: number | null; deltaPct: number | null };
+
+function exactReport(reports: ReportRow[], type: ReportRow['reportType'], range: { start: string; end: string }): ReportRow | null {
+  return reports.find((report) => report.reportType === type && report.periodStart === range.start && report.periodEnd === range.end) ?? null;
+}
+
+function metricDelta(metric: Metric | undefined, priorMetric: Metric | undefined): Delta {
+  const cents = metric?.current?.cents ?? null;
+  if (cents === null) return { cents: null, deltaCents: null, deltaPct: null };
+  if (metric?.deltaCents !== null && metric?.deltaCents !== undefined) {
+    return { cents, deltaCents: metric.deltaCents, deltaPct: metric.deltaPct };
+  }
+  const prior = priorMetric?.current?.cents;
+  if (prior === null || prior === undefined) return { cents, deltaCents: null, deltaPct: null };
+  const deltaCents = cents - prior;
+  return { cents, deltaCents, deltaPct: prior === 0 ? null : (deltaCents / Math.abs(prior)) * 100 };
+}
+
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const [t, locale, user, entity, params] = await Promise.all([
+    getTranslations('Overview'),
+    getLocale(),
+    getCurrentUser(),
+    getCurrentEntity(),
+    searchParams,
+  ]);
+
+  let firstName = '';
+  if (user) {
+    const profileClient = await createClient();
+    const { data } = await profileClient.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+    firstName = data?.full_name?.trim().split(/\s+/)[0] ?? '';
+  }
+
+  if (!entity) {
+    return (
+      <OverviewShell greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')} subtitle={t('subtitlePending')}>
+        <EmptyState title={t('pendingTitle')} body={t('pendingBody')} />
+      </OverviewShell>
+    );
+  }
 
   const supabase = await createClient();
-  const { data: profile } = user
-    ? await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle()
-    : { data: null };
-  const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? '';
+  const [settings, reports, bankStatements, documents, reminders] = await Promise.all([
+    loadPortalEntitySettings(supabase, entity.id),
+    loadPublishedReports(supabase, entity.id),
+    loadPublishedBankStatements(supabase, entity.id),
+    loadPublishedDocuments(supabase, entity.id),
+    loadReminders(supabase, entity.id),
+  ]);
+
+  const defaultCurrencyStatements = bankStatements.filter((statement) => statement.currency === settings.currency);
+  const periods = availablePeriods(reports, defaultCurrencyStatements, { locale }).filter((period) =>
+    period.sources.some((source) => source === 'pnl' || source === 'bank'),
+  );
+  const requested = parsePeriodParam(params.period);
+  const selected = (requested && periods.find((period) => period.start === requested.start && period.end === requested.end)) ?? periods[0] ?? null;
+  const downloadItems = documents.flatMap((document) => document.currentVersionId ? [{
+    versionId: document.currentVersionId,
+    title: document.title,
+    subtitle: document.periodStart && document.periodEnd ? formatPeriod(document.periodStart, document.periodEnd, locale) : '',
+  }] : []);
+
+  if (!selected) {
+    await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
+    return (
+      <OverviewShell
+        greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
+        subtitle={t('subtitle', { business: entity.name })}
+        actions={<DownloadReportsMenu items={downloadItems} />}
+      >
+        <EmptyState title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
+        <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={settings.currency} /></div>
+        <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
+      </OverviewShell>
+    );
+  }
+
+  const currentPnlReport = exactReport(reports, 'profit_and_loss', selected);
+  const priorRange = priorPeriod(selected, locale);
+  const priorPnlReport = priorRange ? exactReport(reports, 'profit_and_loss', priorRange) : null;
+  const balanceReport = reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null;
+  const currency = currentPnlReport?.currency ?? settings.currency;
+  const currencyStatements = bankStatements.filter((statement) => statement.currency === currency);
+  const cashCovered = bankAccountsCoverPeriod(
+    currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd })),
+    selected,
+  );
+  const priorCashCovered = priorRange ? bankAccountsCoverPeriod(
+    currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd })),
+    priorRange,
+  ) : false;
+
+  const [currentLines, priorLines, balanceLines, currentTransactions, priorTransactions] = await Promise.all([
+    currentPnlReport ? loadReportLines(supabase, entity.id, currentPnlReport.id) : Promise.resolve([]),
+    priorPnlReport ? loadReportLines(supabase, entity.id, priorPnlReport.id) : Promise.resolve([]),
+    balanceReport ? loadReportLines(supabase, entity.id, balanceReport.id) : Promise.resolve([]),
+    cashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, selected) : Promise.resolve([]),
+    priorRange && priorCashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, priorRange) : Promise.resolve([]),
+  ]);
+
+  const currentRoots = buildTree(currentLines);
+  const priorRoots = buildTree(priorLines);
+  const currentPnl = currentPnlReport ? pnlMetrics(currentPnlReport, currentRoots) : null;
+  const priorPnl = priorPnlReport ? pnlMetrics(priorPnlReport, priorRoots) : null;
+  const netIncome = metricDelta(currentPnl?.netIncome, priorPnl?.netIncome);
+  const revenue = metricDelta(currentPnl?.revenue, priorPnl?.revenue);
+  const months = cashCovered ? cashByMonth(currentTransactions, selected) : [];
+  const priorMonths = priorRange && priorCashCovered ? cashByMonth(priorTransactions, priorRange) : [];
+  const cash = cashCovered ? cashComparison(months, priorMonths) : null;
+  const totals = cashCovered ? cashTotals(months) : null;
+  const pnlInput: PnlInput | undefined = currentPnl ? {
+    current: currentPnl,
+    lines: currentRoots,
+    ...(priorPnl ? { prior: priorPnl, priorLines: priorRoots } : {}),
+  } : undefined;
+  const insights = generateInsights({
+    ...(pnlInput ? { pnl: pnlInput } : {}),
+    ...(totals ? { cash: { current: totals, ...(priorCashCovered ? { prior: cashTotals(priorMonths) } : {}), months } } : {}),
+    ...(balanceReport ? { balance: balanceSheetMetrics(balanceReport, buildTree(balanceLines)) } : {}),
+    reminders,
+    reportsNeedingReview: 0,
+    today: new Date().toISOString().slice(0, 10),
+  });
+  const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
+  const priorLabel = priorRange?.label ?? selected.label;
+
+  await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">
-        {firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
-      </h1>
-      <p className="text-muted-foreground mt-1.5 text-[15px]">
-        {entity ? t('subtitle', { business: entity.name }) : t('subtitlePending')}
-      </p>
+    <OverviewShell
+      greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
+      subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
+      actions={
+        <>
+          <PeriodSelector options={periods.map((period) => ({ value: periodParam(period), label: period.label }))} current={periodParam(selected)} />
+          <DownloadReportsMenu items={downloadItems} />
+        </>
+      }
+    >
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label={t('kpiCashIn')} cents={cash?.cashIn.currentCents ?? null} currency={currency} deltaCents={cash?.cashIn.deltaCents ?? null} deltaPct={cash?.cashIn.deltaPct ?? null} upIsGood periodLabel={priorLabel} source="bank" how={t('howCashIn')} href="/dashboard#cash-chart" icon={ArrowDownToLine} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiCashOut')} cents={cash?.cashOut.currentCents ?? null} currency={currency} deltaCents={cash?.cashOut.deltaCents ?? null} deltaPct={cash?.cashOut.deltaPct ?? null} upIsGood={false} periodLabel={priorLabel} source="bank" how={t('howCashOut')} href="/dashboard#cash-chart" icon={ArrowUpFromLine} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiNetCash')} cents={cash?.netCash.currentCents ?? null} currency={currency} deltaCents={cash?.netCash.deltaCents ?? null} deltaPct={cash?.netCash.deltaPct ?? null} upIsGood periodLabel={priorLabel} source="bank" how={t('howNetCash')} href="/dashboard#cash-chart" icon={Wallet} {...(!cashCovered ? { unavailableReason: t('cashIncompletePeriod') } : {})} />
+        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} source={currentPnlReport?.source === 'firm_entry' ? 'firm_entry' : 'pnl'} how={t('howNetIncome')} href="/statements/profit-and-loss" icon={TrendingUp} />
+      </div>
 
-      <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <h2 className="text-ink text-[18px] font-semibold">
-          {entity ? t('emptyTitle') : t('pendingTitle')}
-        </h2>
-        <p className="text-muted-foreground mt-2 max-w-[560px] text-[15px] leading-[1.55]">
-          {entity ? t('emptyBody', { business: entity.name }) : t('pendingBody')}
-        </p>
-      </section>
-    </main>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_1fr]">
+        <section id="cash-chart" className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <h2 className="text-ink text-[16px] font-semibold">{t('cashChartTitle')}</h2>
+          <p className="text-muted-foreground mt-1 text-[13px]">{t('cashChartLede')}</p>
+          <div className="mt-4">{cashCovered && months.length > 0 ? <CashChart months={months} currency={currency} /> : <p className="text-muted-foreground text-[14px]">{t('cashIncompletePeriod')}</p>}</div>
+        </section>
+        <InsightsCard insights={insights} currency={currency} />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <IncomeBehaviorCard revenueCents={revenue.cents} cashInCents={cash?.cashIn.currentCents ?? null} currency={currency} />
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <h2 className="text-ink text-[16px] font-semibold">{t('expensesTitle')}</h2>
+          <p className="text-muted-foreground mt-1 text-[13px]">{t('expensesLede')}</p>
+          <div className="mt-4">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('expensesEmpty')}</p>}</div>
+        </section>
+      </div>
+
+      <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} /></div>
+      <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
+    </OverviewShell>
   );
+}
+
+function OverviewShell({ greeting, subtitle, actions, children }: { greeting: string; subtitle: string; actions?: React.ReactNode; children: React.ReactNode }) {
+  return <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{greeting}</h1><p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p></div>{actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}</div>{children}</main>;
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><h2 className="text-ink text-[18px] font-semibold">{title}</h2><p className="text-muted-foreground mt-2 max-w-[560px] text-[15px] leading-[1.55]">{body}</p></section>;
 }

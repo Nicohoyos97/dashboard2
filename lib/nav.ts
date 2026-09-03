@@ -25,8 +25,8 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/statements',
     labelKey: 'statements',
     children: [
-      { href: '/statements/profit-and-loss', labelKey: 'statementsPnl', disabled: true },
-      { href: '/statements/balance-sheet', labelKey: 'statementsBalanceSheet', disabled: true },
+      { href: '/statements/profit-and-loss', labelKey: 'statementsPnl' },
+      { href: '/statements/balance-sheet', labelKey: 'statementsBalanceSheet' },
     ],
   },
   { href: '/expenses', labelKey: 'expenses', disabled: true },

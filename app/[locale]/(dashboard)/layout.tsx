@@ -5,13 +5,14 @@
 // The entity may be null: businesses are provisioned by the firm, so a freshly
 // signed-up user has no membership until the firm links them. Pages handle that
 // with a pending state (see dashboard/page.tsx); nothing is auto-created.
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { exitPreview } from '@/lib/entities/actions';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
   ]);
 
+  const preview = currentEntity?.role === 'firm_preview' ? currentEntity : null;
+  const t = preview ? await getTranslations('Overview') : null;
+
   return (
     <AppShell
       brandHref="/dashboard"
@@ -43,6 +47,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
         />
       }
     >
+      {preview && t && (
+        <div className="bg-warning/10 border-warning/40 text-ink flex flex-wrap items-center gap-3 border-b px-6 py-2.5 text-[13.5px]">
+          <span className="flex-1">{t('previewBanner', { business: preview.name })}</span>
+          <form action={exitPreview.bind(null, { entityId: preview.id })}>
+            <button type="submit" className="text-blue font-semibold hover:underline">
+              {t('exitPreview')}
+            </button>
+          </form>
+        </div>
+      )}
       {children}
     </AppShell>
   );
