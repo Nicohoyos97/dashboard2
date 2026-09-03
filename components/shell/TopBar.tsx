@@ -1,14 +1,15 @@
 'use client';
 
-// Desktop top bar (INITIAL_PROMPT.md §6 header): search on the left, then
-// notifications, theme toggle and Help on the right. Page-level actions
-// (period, downloads) stay in each page's own header. On phones AppShell's
-// compact bar takes over.
+// Desktop top bar (INITIAL_PROMPT.md §6 header): the name of the page you are
+// on sits on the left where the sidebar's highlight leaves off, and the search
+// sits on the right beside the notification, theme and Help controls. Page
+// actions (period, downloads) stay in each page's own header. On phones
+// AppShell's compact bar takes over.
 import { CircleHelp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Link } from '@/i18n/navigation';
-import type { NavItem } from '@/lib/nav';
+import { Link, usePathname } from '@/i18n/navigation';
+import { type NavItem, currentNavLabelKey } from '@/lib/nav';
 import type { PortalNotification } from '@/lib/portal/notifications';
 
 import { ThemeToggle } from '../theme/ThemeToggle';
@@ -33,6 +34,7 @@ export function TopBar({
 }) {
   const t = useTranslations(namespace);
   const tShell = useTranslations('Shell');
+  const pathname = usePathname();
   const targets: SearchTarget[] = items.flatMap((item) => {
     if (item.children)
       return item.children
@@ -40,6 +42,9 @@ export function TopBar({
         .map((child) => ({ href: child.href, label: t(child.labelKey) }));
     return item.disabled ? [] : [{ href: item.href, label: t(item.labelKey) }];
   });
+  // Null on a route no nav entry covers; the bar then simply has no title
+  // rather than naming the wrong page.
+  const labelKey = currentNavLabelKey(pathname, items);
 
   return (
     <div
@@ -47,8 +52,15 @@ export function TopBar({
       aria-label={tShell('topBar')}
       className="border-line/80 bg-card/80 sticky top-0 z-20 hidden h-16 items-center gap-3 border-b px-6 backdrop-blur-sm md:flex"
     >
-      <SearchBar targets={targets} askNick={askNick} />
+      {labelKey && (
+        <p aria-hidden="true" className="text-ink truncate text-[15px] font-semibold">
+          {t(labelKey)}
+        </p>
+      )}
       <div className="ml-auto flex items-center gap-1">
+        <div className="w-[min(300px,28vw)]">
+          <SearchBar targets={targets} askNick={askNick} />
+        </div>
         {notifications && <NotificationBell notifications={notifications} />}
         <ThemeToggle variant="icon" />
         {helpHref && (

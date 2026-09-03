@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BOTTOM_NAV_ITEMS, NAV_ITEMS, clientNavItems, isActiveNav } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, NAV_ITEMS, clientNavItems, currentNavLabelKey, isActiveNav } from '@/lib/nav';
 
 describe('isActiveNav', () => {
   it('activates on an exact path match (a statement sub-item)', () => {
@@ -50,5 +50,24 @@ describe('NAV_ITEMS', () => {
     expect(clientNavItems(false).map((i) => i.href)).not.toContain('/taxes/sales');
     // Nothing else moves: hiding one module must not reorder the rest.
     expect(clientNavItems(false).map((i) => i.href)).toEqual(['/dashboard', '/statements', '/expenses', '/taxes/income', '/chat']);
+  });
+});
+
+describe('currentNavLabelKey', () => {
+  const items = [...NAV_ITEMS, ...BOTTOM_NAV_ITEMS];
+
+  it('names the deepest entry the path is inside', () => {
+    expect(currentNavLabelKey('/dashboard', items)).toBe('overview');
+    expect(currentNavLabelKey('/expenses', items)).toBe('expenses');
+    expect(currentNavLabelKey('/taxes/sales', items)).toBe('salesTaxes');
+    // A child wins over its parent, so the bar reads "Profit & Loss".
+    expect(currentNavLabelKey('/statements/profit-and-loss', items)).toBe('statementsPnl');
+    expect(currentNavLabelKey('/statements', items)).toBe('statements');
+    expect(currentNavLabelKey('/settings/profile', items)).toBe('settings');
+  });
+
+  it('returns null for a route no nav entry covers, rather than naming the wrong page', () => {
+    expect(currentNavLabelKey('/reports', items)).toBeNull();
+    expect(currentNavLabelKey('/statements-archive', items)).toBeNull();
   });
 });

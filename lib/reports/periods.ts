@@ -143,28 +143,3 @@ export function priorPeriod(period: PeriodRange, locale = 'en'): PriorPeriod | n
   const kind = periodKind(range.start, range.end);
   return { ...range, kind, label: periodLabel(range.start, range.end, kind, locale) };
 }
-
-/**
- * The whole calendar months ending with the month that contains `end` (at most
- * `count`), trimmed to the longest unbroken run that published statements cover
- * for every account. Months without full coverage are dropped, never zero-filled
- * (spec §3: missing days are not treated as zero), so a trend drawn from these
- * months only ever plots figures the statements actually support.
- */
-export function coveredTrailingMonths(
-  statements: readonly (PeriodRange & { bankAccountId: string })[],
-  end: string,
-  count: number,
-): PeriodRange[] {
-  const parsed = parseIsoDate(end);
-  if (!parsed || count < 1) return [];
-  const last = monthIndex(parsed.year, parsed.month);
-  const covered: PeriodRange[] = [];
-  for (let index = last; index > last - count; index -= 1) {
-    const { year, month } = monthFromIndex(index);
-    const range = { start: firstDayOfMonth(year, month), end: lastDayOfMonth(year, month) };
-    if (!bankAccountsCoverPeriod(statements, range)) break;
-    covered.unshift(range);
-  }
-  return covered;
-}

@@ -174,6 +174,7 @@ async function main(): Promise<void> {
   const random = rng(20_260_903);
   let balance = 48_000;
   const revenueByMonth = new Map<string, number>();
+  const opexByMonth = new Map<string, number>();
 
   for (const month of period) {
     const beginning = balance;
@@ -202,8 +203,10 @@ async function main(): Promise<void> {
     revenueByMonth.set(month.key, money(revenue));
 
     let day = 3;
+    let opex = 0;
     for (const category of CATEGORIES) {
       const amount = money(category.monthly * (0.9 + random() * 0.2));
+      if (category.kind !== 'cogs') opex += amount;
       balance -= amount;
       transactions.push({
         business_entity_id: entityId,
@@ -222,6 +225,7 @@ async function main(): Promise<void> {
       });
       day += 3;
     }
+    opexByMonth.set(month.key, money(opex));
 
     const { data: statement, error: statementError } = await admin
       .from('bank_statements')
@@ -253,7 +257,9 @@ async function main(): Promise<void> {
     const revenue = revenueByMonth.get(month.key) ?? 0;
     const priorMonth = (index > 0 ? period[index - 1] : null) ?? null;
     const priorRevenue = priorMonth ? (revenueByMonth.get(priorMonth.key) ?? null) : null;
-    await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, publishedAt });
+    const opex = opexByMonth.get(month.key) ?? 0;
+    const priorOpex = priorMonth ? (opexByMonth.get(priorMonth.key) ?? null) : null;
+    await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, opex, priorOpex, publishedAt });
   }
   await insertBalanceSheet(admin, { entityId, asOf: last.end, publishedAt });
 
@@ -402,15 +408,17 @@ async function insertPnl(
     priorMonth: { start: string; end: string } | null;
     revenue: number;
     priorRevenue: number | null;
+    /** The month's own operating expenses, so two months are never identical. */
+    opex: number;
+    priorOpex: number | null;
     publishedAt: string;
   },
 ): Promise<void> {
-  const { entityId, month, priorMonth, revenue, priorRevenue, publishedAt } = input;
-  const scale = (base: number, ref: number | null) => (ref === null ? null : money(base * (ref / 32_000)));
+  const { entityId, month, priorMonth, revenue, priorRevenue, opex, priorOpex, publishedAt } = input;
   const cogs = money(revenue * 0.31);
   const priorCogs = priorRevenue === null ? null : money(priorRevenue * 0.31);
-  const opex = CATEGORIES.filter((c) => c.kind !== 'cogs').reduce((sum, c) => sum + c.monthly, 0);
-  const priorOpex = priorRevenue === null ? null : money(opex * 0.98);
+  const share = (base: number, total: number, ref: number | null) => (ref === null ? null : money(ref * (base / total)));
+  const opexBase = CATEGORIES.filter((c) => c.kind !== 'cogs').reduce((sum, c) => sum + c.monthly, 0);
 
   const { data: report, error } = await admin
     .from('financial_reports')
@@ -463,8 +471,8 @@ async function insertPnl(
         ...CATEGORIES.filter((c) => c.kind !== 'cogs').map((c) => ({
           name: c.name,
           section: 'expenses',
-          current: money(c.monthly),
-          prior: scale(c.monthly, priorOpex === null ? null : 32_000 * 0.98),
+          current: share(c.monthly, opexBase, opex) ?? 0,
+          prior: share(c.monthly, opexBase, priorOpex),
         })),
         { name: 'Total Expenses', section: 'expenses', isTotal: true, current: money(opex), prior: priorOpex },
       ],

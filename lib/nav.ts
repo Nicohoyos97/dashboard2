@@ -57,3 +57,27 @@ export function isActiveNav(pathname: string, href: string, exact = false): bool
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/**
+ * The label key of the nav entry the path is currently inside — the deepest
+ * match wins, so /statements/profit-and-loss reads "Profit & Loss" rather than
+ * "Financial Statements". Null for a route no nav entry covers, so the caller
+ * can fall back rather than showing a wrong page name.
+ */
+export function currentNavLabelKey(pathname: string, items: readonly NavItem[]): string | null {
+  let bestHref = '';
+  let bestKey: string | null = null;
+  for (const item of items) {
+    if (isActiveNav(pathname, item.href, item.exact) && item.href.length > bestHref.length) {
+      bestHref = item.href;
+      bestKey = item.labelKey;
+    }
+    for (const child of item.children ?? []) {
+      if (isActiveNav(pathname, child.href) && child.href.length > bestHref.length) {
+        bestHref = child.href;
+        bestKey = child.labelKey;
+      }
+    }
+  }
+  return bestKey;
+}

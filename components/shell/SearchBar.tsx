@@ -64,7 +64,7 @@ export function SearchBar({ targets, askNick }: { targets: SearchTarget[]; askNi
   return (
     <form
       role="search"
-      className="relative w-full max-w-[340px]"
+      className="relative w-full"
       onSubmit={(event) => {
         event.preventDefault();
         go(activeIndex);
@@ -123,7 +123,7 @@ export function SearchBar({ targets, askNick }: { targets: SearchTarget[]; askNi
         <ul
           id={`${listId}-list`}
           role="listbox"
-          className="border-line bg-card absolute top-[calc(100%+6px)] left-0 z-40 w-full rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+          className="border-line bg-card absolute top-[calc(100%+6px)] right-0 z-40 w-[min(340px,80vw)] rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
         >
           {options.length === 0 ? (
             <li className="text-muted-foreground px-2.5 py-2 text-[13px]">{t('searchEmpty')}</li>

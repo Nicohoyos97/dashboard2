@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { availablePeriods, bankAccountsCoverPeriod, coveredTrailingMonths, granularity, periodKind, priorPeriod, rangeCovered } from '@/lib/reports/periods';
+import { availablePeriods, bankAccountsCoverPeriod, granularity, periodKind, priorPeriod, rangeCovered } from '@/lib/reports/periods';
 
 import { balanceReport, report } from './fixtures';
 
@@ -74,21 +74,4 @@ describe('reporting periods', () => {
     ], range)).toBe(true);
   });
 
-  it('trails only the months every bank account has published, stopping at the first gap', () => {
-    const statements = [
-      { bankAccountId: 'checking', start: '2026-01-01', end: '2026-01-31' },
-      { bankAccountId: 'checking', start: '2026-03-01', end: '2026-06-30' },
-      { bankAccountId: 'savings', start: '2026-01-01', end: '2026-06-30' },
-    ];
-    expect(coveredTrailingMonths(statements, '2026-06-30', 6)).toEqual([
-      { start: '2026-03-01', end: '2026-03-31' },
-      { start: '2026-04-01', end: '2026-04-30' },
-      { start: '2026-05-01', end: '2026-05-31' },
-      { start: '2026-06-01', end: '2026-06-30' },
-    ]);
-    expect(coveredTrailingMonths(statements, '2026-02-28', 6)).toEqual([]);
-    expect(coveredTrailingMonths(statements, '2026-06-30', 2)).toHaveLength(2);
-    expect(coveredTrailingMonths([], '2026-06-30', 6)).toEqual([]);
-    expect(coveredTrailingMonths(statements, 'not-a-date', 6)).toEqual([]);
-  });
 });
