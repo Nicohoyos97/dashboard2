@@ -184,6 +184,17 @@ test.describe('RLS cross-tenant isolation', () => {
       .select('id')
       .eq('business_entity_id', b.entityId);
     expect(adminAudit.data ?? []).toHaveLength(1);
+
+    // 8. Deleting a conversation (0006): only the member who started it — not
+    //    a co-member, not another business — and the thread cascades with it.
+    const viewerDel = await viewerClient.from('chat_sessions').delete().eq('id', sessionId).select('id');
+    expect(viewerDel.data ?? []).toHaveLength(0);
+    const aDel = await a.client.from('chat_sessions').delete().eq('id', sessionId).select('id');
+    expect(aDel.data ?? []).toHaveLength(0);
+    const ownerDel = await b.client.from('chat_sessions').delete().eq('id', sessionId).select('id');
+    expect(ownerDel.data ?? []).toHaveLength(1);
+    const orphanMessages = await fx.admin.from('chat_messages').select('id').eq('session_id', sessionId);
+    expect(orphanMessages.data ?? []).toHaveLength(0);
   });
 
   test('avatars storage: writes are owner-folder-only, read is public', async () => {

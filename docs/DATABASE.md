@@ -9,7 +9,7 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0001 | `profiles` | Mirror of `auth.users`, populated by `handle_new_user()` | C + co-member read | self SELECT/UPDATE; co-member SELECT; **firm SELECT** (0002) |
 | 0001 | `business_entities` | The tenant boundary. 0002 adds `client_id`, `fiscal_year_start_month`, `accounting_basis`, `currency`, `sales_tax_enabled`, `enabled_modules`, `status` | B | member SELECT; `client_owner` UPDATE (profile fields only — `guard_entity_firm_columns` trigger blocks firm-controlled columns); firm admin INSERT/UPDATE; no DELETE |
 | 0001 | `entity_memberships` | `(business_entity_id, user_id, role)`, `client_owner` / `client_viewer` | membership | member SELECT; firm admin INSERT/UPDATE/DELETE |
-| 0001 | `chat_sessions` / `chat_messages` | Nick threads and messages | B / A | member SELECT; member starts own session; **no firm read** (conversations are private) |
+| 0001 | `chat_sessions` / `chat_messages` | Nick threads and messages | B / A | member SELECT; member starts own session; **the member who started a session may DELETE it** (0006, messages and citations cascade); **no firm read** (conversations are private) |
 | 0001 | `audit_logs` | Who / what business / action / when; identifiers only | A | no client read; firm SELECT (0002); written by `logAccess()` |
 | 0002 | `firms`, `firm_memberships` | The firm and its staff (`master_admin` / `firm_staff`) | firm | own `firm_memberships` row readable at aal1; everything else firm-only |
 | 0002 | `clients` | A firm client that owns one or more businesses | firm | firm SELECT; firm admin INSERT/UPDATE; archived, never deleted |

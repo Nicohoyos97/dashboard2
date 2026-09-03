@@ -26,7 +26,10 @@ export function NickProvider({ children }: { children: React.ReactNode }) {
     setOpen(true);
   }, []);
   const close = useCallback(() => setOpen(false), []);
-  const value = useMemo<NickSelection>(() => ({ line, isOpen, setLine, open, close }), [line, isOpen, open, close]);
+  const value = useMemo<NickSelection>(
+    () => ({ line, isOpen, setLine, open, close }),
+    [line, isOpen, open, close],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

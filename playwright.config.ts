@@ -47,7 +47,8 @@ export default defineConfig({
     ...(nickE2E
       ? [
           {
-            command: 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/e2e/helpers/anthropic-mock-server.ts',
+            command:
+              'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/e2e/helpers/anthropic-mock-server.ts',
             url: `${ANTHROPIC_MOCK_URL}/health`,
             reuseExistingServer: false,
             timeout: 30_000,
@@ -60,7 +61,12 @@ export default defineConfig({
       url: BASE_URL,
       reuseExistingServer: !process.env.CI && !nickE2E,
       timeout: 120_000,
-      ...(nickE2E ? { env: { ANTHROPIC_BASE_URL: ANTHROPIC_MOCK_URL }, stdout: 'pipe' as const, stderr: 'pipe' as const } : {}),
+      // Own build output, so a server started here never shares .next with the developer's.
+      env: {
+        NEXT_DIST_DIR: '.next-e2e',
+        ...(nickE2E ? { ANTHROPIC_BASE_URL: ANTHROPIC_MOCK_URL } : {}),
+      },
+      ...(nickE2E ? { stdout: 'pipe' as const, stderr: 'pipe' as const } : {}),
     },
   ],
 });

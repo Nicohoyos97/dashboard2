@@ -6,13 +6,26 @@
 // tenant data itself.
 import { useCallback, useRef, useState } from 'react';
 
-import type { CitationRecord, NickErrorCode, NickEvent, PageContext, PendingAction, ThreadMessage } from '@/lib/ai/nick/types';
+import type {
+  CitationRecord,
+  NickErrorCode,
+  NickEvent,
+  PageContext,
+  PendingAction,
+  ThreadMessage,
+} from '@/lib/ai/nick/types';
 
 import { readSse } from './sse';
 
 export type ChatMessage =
   | { id: string; role: 'user'; text: string; failed?: boolean }
-  | { id: string; role: 'assistant'; text: string; citations: CitationRecord[]; pendingAction: PendingAction | null };
+  | {
+      id: string;
+      role: 'assistant';
+      text: string;
+      citations: CitationRecord[];
+      pendingAction: PendingAction | null;
+    };
 
 export type NickChatState = {
   sessionId: string | null;
@@ -31,11 +44,24 @@ export type NickChat = NickChatState & {
 
 export function fromThread(thread: readonly ThreadMessage[]): ChatMessage[] {
   return thread.map((m) =>
-    m.role === 'user' ? { id: m.id, role: 'user', text: m.text } : { id: m.id, role: 'assistant', text: m.text, citations: m.citations, pendingAction: m.pendingAction },
+    m.role === 'user'
+      ? { id: m.id, role: 'user', text: m.text }
+      : {
+          id: m.id,
+          role: 'assistant',
+          text: m.text,
+          citations: m.citations,
+          pendingAction: m.pendingAction,
+        },
   );
 }
 
-export function useNickChat(options: { sessionId: string | null; initialMessages: ChatMessage[]; locale: 'en' | 'es'; onSession?: (sessionId: string, firstMessage: string) => void }): NickChat {
+export function useNickChat(options: {
+  sessionId: string | null;
+  initialMessages: ChatMessage[];
+  locale: 'en' | 'es';
+  onSession?: (sessionId: string, firstMessage: string) => void;
+}): NickChat {
   const [state, setState] = useState<NickChatState>({
     sessionId: options.sessionId,
     messages: options.initialMessages,
@@ -58,7 +84,17 @@ export function useNickChat(options: { sessionId: string | null; initialMessages
       setState((s) => {
         sessionId = s.sessionId;
         isFirst = s.messages.length === 0;
-        return { ...s, messages: [...s.messages.filter((m) => !(m.role === 'user' && m.failed)), { id: localId, role: 'user', text: trimmed }], streaming: true, streamText: '', status: null, error: null };
+        return {
+          ...s,
+          messages: [
+            ...s.messages.filter((m) => !(m.role === 'user' && m.failed)),
+            { id: localId, role: 'user', text: trimmed },
+          ],
+          streaming: true,
+          streamText: '',
+          status: null,
+          error: null,
+        };
       });
 
       const apply = (event: NickEvent) => {
@@ -82,7 +118,16 @@ export function useNickChat(options: { sessionId: string | null; initialMessages
               streaming: false,
               streamText: '',
               status: null,
-              messages: [...s.messages, { id: event.messageId, role: 'assistant', text: event.text, citations: event.citations, pendingAction: event.pendingAction }],
+              messages: [
+                ...s.messages,
+                {
+                  id: event.messageId,
+                  role: 'assistant',
+                  text: event.text,
+                  citations: event.citations,
+                  pendingAction: event.pendingAction,
+                },
+              ],
             }));
             break;
           case 'error':
@@ -92,7 +137,9 @@ export function useNickChat(options: { sessionId: string | null; initialMessages
               streamText: '',
               status: null,
               error: event.code,
-              messages: s.messages.map((m) => (m.id === localId && m.role === 'user' ? { ...m, failed: true } : m)),
+              messages: s.messages.map((m) =>
+                m.id === localId && m.role === 'user' ? { ...m, failed: true } : m,
+              ),
             }));
             break;
         }
@@ -102,15 +149,37 @@ export function useNickChat(options: { sessionId: string | null; initialMessages
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...(sessionId ? { sessionId } : {}), message: trimmed, locale: options.locale, ...(context ? { context } : {}) }),
+          body: JSON.stringify({
+            ...(sessionId ? { sessionId } : {}),
+            message: trimmed,
+            locale: options.locale,
+            ...(context ? { context } : {}),
+          }),
         });
         if (!response.ok || !response.body) {
-          const code: NickErrorCode = response.status === 401 ? 'unauthorized' : response.status === 404 ? 'no_entity' : response.status === 400 ? 'invalid_request' : 'model_error';
+          const code: NickErrorCode =
+            response.status === 401
+              ? 'unauthorized'
+              : response.status === 404
+                ? 'no_entity'
+                : response.status === 400
+                  ? 'invalid_request'
+                  : 'model_error';
           apply({ type: 'error', code });
           return;
         }
         await readSse(response.body, apply);
-        setState((s) => (s.streaming ? { ...s, streaming: false, streamText: '', status: null, error: s.error ?? 'model_error' } : s));
+        setState((s) =>
+          s.streaming
+            ? {
+                ...s,
+                streaming: false,
+                streamText: '',
+                status: null,
+                error: s.error ?? 'model_error',
+              }
+            : s,
+        );
       } catch {
         apply({ type: 'error', code: 'model_error' });
       }
@@ -125,7 +194,14 @@ export function useNickChat(options: { sessionId: string | null; initialMessages
 
   const reset = useCallback(() => {
     lastSend.current = null;
-    setState({ sessionId: null, messages: [], streaming: false, streamText: '', status: null, error: null });
+    setState({
+      sessionId: null,
+      messages: [],
+      streaming: false,
+      streamText: '',
+      status: null,
+      error: null,
+    });
   }, []);
 
   return { ...state, send, retry, reset };

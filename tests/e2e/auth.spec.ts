@@ -26,7 +26,8 @@ test('signup → email confirm → signin → signout', async ({ page, request }
   await expect(page).toHaveURL(/\/dashboard/);
 
   // ── Sign out ─────────────────────────────────────────────────────────
-  await page.getByRole('button', { name: /sign out/i }).click();
+  await page.getByRole('button', { name: /account menu/i }).click();
+  await page.getByRole('menuitem', { name: /sign out/i }).click();
   await expect(page).toHaveURL(/\/signin/);
 
   // ── Sign in with the confirmed credentials ───────────────────────────
@@ -37,7 +38,8 @@ test('signup → email confirm → signin → signout', async ({ page, request }
   await expect(page).toHaveURL(/\/dashboard/);
 
   // ── Sign out again ───────────────────────────────────────────────────
-  await page.getByRole('button', { name: /sign out/i }).click();
+  await page.getByRole('button', { name: /account menu/i }).click();
+  await page.getByRole('menuitem', { name: /sign out/i }).click();
   await expect(page).toHaveURL(/\/signin/);
 });
 

@@ -2,10 +2,22 @@
 // framework-free so the parser is unit-tested; the hook feeds it chunks.
 import type { NickEvent } from '@/lib/ai/nick/types';
 
-const EVENT_TYPES = new Set<NickEvent['type']>(['session', 'status', 'delta', 'reset', 'done', 'error']);
+const EVENT_TYPES = new Set<NickEvent['type']>([
+  'session',
+  'status',
+  'delta',
+  'reset',
+  'done',
+  'error',
+]);
 
 function isNickEvent(value: unknown): value is NickEvent {
-  return typeof value === 'object' && value !== null && 'type' in value && EVENT_TYPES.has((value as { type: NickEvent['type'] }).type);
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    EVENT_TYPES.has((value as { type: NickEvent['type'] }).type)
+  );
 }
 
 /** Parses one `event:`/`data:` block; unknown or malformed blocks yield null. */
@@ -35,7 +47,10 @@ export function drainSse(buffer: string): { events: NickEvent[]; rest: string } 
   return { events, rest };
 }
 
-export async function readSse(body: ReadableStream<Uint8Array>, onEvent: (event: NickEvent) => void): Promise<void> {
+export async function readSse(
+  body: ReadableStream<Uint8Array>,
+  onEvent: (event: NickEvent) => void,
+): Promise<void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';

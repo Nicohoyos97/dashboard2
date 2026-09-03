@@ -10,9 +10,11 @@ import { redirect } from 'next/navigation';
 
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
+import { TopBar } from '@/components/shell/TopBar';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
+import { BOTTOM_NAV_ITEMS, NAV_ITEMS } from '@/lib/nav';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +37,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       brandHref="/dashboard"
+      topBar={
+        <TopBar
+          items={[...NAV_ITEMS, ...BOTTOM_NAV_ITEMS]}
+          namespace="Nav"
+          askNick={!preview}
+          helpHref="/help"
+        />
+      }
       sidebar={
         <Sidebar
           entities={entities}

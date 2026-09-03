@@ -8,7 +8,12 @@ import { type ToolContext, ToolError, type ToolResult } from './context';
 import { createFinancialExport, getReportDownloadLink } from './exports';
 import { getOverviewMetrics, getUpcomingObligations, listAvailableReports } from './overview';
 import { TOOL_INPUTS, isToolName } from './schemas';
-import { compareFinancialPeriods, getBalanceSheet, getExpenseBreakdown, getProfitAndLoss } from './statements';
+import {
+  compareFinancialPeriods,
+  getBalanceSheet,
+  getExpenseBreakdown,
+  getProfitAndLoss,
+} from './statements';
 import { getIncomeTaxStatus, getSalesTaxStatus } from './taxes';
 
 export type { ToolContext, ToolResult } from './context';
@@ -21,7 +26,11 @@ function issueSummary(error: z.ZodError): string {
     .join(', ');
 }
 
-async function dispatch(name: keyof typeof TOOL_INPUTS, raw: unknown, ctx: ToolContext): Promise<ToolResult> {
+async function dispatch(
+  name: keyof typeof TOOL_INPUTS,
+  raw: unknown,
+  ctx: ToolContext,
+): Promise<ToolResult> {
   switch (name) {
     case 'get_overview_metrics':
       return getOverviewMetrics(ctx, TOOL_INPUTS[name].parse(raw));
@@ -48,10 +57,15 @@ async function dispatch(name: keyof typeof TOOL_INPUTS, raw: unknown, ctx: ToolC
   }
 }
 
-export async function runTool(name: string, raw: unknown, ctx: ToolContext): Promise<{ ok: boolean; result: ToolResult }> {
+export async function runTool(
+  name: string,
+  raw: unknown,
+  ctx: ToolContext,
+): Promise<{ ok: boolean; result: ToolResult }> {
   if (!isToolName(name)) return { ok: false, result: { error: 'unknown_tool' } };
   const parsed = TOOL_INPUTS[name].safeParse(raw);
-  if (!parsed.success) return { ok: false, result: { error: 'invalid_input', issues: issueSummary(parsed.error) } };
+  if (!parsed.success)
+    return { ok: false, result: { error: 'invalid_input', issues: issueSummary(parsed.error) } };
   try {
     return { ok: true, result: await dispatch(name, parsed.data, ctx) };
   } catch (error) {

@@ -45,16 +45,52 @@ describe('Nick tool definitions', () => {
   });
 
   it('rejects unknown properties and wrong shapes from the model', () => {
-    expect(TOOL_INPUTS.get_profit_and_loss.safeParse({ period: null, detail: 'summary', query: null, business_entity_id: 'x' }).success).toBe(false);
-    expect(TOOL_INPUTS.get_profit_and_loss.safeParse({ period: null, detail: 'everything', query: null }).success).toBe(false);
-    expect(TOOL_INPUTS.get_report_download_link.safeParse({ document_version_id: 'not-a-uuid', confirmed: true }).success).toBe(false);
-    expect(TOOL_INPUTS.get_upcoming_obligations.safeParse({ days_ahead: '30', include_settled: false }).success).toBe(false);
+    expect(
+      TOOL_INPUTS.get_profit_and_loss.safeParse({
+        period: null,
+        detail: 'summary',
+        query: null,
+        business_entity_id: 'x',
+      }).success,
+    ).toBe(false);
+    expect(
+      TOOL_INPUTS.get_profit_and_loss.safeParse({ period: null, detail: 'everything', query: null })
+        .success,
+    ).toBe(false);
+    expect(
+      TOOL_INPUTS.get_report_download_link.safeParse({
+        document_version_id: 'not-a-uuid',
+        confirmed: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      TOOL_INPUTS.get_upcoming_obligations.safeParse({ days_ahead: '30', include_settled: false })
+        .success,
+    ).toBe(false);
   });
 
   it('accepts the shapes the prompt describes', () => {
-    expect(TOOL_INPUTS.get_profit_and_loss.safeParse({ period: '2026-01-01_2026-06-30', detail: 'lines', query: 'payroll' }).success).toBe(true);
-    expect(TOOL_INPUTS.compare_financial_periods.safeParse({ statement: 'balance_sheet', period_a: '2025-12-31_2025-12-31', period_b: '2026-06-30_2026-06-30' }).success).toBe(true);
-    expect(TOOL_INPUTS.create_financial_export.safeParse({ report_id: '4d1c3e1a-9f0e-4c7b-9a0c-2f4b3a1d5e6f', format: 'csv', confirmed: false }).success).toBe(true);
+    expect(
+      TOOL_INPUTS.get_profit_and_loss.safeParse({
+        period: '2026-01-01_2026-06-30',
+        detail: 'lines',
+        query: 'payroll',
+      }).success,
+    ).toBe(true);
+    expect(
+      TOOL_INPUTS.compare_financial_periods.safeParse({
+        statement: 'balance_sheet',
+        period_a: '2025-12-31_2025-12-31',
+        period_b: '2026-06-30_2026-06-30',
+      }).success,
+    ).toBe(true);
+    expect(
+      TOOL_INPUTS.create_financial_export.safeParse({
+        report_id: '4d1c3e1a-9f0e-4c7b-9a0c-2f4b3a1d5e6f',
+        format: 'csv',
+        confirmed: false,
+      }).success,
+    ).toBe(true);
   });
 
   it('isToolName is a closed check', () => {

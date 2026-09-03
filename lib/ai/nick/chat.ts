@@ -2,14 +2,17 @@
 // the user message → resolve the page context from the database → route →
 // stream the tool loop → persist the answer, its citations and the usage →
 // audit. Everything tenant-scoped is derived from the verified session.
-import 'server-only';
-
 import type Anthropic from '@anthropic-ai/sdk';
+import 'server-only';
 
 import { MODELS, getAnthropic } from '@/lib/ai/client';
 import { logAccess } from '@/lib/audit/logAccess';
 import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadPortalEntitySettings, loadPublishedBankStatements, loadPublishedReports } from '@/lib/portal/load';
+import {
+  loadPortalEntitySettings,
+  loadPublishedBankStatements,
+  loadPublishedReports,
+} from '@/lib/portal/load';
 import { RATE_LIMITS, consumeRateLimit } from '@/lib/rate-limit';
 import { isoToday } from '@/lib/reminders/status';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -35,7 +38,14 @@ import { NICK_SYSTEM_PROMPT, contextBlock } from './prompts';
 import { resolveContext } from './resolve-context';
 import { routeMessage } from './router';
 import { runTool } from './tools';
-import { type NickLocale, type ToolContext, label, money, reportHref, statementLabel } from './tools/context';
+import {
+  type NickLocale,
+  type ToolContext,
+  label,
+  money,
+  reportHref,
+  statementLabel,
+} from './tools/context';
 import { periodText } from './tools/context';
 import { toolDefinitions } from './tools/schemas';
 import { NickError, type NickEvent, type PageContext, type PendingAction } from './types';
@@ -52,16 +62,18 @@ export type TurnInput = {
 
 export async function runNickTurn(input: TurnInput): Promise<void> {
   if (input.entity.role === 'firm_preview') throw new NickError('preview_not_supported');
-  if (!(await consumeRateLimit(`chat:${input.userId}`, RATE_LIMITS.chat))) throw new NickError('rate_limited');
+  if (!(await consumeRateLimit(`chat:${input.userId}`, RATE_LIMITS.chat)))
+    throw new NickError('rate_limited');
 
   const supabase = await createClient();
   const admin = createAdminClient();
   const entityId = input.entity.id;
   const today = isoToday();
-  if ((await usedTokensToday(admin, entityId, today)) >= dailyTokenBudget()) throw new NickError('budget_exhausted');
+  if ((await usedTokensToday(admin, entityId, today)) >= dailyTokenBudget())
+    throw new NickError('budget_exhausted');
 
   const sessionId = input.sessionId
-    ? (await loadSession(supabase, entityId, input.userId, input.sessionId))?.id ?? null
+    ? ((await loadSession(supabase, entityId, input.userId, input.sessionId))?.id ?? null)
     : await createSession(supabase, entityId, input.userId);
   if (!sessionId) throw new NickError('invalid_request');
   input.emit({ type: 'session', sessionId });
@@ -78,7 +90,10 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
   const anthropic = getAnthropic();
   const [context, decision] = await Promise.all([
     resolveContext(supabase, entityId, input.locale, input.context, { reports, statements }),
-    routeMessage(anthropic, MODELS.fast, { message: input.message, pendingActionLabel: pending?.label ?? null }),
+    routeMessage(anthropic, MODELS.fast, {
+      message: input.message,
+      pendingActionLabel: pending?.label ?? null,
+    }),
   ]);
 
   const registry = new CitationRegistry();
@@ -86,7 +101,12 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
   const line = context.line;
   const selectedLineCite = line
     ? registry.add({
-        label: citationLabel([statementLabel(input.locale, line.reportType), periodText(line.periodStart, line.periodEnd, input.locale), line.page ? `${label(input.locale, 'page')} ${line.page}` : null, line.accountName]),
+        label: citationLabel([
+          statementLabel(input.locale, line.reportType),
+          periodText(line.periodStart, line.periodEnd, input.locale),
+          line.page ? `${label(input.locale, 'page')} ${line.page}` : null,
+          line.accountName,
+        ]),
         reportId: line.reportId,
         documentVersionId: line.documentVersionId,
         lineId: line.lineId,
@@ -94,7 +114,11 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
         periodStart: line.periodStart,
         periodEnd: line.periodEnd,
         source: line.source,
-        href: reportHref({ reportType: line.reportType, periodStart: line.periodStart, periodEnd: line.periodEnd }),
+        href: reportHref({
+          reportType: line.reportType,
+          periodStart: line.periodStart,
+          periodEnd: line.periodEnd,
+        }),
       })
     : null;
   const confirmedAction = pending && decision.confirms_pending_action ? pending : null;
@@ -109,7 +133,13 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
         today,
         context,
         selectedLineCite,
-        selectedLineFormatted: line ? { current: line.currentCents === null ? null : money(shape, line.currentCents, line.currency), prior: line.priorCents === null ? null : money(shape, line.priorCents, line.currency) } : null,
+        selectedLineFormatted: line
+          ? {
+              current:
+                line.currentCents === null ? null : money(shape, line.currentCents, line.currency),
+              prior: line.priorCents === null ? null : money(shape, line.priorCents, line.currency),
+            }
+          : null,
         pending: pending ? { action: pending, confirmed: confirmedAction !== null } : null,
       }),
     },
@@ -142,32 +172,68 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
     effort: NICK_LIMITS.effort[role],
     system,
     tools: toolDefinitions(),
-    messages: [...threadToModelMessages(thread, NICK_LIMITS.historyMessages), { role: 'user', content: input.message }],
+    messages: [
+      ...threadToModelMessages(thread, NICK_LIMITS.historyMessages),
+      { role: 'user', content: input.message },
+    ],
     runTool: (name, raw) => runTool(name, raw, toolContext),
     registry,
     emit: input.emit,
     maxIterations: NICK_LIMITS.maxToolIterations,
     onToolCall: (call) => {
-      void insertToolMessage(admin, { sessionId, entityId, name: call.name, toolInput: call.input, result: call.result, ok: call.ok });
+      void insertToolMessage(admin, {
+        sessionId,
+        entityId,
+        name: call.name,
+        toolInput: call.input,
+        result: call.result,
+        ok: call.ok,
+      });
     },
   });
 
   const messageId = await insertAssistantMessage(admin, {
     sessionId,
     entityId,
-    content: { text: outcome.text, citations: outcome.citations, toolCalls: outcome.toolCalls, model: role, pendingAction: pendingThisTurn, usage: outcome.usage },
+    content: {
+      text: outcome.text,
+      citations: outcome.citations,
+      toolCalls: outcome.toolCalls,
+      model: role,
+      pendingAction: pendingThisTurn,
+      usage: outcome.usage,
+    },
   });
   if (!messageId) throw new NickError('model_error');
   await Promise.all([
     insertCitations(admin, { entityId, sessionId, messageId, citations: outcome.citations }),
-    recordUsage(admin, { entityId, sessionId, day: today, usage: outcome.usage, firstUserText: thread.length === 0 ? input.message : null }),
+    recordUsage(admin, {
+      entityId,
+      sessionId,
+      day: today,
+      usage: outcome.usage,
+      firstUserText: thread.length === 0 ? input.message : null,
+    }),
     logAccess({
       action: 'chat.message.sent',
       resourceType: 'chat_session',
       resourceId: sessionId,
       businessEntityId: entityId,
-      metadata: { model: role, tool_calls: outcome.toolCalls.length, citations: outcome.citations.length, input_tokens: outcome.usage.input, output_tokens: outcome.usage.output, retried: outcome.retried },
+      metadata: {
+        model: role,
+        tool_calls: outcome.toolCalls.length,
+        citations: outcome.citations.length,
+        input_tokens: outcome.usage.input,
+        output_tokens: outcome.usage.output,
+        retried: outcome.retried,
+      },
     }),
   ]);
-  input.emit({ type: 'done', messageId, text: outcome.text, citations: outcome.citations, pendingAction: pendingThisTurn });
+  input.emit({
+    type: 'done',
+    messageId,
+    text: outcome.text,
+    citations: outcome.citations,
+    pendingAction: pendingThisTurn,
+  });
 }

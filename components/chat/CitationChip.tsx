@@ -10,7 +10,13 @@ import type { CitationRecord } from '@/lib/ai/nick/types';
 const chipClass =
   'bg-blue-pale text-blue inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 align-baseline text-[11.5px] font-semibold leading-[1.4] whitespace-normal';
 
-export function CitationChip({ citation, compact = false }: { citation: CitationRecord; compact?: boolean }) {
+export function CitationChip({
+  citation,
+  compact = false,
+}: {
+  citation: CitationRecord;
+  compact?: boolean;
+}) {
   const text = compact ? citation.key.replace('c', '') : citation.label;
   const inner = (
     <>
@@ -20,7 +26,12 @@ export function CitationChip({ citation, compact = false }: { citation: Citation
   );
   if (citation.href && citation.href.startsWith('/') && !citation.href.startsWith('/api/')) {
     return (
-      <Link href={citation.href} className={`${chipClass} hover:underline`} title={citation.label} aria-label={citation.label}>
+      <Link
+        href={citation.href}
+        className={`${chipClass} hover:underline`}
+        title={citation.label}
+        aria-label={citation.label}
+      >
         {inner}
       </Link>
     );

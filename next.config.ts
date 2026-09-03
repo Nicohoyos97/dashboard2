@@ -8,6 +8,10 @@ const withNextIntl = createNextIntlPlugin();
 // Security headers (CSP/HSTS/etc.) are wired in Phase 7 — see docs/SECURITY.md.
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // A second dev server (Playwright) or a verification build must not write
+  // into the .next of a running `pnpm dev`: the shared directory corrupts
+  // both. Vercel and plain `pnpm dev` keep the default.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   // Pin the file-tracing root to this project so Next ignores unrelated
   // lockfiles higher up the filesystem (e.g. a stray ~/package-lock.json).
   outputFileTracingRoot: path.join(__dirname),

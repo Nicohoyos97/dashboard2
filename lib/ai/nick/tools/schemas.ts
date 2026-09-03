@@ -14,32 +14,63 @@ export const TOOL_INPUTS = {
   get_overview_metrics: z.strictObject({ period }),
   get_profit_and_loss: z.strictObject({
     period,
-    detail: z.enum(['summary', 'lines']).describe('summary = headline totals and margins; lines = the statement lines too'),
-    query: z.string().nullable().describe('Account name to look for in the statement lines (case-insensitive), or null'),
+    detail: z
+      .enum(['summary', 'lines'])
+      .describe('summary = headline totals and margins; lines = the statement lines too'),
+    query: z
+      .string()
+      .nullable()
+      .describe('Account name to look for in the statement lines (case-insensitive), or null'),
   }),
   get_balance_sheet: z.strictObject({
-    period: z.string().nullable().describe('Balance Sheet "as of" date as date_date, e.g. 2026-06-30_2026-06-30, or null for the newest published one'),
-    detail: z.enum(['summary', 'lines']).describe('summary = totals, working capital and ratios; lines = the statement lines too'),
-    query: z.string().nullable().describe('Account name to look for in the statement lines (case-insensitive), or null'),
+    period: z
+      .string()
+      .nullable()
+      .describe(
+        'Balance Sheet "as of" date as date_date, e.g. 2026-06-30_2026-06-30, or null for the newest published one',
+      ),
+    detail: z
+      .enum(['summary', 'lines'])
+      .describe('summary = totals, working capital and ratios; lines = the statement lines too'),
+    query: z
+      .string()
+      .nullable()
+      .describe('Account name to look for in the statement lines (case-insensitive), or null'),
   }),
   get_expense_breakdown: z.strictObject({
     period,
-    limit: z.number().int().nullable().describe('How many categories to return, largest first; null = 8'),
+    limit: z
+      .number()
+      .int()
+      .nullable()
+      .describe('How many categories to return, largest first; null = 8'),
   }),
   get_income_tax_status: z.strictObject({
     tax_year: z.number().int().nullable().describe('Tax year, or null for every published year'),
   }),
   get_sales_tax_status: z.strictObject({ period }),
   get_upcoming_obligations: z.strictObject({
-    days_ahead: z.number().int().nullable().describe('Look-ahead window in days from today; null = 90'),
+    days_ahead: z
+      .number()
+      .int()
+      .nullable()
+      .describe('Look-ahead window in days from today; null = 90'),
     include_settled: z.boolean().describe('Also return paid and completed items'),
   }),
   list_available_reports: z.strictObject({
-    report_type: z.enum(['profit_and_loss', 'balance_sheet', 'bank_statement', 'tax', 'other']).nullable().describe('Filter, or null for everything'),
+    report_type: z
+      .enum(['profit_and_loss', 'balance_sheet', 'bank_statement', 'tax', 'other'])
+      .nullable()
+      .describe('Filter, or null for everything'),
   }),
   get_report_download_link: z.strictObject({
-    document_version_id: z.string().uuid().describe('The documentVersionId returned by list_available_reports or a statement tool'),
-    confirmed: z.boolean().describe('true only after the user explicitly confirmed this download in a later message'),
+    document_version_id: z
+      .string()
+      .uuid()
+      .describe('The documentVersionId returned by list_available_reports or a statement tool'),
+    confirmed: z
+      .boolean()
+      .describe('true only after the user explicitly confirmed this download in a later message'),
   }),
   compare_financial_periods: z.strictObject({
     statement: z.enum(['profit_and_loss', 'balance_sheet']),
@@ -47,9 +78,14 @@ export const TOOL_INPUTS = {
     period_b: z.string().describe('Second period as start_end'),
   }),
   create_financial_export: z.strictObject({
-    report_id: z.string().uuid().describe('The reportId of a published Profit & Loss or Balance Sheet'),
+    report_id: z
+      .string()
+      .uuid()
+      .describe('The reportId of a published Profit & Loss or Balance Sheet'),
     format: z.enum(['csv']),
-    confirmed: z.boolean().describe('true only after the user explicitly confirmed this export in a later message'),
+    confirmed: z
+      .boolean()
+      .describe('true only after the user explicitly confirmed this export in a later message'),
   }),
 } as const;
 
@@ -101,11 +137,15 @@ function closeObjects(node: JsonSchema): JsonSchema {
     out.additionalProperties = false;
     out.required = Object.keys(out.properties);
     out.properties = Object.fromEntries(
-      Object.entries(out.properties).map(([key, child]) => [key, isObject(child) ? closeObjects(child) : child]),
+      Object.entries(out.properties).map(([key, child]) => [
+        key,
+        isObject(child) ? closeObjects(child) : child,
+      ]),
     );
   }
   if (isObject(out.items)) out.items = closeObjects(out.items);
-  if (Array.isArray(out.anyOf)) out.anyOf = out.anyOf.map((child) => (isObject(child) ? closeObjects(child) : child));
+  if (Array.isArray(out.anyOf))
+    out.anyOf = out.anyOf.map((child) => (isObject(child) ? closeObjects(child) : child));
   return out;
 }
 

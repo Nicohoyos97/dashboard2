@@ -3,7 +3,13 @@
 // prompts, schemas) are unit-testable; the loaders live in ./persist.ts.
 import { z } from 'zod';
 
-export const NICK_PAGES = ['overview', 'profit_and_loss', 'balance_sheet', 'reports', 'chat'] as const;
+export const NICK_PAGES = [
+  'overview',
+  'profit_and_loss',
+  'balance_sheet',
+  'reports',
+  'chat',
+] as const;
 export type NickPage = (typeof NICK_PAGES)[number];
 
 export const PERIOD_PARAM = /^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/;
@@ -89,7 +95,14 @@ export type StoredAssistant = z.infer<typeof storedAssistantSchema>;
 
 export type ThreadMessage =
   | { id: string; role: 'user'; createdAt: string; text: string }
-  | { id: string; role: 'assistant'; createdAt: string; text: string; citations: CitationRecord[]; pendingAction: PendingAction | null };
+  | {
+      id: string;
+      role: 'assistant';
+      createdAt: string;
+      text: string;
+      citations: CitationRecord[];
+      pendingAction: PendingAction | null;
+    };
 
 export type NickErrorCode =
   | 'unauthorized'
@@ -108,7 +121,13 @@ export type NickEvent =
   | { type: 'status'; tool: string }
   | { type: 'delta'; text: string }
   | { type: 'reset' }
-  | { type: 'done'; messageId: string; text: string; citations: CitationRecord[]; pendingAction: PendingAction | null }
+  | {
+      type: 'done';
+      messageId: string;
+      text: string;
+      citations: CitationRecord[];
+      pendingAction: PendingAction | null;
+    }
   | { type: 'error'; code: NickErrorCode };
 
 export class NickError extends Error {

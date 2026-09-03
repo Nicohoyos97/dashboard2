@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { NickWorkspace } from '@/components/chat/NickWorkspace';
 import { Link } from '@/i18n/navigation';
+import { NICK_LIMITS } from '@/lib/ai/nick/config';
 import { listSessions, loadSession, loadThread } from '@/lib/ai/nick/persist';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
@@ -15,8 +16,17 @@ import { createClient } from '@/lib/supabase/server';
 
 const sessionParam = z.string().uuid();
 
-export default async function ChatPage({ searchParams }: { searchParams: Promise<{ session?: string }> }) {
-  const [t, user, entity, params] = await Promise.all([getTranslations('Nick'), getCurrentUser(), getCurrentEntity(), searchParams]);
+export default async function ChatPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string; q?: string }>;
+}) {
+  const [t, user, entity, params] = await Promise.all([
+    getTranslations('Nick'),
+    getCurrentUser(),
+    getCurrentEntity(),
+    searchParams,
+  ]);
 
   if (!entity || !user) {
     return (
@@ -37,30 +47,62 @@ export default async function ChatPage({ searchParams }: { searchParams: Promise
   const requested = sessionParam.safeParse(params.session);
   const [sessions, active] = await Promise.all([
     listSessions(supabase, entity.id, user.id),
-    requested.success ? loadSession(supabase, entity.id, user.id, requested.data) : Promise.resolve(null),
+    requested.success
+      ? loadSession(supabase, entity.id, user.id, requested.data)
+      : Promise.resolve(null),
   ]);
   const thread = active ? await loadThread(supabase, active.id) : [];
-  await logAccess({ action: 'chat.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id, metadata: { session_count: sessions.length } });
+  const question =
+    !active && typeof params.q === 'string'
+      ? params.q.trim().slice(0, NICK_LIMITS.maxMessageChars)
+      : '';
+  await logAccess({
+    action: 'chat.view',
+    resourceType: 'business_entity',
+    resourceId: entity.id,
+    businessEntityId: entity.id,
+    metadata: { session_count: sessions.length },
+  });
 
   return (
     <Page
       title={t('title')}
       lede={t('lede', { business: entity.name })}
       controls={
-        <Link href="/chat" className="border-line bg-card text-ink hover:border-blue/50 hover:text-blue inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13.5px] font-semibold transition lg:hidden">
+        <Link
+          href="/chat"
+          className="border-line bg-card text-ink hover:border-blue/50 hover:text-blue inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-[13.5px] font-semibold transition lg:hidden"
+        >
           <MessageSquarePlus className="size-4" aria-hidden="true" />
           {t('newConversation')}
         </Link>
       }
     >
       <div className="mt-6 flex min-h-[70vh] flex-col">
-        <NickWorkspace key={active?.id ?? 'new'} sessions={sessions} activeSessionId={active?.id ?? null} initialThread={thread} businessName={entity.name} />
+        <NickWorkspace
+          key={active?.id ?? 'new'}
+          sessions={sessions}
+          activeSessionId={active?.id ?? null}
+          initialThread={thread}
+          businessName={entity.name}
+          initialQuestion={question || null}
+        />
       </div>
     </Page>
   );
 }
 
-function Page({ title, lede, controls, children }: { title: string; lede: string; controls?: React.ReactNode; children: React.ReactNode }) {
+function Page({
+  title,
+  lede,
+  controls,
+  children,
+}: {
+  title: string;
+  lede: string;
+  controls?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col px-6 py-10 md:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">

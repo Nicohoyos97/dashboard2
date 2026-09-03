@@ -3,7 +3,15 @@ import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 
 // Logo + optional portal badge, used by the sidebar and the mobile top bar.
-export function Brand({ href, badge, compact }: { href: string; badge?: string; compact?: boolean }) {
+export function Brand({
+  href,
+  badge,
+  compact,
+}: {
+  href: string;
+  badge?: string;
+  compact?: boolean;
+}) {
   return (
     <Link href={href} className="flex items-center gap-2.5" aria-label="Hoyos Baker">
       <Image

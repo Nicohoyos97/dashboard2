@@ -14,7 +14,11 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-const PNL_CALL = { id: 'toolu_1', name: 'get_profit_and_loss', input: { period: null, detail: 'summary', query: null } };
+const PNL_CALL = {
+  id: 'toolu_1',
+  name: 'get_profit_and_loss',
+  input: { period: null, detail: 'summary', query: null },
+};
 
 function harness(maxIterations = 8) {
   const registry = new CitationRegistry();
@@ -23,8 +27,24 @@ function harness(maxIterations = 8) {
   const runTool = async (name: string, input: unknown) => {
     toolInputs.push({ name, input });
     if (name !== 'get_profit_and_loss') return { ok: false, result: { error: 'unknown_tool' } };
-    const cite = registry.add({ label: 'Profit & Loss · Q2 2026 · Page 2 · Net Income', reportId: 'r1', documentVersionId: 'v1', lineId: 'l9', page: 2, periodStart: '2026-04-01', periodEnd: '2026-06-30', source: 'firm_document', href: '/statements/profit-and-loss?period=2026-04-01_2026-06-30' });
-    return { ok: true, result: { available: true, netIncome: { current: { amount: '12450.00', formatted: '$12,450.00', cite } } } };
+    const cite = registry.add({
+      label: 'Profit & Loss · Q2 2026 · Page 2 · Net Income',
+      reportId: 'r1',
+      documentVersionId: 'v1',
+      lineId: 'l9',
+      page: 2,
+      periodStart: '2026-04-01',
+      periodEnd: '2026-06-30',
+      source: 'firm_document',
+      href: '/statements/profit-and-loss?period=2026-04-01_2026-06-30',
+    });
+    return {
+      ok: true,
+      result: {
+        available: true,
+        netIncome: { current: { amount: '12450.00', formatted: '$12,450.00', cite } },
+      },
+    };
   };
   const run = () =>
     runToolLoop({
@@ -78,7 +98,12 @@ describe('runToolLoop', () => {
     expect(types.slice(0, 2)).toEqual(['delta', 'delta']);
     expect(types).toContain('reset');
     expect(types).toContain('status');
-    expect(h.events.filter((e) => e.type === 'delta').map((e) => (e.type === 'delta' ? e.text : '')).join('')).toContain('Net income was');
+    expect(
+      h.events
+        .filter((e) => e.type === 'delta')
+        .map((e) => (e.type === 'delta' ? e.text : ''))
+        .join(''),
+    ).toContain('Net income was');
   });
 
   it('retries once with a corrective message when a figure has no citation', async () => {
@@ -97,12 +122,21 @@ describe('runToolLoop', () => {
   });
 
   it('rejects the turn when the corrected answer is still uncited', async () => {
-    mockStreams([{ toolUses: [PNL_CALL] }, { text: 'Net income was $12,450.00.' }, { text: 'It was $12,450.00, trust me.' }]);
-    await expect(harness().run()).rejects.toMatchObject({ code: 'uncited_answer' } satisfies Partial<NickError>);
+    mockStreams([
+      { toolUses: [PNL_CALL] },
+      { text: 'Net income was $12,450.00.' },
+      { text: 'It was $12,450.00, trust me.' },
+    ]);
+    await expect(harness().run()).rejects.toMatchObject({
+      code: 'uncited_answer',
+    } satisfies Partial<NickError>);
   });
 
   it('rejects a marker the tools never issued', async () => {
-    mockStreams([{ text: 'Revenue was $80,000.00 [c7].' }, { text: 'Revenue was $80,000.00 [c7].' }]);
+    mockStreams([
+      { text: 'Revenue was $80,000.00 [c7].' },
+      { text: 'Revenue was $80,000.00 [c7].' },
+    ]);
     await expect(harness().run()).rejects.toMatchObject({ code: 'uncited_answer' });
   });
 
@@ -112,11 +146,17 @@ describe('runToolLoop', () => {
   });
 
   it('forces an answer on the final allowed iteration instead of calling tools forever', async () => {
-    const captured = mockStreams((_body, index) => (index === 0 ? { toolUses: [PNL_CALL] } : { text: 'Net income was $12,450.00 [c1].' }));
+    const captured = mockStreams((_body, index) =>
+      index === 0 ? { toolUses: [PNL_CALL] } : { text: 'Net income was $12,450.00 [c1].' },
+    );
     const outcome = await harness(2).run();
     expect(outcome.text).toContain('[c1]');
     expect(captured).toHaveLength(2);
-    expect(isRecord(captured[1]) && isRecord(captured[1].tool_choice) ? captured[1].tool_choice.type : null).toBe('none');
+    expect(
+      isRecord(captured[1]) && isRecord(captured[1].tool_choice)
+        ? captured[1].tool_choice.type
+        : null,
+    ).toBe('none');
     expect(captured[0]).not.toHaveProperty('tool_choice');
   });
 

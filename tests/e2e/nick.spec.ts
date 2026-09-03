@@ -13,7 +13,10 @@ import { seedPublishedStatement } from './helpers/seed-statements';
 //   NICK_E2E=1 pnpm test:e2e tests/e2e/nick.spec.ts
 test.describe('Nick: cited line explanations and confirmed downloads', () => {
   test.describe.configure({ mode: 'serial' });
-  test.skip(!supabaseEnv() || process.env.NICK_E2E !== '1', 'Needs local Supabase and NICK_E2E=1 (mocked Anthropic)');
+  test.skip(
+    !supabaseEnv() || process.env.NICK_E2E !== '1',
+    'Needs local Supabase and NICK_E2E=1 (mocked Anthropic)',
+  );
   test.setTimeout(120_000);
 
   const fx = new Fixtures();
@@ -43,13 +46,34 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     await expect(page).toHaveURL(/\/dashboard/);
   }
 
-  test('explains the selected line and cites the report, period and page (§14.10)', async ({ browser }) => {
-    const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  test('explains the selected line and cites the report, period and page (§14.10)', async ({
+    browser,
+  }) => {
+    const page = await (
+      await browser.newContext({ viewport: { width: 1280, height: 900 } })
+    ).newPage();
     await signIn(page);
+    // Shell (sidebar + top bar) in both themes, for the visual record.
+    await expect(page.getByRole('toolbar')).toBeVisible();
+    await page.screenshot({ path: 'test-results/shell-overview-light.png' });
+    await page
+      .getByRole('toolbar')
+      .getByRole('button', { name: /switch to dark theme/i })
+      .click();
+    await page.waitForTimeout(400); // colour transitions settle
+    await page.screenshot({ path: 'test-results/shell-overview-dark.png' });
+    await page
+      .getByRole('toolbar')
+      .getByRole('button', { name: /switch to light theme/i })
+      .click();
+    await page.waitForTimeout(400);
     await page.goto('/statements/profit-and-loss');
     await expect(page.getByRole('heading', { name: /profit & loss/i })).toBeVisible();
 
-    await page.getByRole('row', { name: /^Net Income\b/ }).first().click();
+    await page
+      .getByRole('row', { name: /^Net Income\b/ })
+      .first()
+      .click();
     const drawer = page.getByRole('dialog', { name: /^Net Income$/ });
     await expect(drawer).toBeVisible();
     await drawer.getByRole('button', { name: /ask nick about this line/i }).click();
@@ -59,14 +83,24 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     await expect(panel.getByText(/About: Net Income/)).toBeVisible();
     await panel.getByRole('button', { name: /^explain this line$/i }).click();
 
-    await expect(panel.getByText(/is the amount printed on your statement/i)).toBeVisible({ timeout: 30_000 });
+    await expect(panel.getByText(/is the amount printed on your statement/i)).toBeVisible({
+      timeout: 30_000,
+    });
     const chip = panel.getByRole('link', { name: /Profit & Loss.*Page \d+.*Net Income/ }).first();
     await expect(chip).toBeVisible();
     await page.screenshot({ path: 'test-results/nick-panel-desktop.png' });
 
     // The persisted citation points at the exact line: same report, same page, same period.
-    const { data: line } = await fx.admin.from('financial_statement_lines').select('id, page_number').eq('report_id', pnl.reportId).ilike('account_name', 'net income').maybeSingle();
-    const { data: citations } = await fx.admin.from('chat_citations').select('report_id, line_id, page_number, period_start, period_end, source').eq('business_entity_id', entityId);
+    const { data: line } = await fx.admin
+      .from('financial_statement_lines')
+      .select('id, page_number')
+      .eq('report_id', pnl.reportId)
+      .ilike('account_name', 'net income')
+      .maybeSingle();
+    const { data: citations } = await fx.admin
+      .from('chat_citations')
+      .select('report_id, line_id, page_number, period_start, period_end, source')
+      .eq('business_entity_id', entityId);
     expect(citations?.length).toBeGreaterThan(0);
     const cited = citations?.find((c) => c.line_id === line?.id);
     expect(cited).toBeDefined();
@@ -75,15 +109,19 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     expect(cited?.period_start).toBe(pnl.period.start);
     expect(cited?.period_end).toBe(pnl.period.end);
     expect(cited?.source).toBe('firm_document');
+    await page.context().close();
   });
 
   test('issues a download link only after the user confirms (§14.11)', async ({ browser }) => {
-    const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+    const page = await (
+      await browser.newContext({ viewport: { width: 1280, height: 900 } })
+    ).newPage();
     await signIn(page);
     await page.goto('/chat');
-    await expect(page.getByRole('heading', { name: /insights with nick/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^ask nick$/i })).toBeVisible();
 
     const composer = page.locator('#nick-composer');
+    await expect(composer).toHaveCount(1);
     await composer.fill('Download the P&L');
     await composer.press('Enter');
     await expect(page.getByText(/Do you want me to proceed\?/i)).toBeVisible({ timeout: 30_000 });
@@ -103,7 +141,9 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     expect(response.headers().location).toContain('/storage/v1/object/sign/documents/');
 
     // §14.20: on a phone the panel is full-screen.
-    const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true })).newPage();
+    const phone = await (
+      await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true })
+    ).newPage();
     await signIn(phone);
     await phone.goto('/statements/profit-and-loss');
     await phone.getByRole('button', { name: /ask nick/i }).click();
@@ -114,9 +154,14 @@ test.describe('Nick: cited line explanations and confirmed downloads', () => {
     expect(box?.height).toBeGreaterThanOrEqual(800);
     await phone.screenshot({ path: 'test-results/nick-panel-mobile.png' });
 
-    const { data: audit } = await fx.admin.from('audit_logs').select('action').eq('business_entity_id', entityId);
+    const { data: audit } = await fx.admin
+      .from('audit_logs')
+      .select('action')
+      .eq('business_entity_id', entityId);
     const actions = (audit ?? []).map((row) => row.action);
     expect(actions).toContain('chat.download_link.issued');
     expect(actions).toContain('chat.message.sent');
+    await phone.context().close();
+    await page.context().close();
   });
 });

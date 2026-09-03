@@ -7,9 +7,35 @@ import { cn } from '@/lib/utils/cn';
 
 import { useTheme } from './ThemeProvider';
 
-export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+export function ThemeToggle({
+  compact = false,
+  variant = 'group',
+}: {
+  compact?: boolean;
+  variant?: 'group' | 'icon';
+}) {
   const t = useTranslations('Theme');
   const { theme, setTheme } = useTheme();
+
+  if (variant === 'icon') {
+    const isDark = theme === 'dark';
+    const label = isDark ? t('toLight') : t('toDark');
+    return (
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        onClick={() => setTheme(isDark ? 'light' : 'dark')}
+        className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
+      >
+        {isDark ? (
+          <Sun className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <Moon className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <div
@@ -58,10 +84,8 @@ function ThemeOption({
       title={label}
       onClick={onClick}
       className={cn(
-        'focus-visible:ring-blue/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold outline-none transition focus-visible:ring-3',
-        active
-          ? 'bg-card text-ink shadow-sm'
-          : 'text-muted-foreground hover:text-foreground',
+        'focus-visible:ring-blue/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold transition outline-none focus-visible:ring-3',
+        active ? 'bg-card text-ink shadow-sm' : 'text-muted-foreground hover:text-foreground',
       )}
     >
       {children}

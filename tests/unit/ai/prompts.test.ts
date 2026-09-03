@@ -1,7 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { CITATION_RETRY_MESSAGE, NICK_SYSTEM_PROMPT, NICK_UNTRUSTED_NOTICE, contextBlock } from '@/lib/ai/nick/prompts';
+import {
+  CITATION_RETRY_MESSAGE,
+  NICK_SYSTEM_PROMPT,
+  NICK_UNTRUSTED_NOTICE,
+  contextBlock,
+} from '@/lib/ai/nick/prompts';
 import { ROUTER_SYSTEM_PROMPT } from '@/lib/ai/nick/router';
 
 const line = {
@@ -39,7 +44,9 @@ describe('Nick prompts', () => {
     expect(NICK_SYSTEM_PROMPT).toContain('Never invent');
     expect(NICK_SYSTEM_PROMPT).toContain('Sources never mix');
     expect(NICK_SYSTEM_PROMPT).toContain('Never infer cash flow from a Profit & Loss');
-    expect(NICK_SYSTEM_PROMPT).toContain('confirmed: true only when the user has explicitly confirmed');
+    expect(NICK_SYSTEM_PROMPT).toContain(
+      'confirmed: true only when the user has explicitly confirmed',
+    );
     expect(NICK_SYSTEM_PROMPT).toContain('not a replacement for the accountant');
     expect(CITATION_RETRY_MESSAGE).toContain('[cN]');
   });
@@ -50,7 +57,11 @@ describe('Nick prompts', () => {
       currency: 'USD',
       locale: 'es',
       today: '2026-09-03',
-      context: { page: 'profit_and_loss', period: { start: '2026-01-01', end: '2026-06-30', label: 'Jan 1, 2026 – Jun 30, 2026' }, line },
+      context: {
+        page: 'profit_and_loss',
+        period: { start: '2026-01-01', end: '2026-06-30', label: 'Jan 1, 2026 – Jun 30, 2026' },
+        line,
+      },
       selectedLineCite: 'c1',
       selectedLineFormatted: { current: '$12,345.00', prior: '$11,000.00' },
       pending: null,
@@ -62,9 +73,25 @@ describe('Nick prompts', () => {
   });
 
   it('context block tells the model whether a pending action was confirmed', () => {
-    const base = { entityName: 'X', currency: 'USD', locale: 'en' as const, today: '2026-09-03', context: { page: 'chat' as const, period: null, line: null }, selectedLineCite: null, selectedLineFormatted: null };
-    const action = { tool: 'get_report_download_link' as const, resourceId: 'v1', label: 'P&L Q2 — pnl.pdf' };
-    expect(contextBlock({ ...base, pending: { action, confirmed: true } })).toContain('has now confirmed');
-    expect(contextBlock({ ...base, pending: { action, confirmed: false } })).toContain('does not confirm it; do not perform the action');
+    const base = {
+      entityName: 'X',
+      currency: 'USD',
+      locale: 'en' as const,
+      today: '2026-09-03',
+      context: { page: 'chat' as const, period: null, line: null },
+      selectedLineCite: null,
+      selectedLineFormatted: null,
+    };
+    const action = {
+      tool: 'get_report_download_link' as const,
+      resourceId: 'v1',
+      label: 'P&L Q2 — pnl.pdf',
+    };
+    expect(contextBlock({ ...base, pending: { action, confirmed: true } })).toContain(
+      'has now confirmed',
+    );
+    expect(contextBlock({ ...base, pending: { action, confirmed: false } })).toContain(
+      'does not confirm it; do not perform the action',
+    );
   });
 });

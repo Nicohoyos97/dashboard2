@@ -42,7 +42,11 @@ export function NickThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4" aria-live="polite" aria-busy={chat.streaming}>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-1 py-4"
+        aria-live="polite"
+        aria-busy={chat.streaming}
+      >
         {chat.messages.length === 0 && !chat.streaming && (
           <div className="mx-auto flex max-w-[560px] flex-col gap-5 py-6">
             <div className="flex items-start gap-3">
@@ -51,7 +55,9 @@ export function NickThread({
               </span>
               <div>
                 <h2 className="text-ink text-[18px] font-bold">{t('emptyTitle')}</h2>
-                <p className="text-muted-foreground mt-1 text-[14px] leading-[1.55]">{t('emptyBody', { business: businessName })}</p>
+                <p className="text-muted-foreground mt-1 text-[14px] leading-[1.55]">
+                  {t('emptyBody', { business: businessName })}
+                </p>
               </div>
             </div>
             <SuggestedQuestions keys={suggestionKeys} onPick={send} disabled={chat.streaming} />
@@ -86,10 +92,17 @@ export function NickThread({
           )}
 
           {chat.error && (
-            <div role="alert" className="border-danger/30 bg-danger/5 text-ink flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[13.5px]">
+            <div
+              role="alert"
+              className="border-danger/30 bg-danger/5 text-ink flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[13.5px]"
+            >
               <span>{t(`error_${chat.error}`)}</span>
               {chat.error !== 'budget_exhausted' && chat.error !== 'preview_not_supported' && (
-                <button type="button" onClick={() => void chat.retry()} className="text-blue font-semibold hover:underline">
+                <button
+                  type="button"
+                  onClick={() => void chat.retry()}
+                  className="text-blue font-semibold hover:underline"
+                >
                   {t('retry')}
                 </button>
               )}
@@ -101,7 +114,9 @@ export function NickThread({
 
       <div className="shrink-0 pt-2">
         <Composer onSend={send} disabled={chat.streaming} autoFocus={autoFocus} />
-        <p className="text-muted-foreground mt-2 px-1 text-[11.5px] leading-[1.5]">{t('disclaimer')}</p>
+        <p className="text-muted-foreground mt-2 px-1 text-[11.5px] leading-[1.5]">
+          {t('disclaimer')}
+        </p>
       </div>
     </div>
   );

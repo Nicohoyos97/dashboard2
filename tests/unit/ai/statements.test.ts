@@ -45,7 +45,10 @@ describe('Nick statement shaping', () => {
     const ctx = shape();
     const breakdown = expenseBreakdown(ctx, report(), buildTree(pnlRows()), 3);
     expect(breakdown.categories.length).toBeLessThanOrEqual(3);
-    const shares = [...breakdown.categories.map((c) => c.sharePct ?? 0), breakdown.other?.sharePct ?? 0];
+    const shares = [
+      ...breakdown.categories.map((c) => c.sharePct ?? 0),
+      breakdown.other?.sharePct ?? 0,
+    ];
     const total = shares.reduce((a, b) => a + b, 0);
     expect(total).toBeGreaterThan(90);
     expect(total).toBeLessThanOrEqual(100.5);
@@ -55,7 +58,10 @@ describe('Nick statement shaping', () => {
 
 describe('period helpers', () => {
   it('parsePeriodInput accepts start_end and rejects garbage from the model', () => {
-    expect(parsePeriodInput('2026-01-01_2026-06-30')).toEqual({ start: '2026-01-01', end: '2026-06-30' });
+    expect(parsePeriodInput('2026-01-01_2026-06-30')).toEqual({
+      start: '2026-01-01',
+      end: '2026-06-30',
+    });
     expect(parsePeriodInput('2026-06-30_2026-01-01')).toBeNull();
     expect(parsePeriodInput('June 2026')).toBeNull();
     expect(parsePeriodInput(null)).toBeNull();
@@ -66,7 +72,13 @@ describe('period helpers', () => {
     const older = report({ id: 'old', periodStart: '2026-01-01', periodEnd: '2026-03-31' });
     const reports = [newest, older];
     const noPage = { context: { page: 'chat' as const, period: null, line: null } };
-    const withPage = { context: { page: 'profit_and_loss' as const, period: { start: '2026-01-01', end: '2026-03-31', label: 'Q1 2026' }, line: null } };
+    const withPage = {
+      context: {
+        page: 'profit_and_loss' as const,
+        period: { start: '2026-01-01', end: '2026-03-31', label: 'Q1 2026' },
+        line: null,
+      },
+    };
     expect(pickReport(noPage, reports, null)?.id).toBe('new');
     expect(pickReport(withPage, reports, null)?.id).toBe('old');
     expect(pickReport(withPage, reports, '2026-04-01_2026-06-30')?.id).toBe('new');

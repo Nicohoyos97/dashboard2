@@ -71,7 +71,9 @@ export function contextBlock(facts: ContextFacts): string {
   const line = facts.context.line;
   if (line && facts.selectedLineCite && facts.selectedLineFormatted) {
     const type = line.reportType === 'balance_sheet' ? 'Balance Sheet' : 'Profit & Loss';
-    const prior = facts.selectedLineFormatted.prior ? `, prior column ${facts.selectedLineFormatted.prior}` : '';
+    const prior = facts.selectedLineFormatted.prior
+      ? `, prior column ${facts.selectedLineFormatted.prior}`
+      : '';
     const page = line.page ? `, page ${line.page}` : '';
     lines.push(
       `Selected line: "${line.accountName}" on the ${type} for ${line.periodStart} to ${line.periodEnd}${page}: ` +

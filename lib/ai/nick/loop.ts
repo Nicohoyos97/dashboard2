@@ -12,7 +12,10 @@ import { CITATION_RETRY_MESSAGE } from './prompts';
 import type { ToolDefinition } from './tools/schemas';
 import { type CitationRecord, NickError, type NickEvent } from './types';
 
-export type ToolRunner = (name: string, input: unknown) => Promise<{ ok: boolean; result: unknown }>;
+export type ToolRunner = (
+  name: string,
+  input: unknown,
+) => Promise<{ ok: boolean; result: unknown }>;
 
 export type LoopParams = {
   anthropic: Anthropic;
@@ -46,7 +49,10 @@ function textOf(message: Anthropic.Message): string {
 
 function countUsage(usage: Anthropic.Usage): { input: number; output: number } {
   return {
-    input: usage.input_tokens + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
+    input:
+      usage.input_tokens +
+      (usage.cache_creation_input_tokens ?? 0) +
+      (usage.cache_read_input_tokens ?? 0),
     output: usage.output_tokens,
   };
 }
@@ -85,7 +91,9 @@ export async function runToolLoop(params: LoopParams): Promise<LoopOutcome> {
     if (message.stop_reason === 'refusal') throw new NickError('refusal');
 
     if (message.stop_reason === 'tool_use') {
-      const toolUses = message.content.filter((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use');
+      const toolUses = message.content.filter(
+        (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
+      );
       // Interim prose ("let me check…") is cleared so only the final answer stays on screen.
       params.emit({ type: 'reset' });
       messages.push({ role: 'assistant', content: message.content });
@@ -95,7 +103,12 @@ export async function runToolLoop(params: LoopParams): Promise<LoopOutcome> {
           const { ok, result } = await params.runTool(use.name, use.input);
           toolCalls.push({ name: use.name, ok });
           params.onToolCall?.({ name: use.name, input: use.input, result, ok });
-          return { type: 'tool_result', tool_use_id: use.id, content: JSON.stringify(result), ...(ok ? {} : { is_error: true }) };
+          return {
+            type: 'tool_result',
+            tool_use_id: use.id,
+            content: JSON.stringify(result),
+            ...(ok ? {} : { is_error: true }),
+          };
         }),
       );
       messages.push({ role: 'user', content: results });

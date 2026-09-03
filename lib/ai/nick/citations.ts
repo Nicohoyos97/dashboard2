@@ -64,9 +64,11 @@ export function stripMarkers(text: string): string {
 // comma-grouped number, or five or more digits. Years, page numbers and small
 // counts pass on their own — those are not figures the reader could mistake
 // for a statement value.
-const FIGURE = /[$€£]\s?\d|\d[\d,]*\.\d{1,2}(?!\d)|\d+(?:\.\d+)?\s?%|\b\d{1,3}(?:,\d{3})+\b|\b\d{5,}\b/;
+const FIGURE =
+  /[$€£]\s?\d|\d[\d,]*\.\d{1,2}(?!\d)|\d+(?:\.\d+)?\s?%|\b\d{1,3}(?:,\d{3})+\b|\b\d{5,}\b/;
 // Download links and identifiers carry digits that are not statement values.
-const NOT_FIGURES = /https?:\/\/\S+|\/\S*\/\S*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const NOT_FIGURES =
+  /https?:\/\/\S+|\/\S*\/\S*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
 export function hasFinancialFigure(text: string): boolean {
   return FIGURE.test(text.replace(NOT_FIGURES, ' '));

@@ -29,13 +29,24 @@ export async function GET(_request: Request, ctx: { params: Promise<{ exportId: 
     .eq('status', 'ready')
     .maybeSingle();
   if (!row || !row.storage_path) return new NextResponse(null, { status: 404 });
-  if (row.expires_at && Date.parse(row.expires_at) < Date.now()) return new NextResponse(null, { status: 410 });
+  if (row.expires_at && Date.parse(row.expires_at) < Date.now())
+    return new NextResponse(null, { status: 410 });
 
   const filename = row.storage_path.split('/').pop() ?? 'export.csv';
-  const { data: signed, error } = await supabase.storage.from('exports').createSignedUrl(row.storage_path, 60, { download: filename });
+  const { data: signed, error } = await supabase.storage
+    .from('exports')
+    .createSignedUrl(row.storage_path, 60, { download: filename });
   if (error || !signed) return new NextResponse(null, { status: 404 });
 
-  await logAccess({ action: 'export.download', resourceType: 'generated_export', resourceId: row.id, businessEntityId: row.business_entity_id });
+  await logAccess({
+    action: 'export.download',
+    resourceType: 'generated_export',
+    resourceId: row.id,
+    businessEntityId: row.business_entity_id,
+  });
 
-  return NextResponse.redirect(signed.signedUrl, { status: 302, headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.redirect(signed.signedUrl, {
+    status: 302,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }

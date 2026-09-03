@@ -6,7 +6,14 @@
 // with `node` type stripping (no path aliases, no non-erasable syntax).
 import { createServer } from 'node:http';
 
-type Block = { type: string; text?: string; tool_use_id?: string; content?: string; input?: unknown; name?: string };
+type Block = {
+  type: string;
+  text?: string;
+  tool_use_id?: string;
+  content?: string;
+  input?: unknown;
+  name?: string;
+};
 type Msg = { role: string; content: string | Block[] };
 type Body = { stream?: boolean; system?: string | { text: string }[]; messages?: Msg[] };
 
@@ -17,8 +24,22 @@ function sse(type: string, data: Record<string, unknown>): string {
   return `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
 }
 
-function streamed(text: string | null, toolUse: { name: string; input: Record<string, unknown> } | null): string {
-  let out = sse('message_start', { message: { id: 'msg_mock', type: 'message', role: 'assistant', model: 'mock', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 50, output_tokens: 1 } } });
+function streamed(
+  text: string | null,
+  toolUse: { name: string; input: Record<string, unknown> } | null,
+): string {
+  let out = sse('message_start', {
+    message: {
+      id: 'msg_mock',
+      type: 'message',
+      role: 'assistant',
+      model: 'mock',
+      content: [],
+      stop_reason: null,
+      stop_sequence: null,
+      usage: { input_tokens: 50, output_tokens: 1 },
+    },
+  });
   let index = 0;
   if (text !== null) {
     out += sse('content_block_start', { index, content_block: { type: 'text', text: '' } });
@@ -28,11 +49,25 @@ function streamed(text: string | null, toolUse: { name: string; input: Record<st
   }
   if (toolUse) {
     toolCounter += 1;
-    out += sse('content_block_start', { index, content_block: { type: 'tool_use', id: `toolu_${toolCounter}`, name: toolUse.name, input: {} } });
-    out += sse('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(toolUse.input) } });
+    out += sse('content_block_start', {
+      index,
+      content_block: {
+        type: 'tool_use',
+        id: `toolu_${toolCounter}`,
+        name: toolUse.name,
+        input: {},
+      },
+    });
+    out += sse('content_block_delta', {
+      index,
+      delta: { type: 'input_json_delta', partial_json: JSON.stringify(toolUse.input) },
+    });
     out += sse('content_block_stop', { index });
   }
-  out += sse('message_delta', { delta: { stop_reason: toolUse ? 'tool_use' : 'end_turn', stop_sequence: null }, usage: { output_tokens: 20 } });
+  out += sse('message_delta', {
+    delta: { stop_reason: toolUse ? 'tool_use' : 'end_turn', stop_sequence: null },
+    usage: { output_tokens: 20 },
+  });
   out += sse('message_stop', {});
   return out;
 }
@@ -42,7 +77,9 @@ function systemText(body: Body): string {
   return (body.system ?? []).map((block) => block.text).join('\n');
 }
 
-function lastToolResult(body: Body): { name: string | null; result: Record<string, unknown> } | null {
+function lastToolResult(
+  body: Body,
+): { name: string | null; result: Record<string, unknown> } | null {
   const last = body.messages?.at(-1);
   if (!last || typeof last.content === 'string') return null;
   const block = last.content.find((b) => b.type === 'tool_result');
@@ -50,8 +87,15 @@ function lastToolResult(body: Body): { name: string | null; result: Record<strin
   try {
     const result: unknown = JSON.parse(block.content);
     const previous = body.messages?.at(-2);
-    const call = previous && typeof previous.content !== 'string' ? previous.content.find((b) => b.type === 'tool_use') : undefined;
-    return { name: call?.name ?? null, result: typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : {} };
+    const call =
+      previous && typeof previous.content !== 'string'
+        ? previous.content.find((b) => b.type === 'tool_use')
+        : undefined;
+    return {
+      name: call?.name ?? null,
+      result:
+        typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : {},
+    };
   } catch {
     return null;
   }
@@ -60,7 +104,9 @@ function lastToolResult(body: Body): { name: string | null; result: Record<strin
 function lastUserText(body: Body): string {
   const last = body.messages?.at(-1);
   if (!last) return '';
-  return typeof last.content === 'string' ? last.content : last.content.map((b) => b.text ?? '').join(' ');
+  return typeof last.content === 'string'
+    ? last.content
+    : last.content.map((b) => b.text ?? '').join(' ');
 }
 
 function routerDecision(body: Body): Record<string, unknown> {
@@ -78,35 +124,72 @@ function answer(body: Body): string {
     const r = tool.result;
     console.log(`[mock] tool_result ${tool.name ?? 'unknown'}: ${JSON.stringify(r).slice(0, 240)}`);
     if (tool.name === 'list_available_reports') {
-      const documents = Array.isArray(r.documents) ? (r.documents as { documentVersionId?: string | null }[]) : [];
+      const documents = Array.isArray(r.documents)
+        ? (r.documents as { documentVersionId?: string | null }[])
+        : [];
       const versionId = documents.find((d) => d.documentVersionId)?.documentVersionId;
       const confirmed = /Pending confirmation: the user has now confirmed/.test(system);
-      if (versionId) return streamed(null, { name: 'get_report_download_link', input: { document_version_id: versionId, confirmed } });
+      if (versionId)
+        return streamed(null, {
+          name: 'get_report_download_link',
+          input: { document_version_id: versionId, confirmed },
+        });
       return streamed('There is no published document to download yet.', null);
     }
-    if (r.requires_confirmation === true) return streamed(`I can prepare the download of ${String(r.describe ?? 'that document')}. Do you want me to proceed?`, null);
+    if (r.requires_confirmation === true)
+      return streamed(
+        `I can prepare the download of ${String(r.describe ?? 'that document')}. Do you want me to proceed?`,
+        null,
+      );
     if (typeof r.url === 'string') return streamed(`Here is your download link: ${r.url}`, null);
     if (tool.name === 'get_profit_and_loss') {
-      const metrics = r.metrics as { netIncome?: { current?: { formatted?: string; cite?: string } | null } } | undefined;
+      const metrics = r.metrics as
+        | { netIncome?: { current?: { formatted?: string; cite?: string } | null } }
+        | undefined;
       const current = metrics?.netIncome?.current;
-      if (current?.formatted && current.cite) return streamed(`Net income for the period was **${current.formatted}** [${current.cite}].`, null);
-      return streamed('The statement does not print a net income total, so I cannot quote one.', null);
+      if (current?.formatted && current.cite)
+        return streamed(
+          `Net income for the period was **${current.formatted}** [${current.cite}].`,
+          null,
+        );
+      return streamed(
+        'The statement does not print a net income total, so I cannot quote one.',
+        null,
+      );
     }
     return streamed('I checked, but that information is not available.', null);
   }
 
   const text = lastUserText(body);
   const cite = /Cite it as \[(c\d+)\]/.exec(system)?.[1];
-  const line = /Selected line: "([^"]+)" on the (.+?) for (\S+) to (\S+)(?:, page (\d+))?: (.+?)(?:, prior column|\. Cite it)/.exec(system);
+  const line =
+    /Selected line: "([^"]+)" on the (.+?) for (\S+) to (\S+)(?:, page (\d+))?: (.+?)(?:, prior column|\. Cite it)/.exec(
+      system,
+    );
   if (cite && line) {
     const [, name, , , , page, amount] = line;
-    return streamed(`"${name}" is the amount printed on your statement${page ? ` on page ${page}` : ''}: ${amount} [${cite}]. It is one line of the published report, not a computed figure.`, null);
+    return streamed(
+      `"${name}" is the amount printed on your statement${page ? ` on page ${page}` : ''}: ${amount} [${cite}]. It is one line of the published report, not a computed figure.`,
+      null,
+    );
   }
-  const pending = /Pending confirmation: the user has now confirmed "(.+?)"\. You may call (\w+) with confirmed: true/.exec(system);
-  if (pending) return streamed(null, { name: 'list_available_reports', input: { report_type: null } });
-  if (/download|descarg/i.test(text)) return streamed(null, { name: 'list_available_reports', input: { report_type: null } });
-  if (/net income|how is|doing|utilidad/i.test(text)) return streamed(null, { name: 'get_profit_and_loss', input: { period: null, detail: 'summary', query: null } });
-  return streamed('I can explain any figure on your published statements. What would you like to know?', null);
+  const pending =
+    /Pending confirmation: the user has now confirmed "(.+?)"\. You may call (\w+) with confirmed: true/.exec(
+      system,
+    );
+  if (pending)
+    return streamed(null, { name: 'list_available_reports', input: { report_type: null } });
+  if (/download|descarg/i.test(text))
+    return streamed(null, { name: 'list_available_reports', input: { report_type: null } });
+  if (/net income|how is|doing|utilidad/i.test(text))
+    return streamed(null, {
+      name: 'get_profit_and_loss',
+      input: { period: null, detail: 'summary', query: null },
+    });
+  return streamed(
+    'I can explain any figure on your published statements. What would you like to know?',
+    null,
+  );
 }
 
 const server = createServer((request, response) => {

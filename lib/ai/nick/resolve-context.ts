@@ -10,10 +10,16 @@ import type { PageContext, ResolvedContext, SelectedLine } from './types';
 
 type PeriodSpan = { periodStart: string; periodEnd: string };
 
-async function loadSelectedLine(supabase: Db, entityId: string, lineId: string): Promise<SelectedLine | null> {
+async function loadSelectedLine(
+  supabase: Db,
+  entityId: string,
+  lineId: string,
+): Promise<SelectedLine | null> {
   const { data } = await supabase
     .from('financial_statement_lines')
-    .select('id, account_name, current, prior, page_number, report_id, financial_reports!inner(report_type, period_start, period_end, currency, source, document_version_id, status)')
+    .select(
+      'id, account_name, current, prior, page_number, report_id, financial_reports!inner(report_type, period_start, period_end, currency, source, document_version_id, status)',
+    )
     .eq('id', lineId)
     .eq('business_entity_id', entityId)
     .eq('financial_reports.status', 'published')
@@ -47,8 +53,11 @@ export async function resolveContext(
   const page = raw?.page ?? 'chat';
   const wanted = parsePeriodInput(raw?.period);
   const spans = [...published.reports, ...published.statements];
-  const known = wanted && spans.some((span) => span.periodStart === wanted.start && span.periodEnd === wanted.end);
-  const period = wanted && known ? { ...wanted, label: periodText(wanted.start, wanted.end, locale) } : null;
+  const known =
+    wanted &&
+    spans.some((span) => span.periodStart === wanted.start && span.periodEnd === wanted.end);
+  const period =
+    wanted && known ? { ...wanted, label: periodText(wanted.start, wanted.end, locale) } : null;
   const line = raw?.lineId ? await loadSelectedLine(supabase, entityId, raw.lineId) : null;
   return { page, period, line };
 }

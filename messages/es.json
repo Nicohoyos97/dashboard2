@@ -81,7 +81,9 @@
   "Theme": {
     "selector": "Tema de color",
     "light": "Tema claro",
-    "dark": "Tema oscuro"
+    "dark": "Tema oscuro",
+    "toDark": "Cambiar al tema oscuro",
+    "toLight": "Cambiar al tema claro"
   },
   "AuthErrors": {
     "checkDetails": "Revisa tus datos e inténtalo de nuevo.",
@@ -198,9 +200,10 @@
     "statementsBalanceSheet": "Balance general",
     "expenses": "Gastos",
     "incomeTaxes": "Impuesto sobre la renta",
-    "salesTaxes": "Impuestos sobre ventas",
-    "nick": "Insights con Nick",
-    "settings": "Configuración"
+    "salesTaxes": "Ventas",
+    "nick": "Pregúntale a Nick",
+    "settings": "Configuración",
+    "help": "Ayuda y soporte"
   },
   "Shell": {
     "openMenu": "Abrir menú",
@@ -215,7 +218,15 @@
     "roleViewer": "Lector",
     "roleMasterAdmin": "Administrador",
     "roleFirmStaff": "Equipo de la firma",
-    "comingSoon": "Pronto"
+    "comingSoon": "Pronto",
+    "search": "Buscar…",
+    "searchHint": "⌘K",
+    "searchGoTo": "Ir a",
+    "searchAskNick": "Preguntarle a Nick: \"{query}\"",
+    "searchEmpty": "Escribe para ir a una página o pulsa Enter para preguntarle a Nick",
+    "help": "Ayuda y soporte",
+    "accountMenu": "Menú de la cuenta",
+    "topBar": "Barra de herramientas"
   },
   "Admin": {
     "portalBadge": "Portal de la firma",
@@ -624,7 +635,7 @@
     "report_needs_review_body": "{count, plural, one {# documento está} other {# documentos están}} en revisión con tu contador y aparecerá al publicarse."
   },
   "Nick": {
-    "title": "Insights con Nick",
+    "title": "Pregúntale a Nick",
     "lede": "Pregunta sobre los estados publicados, el efectivo, los impuestos y los recordatorios de {business}. Cada cifra viene con su fuente.",
     "ledeGeneric": "Pregunta sobre tus estados publicados, tu efectivo, tus impuestos y tus recordatorios. Cada cifra viene con su fuente.",
     "panelTitle": "Pregúntale a Nick",
@@ -695,6 +706,27 @@
     "s_chat_4": "Explícame mi gasto más grande",
     "s_line_1": "Explícame esta línea",
     "s_line_2": "¿Por qué cambió esta línea?",
-    "downloadLink": "Descargar archivo"
+    "downloadLink": "Descargar archivo",
+    "deleteConversation": "Eliminar conversación",
+    "deleteConfirm": "¿Eliminar esta conversación?",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteFailed": "No se pudo eliminar la conversación."
+  },
+  "Help": {
+    "title": "Ayuda y soporte",
+    "lede": "Cómo funciona el portal y cómo contactar a tu contador.",
+    "q1": "¿De dónde salen las cifras?",
+    "a1": "Cada cifra viene de un documento que tu contador publicó: un estado de resultados, un balance general, un estado de cuenta bancario o un registro fiscal. Las entradas y salidas de efectivo salen solo de los estados de cuenta; los ingresos y la utilidad neta, solo del estado de resultados. Nada es una estimación salvo que esté marcado así.",
+    "q2": "¿Cuándo aparecen los estados nuevos?",
+    "a2": "Cuando Hoyos Baker termina de revisar y conciliar un documento, lo publica y aparece en tu Resumen, en los estados y en la biblioteca de reportes. Hasta entonces se queda con la firma.",
+    "q3": "¿Qué puede responder Nick?",
+    "a3": "Nick explica tus cifras publicadas, compara períodos, lista recordatorios y puede preparar una descarga o una exportación CSV cuando lo confirmes. Cada número que Nick menciona lleva un chip de fuente en el que puedes hacer clic. Nick no sustituye a tu contador y no da consejos legales, fiscales ni de inversión.",
+    "q4": "¿Cómo descargo un documento original?",
+    "a4": "Usa Descargar reportes en el Resumen, el botón de descarga de un estado, la biblioteca de reportes, o pídeselo a Nick. Cada descarga entrega el archivo original exacto mediante un enlace válido por un minuto.",
+    "q5": "¿A quién contacto?",
+    "a5": "A tu contador en Hoyos Baker, por el canal que ya usas. Menciona el nombre del negocio y el período de tu consulta; ellos ven las mismas pantallas que tú.",
+    "conversationsTitle": "Tus conversaciones con Nick",
+    "conversationsBody": "Las conversaciones son privadas: ni otros miembros del negocio ni la firma pueden leerlas. Puedes eliminar una conversación en cualquier momento desde la página Pregúntale a Nick."
   }
 }

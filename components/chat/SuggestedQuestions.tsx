@@ -2,12 +2,22 @@
 
 import { useTranslations } from 'next-intl';
 
-export function SuggestedQuestions({ keys, onPick, disabled }: { keys: readonly string[]; onPick: (text: string) => void; disabled: boolean }) {
+export function SuggestedQuestions({
+  keys,
+  onPick,
+  disabled,
+}: {
+  keys: readonly string[];
+  onPick: (text: string) => void;
+  disabled: boolean;
+}) {
   const t = useTranslations('Nick');
   if (keys.length === 0) return null;
   return (
     <div>
-      <p className="text-muted-foreground text-[11.5px] font-semibold tracking-[0.1em] uppercase">{t('suggestionsTitle')}</p>
+      <p className="text-muted-foreground text-[11.5px] font-semibold tracking-[0.1em] uppercase">
+        {t('suggestionsTitle')}
+      </p>
       <ul className="mt-2 flex flex-wrap gap-2">
         {keys.map((key) => {
           const text = t(key);

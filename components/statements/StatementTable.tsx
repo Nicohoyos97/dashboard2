@@ -35,14 +35,28 @@ export type StatementMeta = {
 
 type Flat = { node: StatementNode; parent: StatementNode | null; visible: boolean };
 
-function flatten(nodes: StatementNode[], parent: StatementNode | null, collapsed: Set<string>, query: string, hideZero: boolean, out: Flat[]): boolean {
+function flatten(
+  nodes: StatementNode[],
+  parent: StatementNode | null,
+  collapsed: Set<string>,
+  query: string,
+  hideZero: boolean,
+  out: Flat[],
+): boolean {
   let any = false;
   for (const node of nodes) {
-    const isZero = (node.currentCents ?? 0) === 0 && (node.priorCents ?? 0) === 0 && !node.isSection;
-    const matches = query === '' || node.accountName.toLowerCase().includes(query) || (node.accountNumber ?? '').includes(query);
+    const isZero =
+      (node.currentCents ?? 0) === 0 && (node.priorCents ?? 0) === 0 && !node.isSection;
+    const matches =
+      query === '' ||
+      node.accountName.toLowerCase().includes(query) ||
+      (node.accountNumber ?? '').includes(query);
     const index = out.length;
     out.push({ node, parent, visible: false });
-    const childVisible = collapsed.has(node.id) && query === '' ? false : flatten(node.children, node, collapsed, query, hideZero, out);
+    const childVisible =
+      collapsed.has(node.id) && query === ''
+        ? false
+        : flatten(node.children, node, collapsed, query, hideZero, out);
     const visible = (matches && !(hideZero && isZero)) || childVisible;
     const row = out[index];
     if (row) row.visible = visible;
@@ -75,12 +89,17 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
   }, [roots, collapsed, query, hideZero]);
 
   const money = (cents: number | null) =>
-    cents === null ? '' : new Intl.NumberFormat(locale, { style: 'currency', currency: meta.currency }).format(cents / 100);
-  const expenseLike = (node: StatementNode) => /expense|cost|liabilit/i.test(node.section ?? '') || /expense|cost/i.test(node.accountName);
+    cents === null
+      ? ''
+      : new Intl.NumberFormat(locale, { style: 'currency', currency: meta.currency }).format(
+          cents / 100,
+        );
+  const expenseLike = (node: StatementNode) =>
+    /expense|cost|liabilit/i.test(node.section ?? '') || /expense|cost/i.test(node.accountName);
   const deltaTone = (node: StatementNode) => {
     if (node.deltaCents === null || node.deltaCents === 0) return 'text-muted-foreground';
     const goodWhenUp = !expenseLike(node);
-    return (node.deltaCents > 0) === goodWhenUp ? 'text-success' : 'text-danger';
+    return node.deltaCents > 0 === goodWhenUp ? 'text-success' : 'text-danger';
   };
 
   function toggle(id: string) {
@@ -94,7 +113,11 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
 
   const allIds = useMemo(() => {
     const ids: string[] = [];
-    const walk = (nodes: StatementNode[]) => nodes.forEach((n) => { if (n.children.length) ids.push(n.id); walk(n.children); });
+    const walk = (nodes: StatementNode[]) =>
+      nodes.forEach((n) => {
+        if (n.children.length) ids.push(n.id);
+        walk(n.children);
+      });
     walk(roots);
     return ids;
   }, [roots]);
@@ -103,15 +126,41 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="relative min-w-[220px] flex-1">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" aria-hidden="true" />
-          <input aria-label={t('search')} placeholder={t('search')} value={query} onChange={(e) => setQuery(e.target.value)} className={`${inputClass} h-10 pl-9`} />
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            aria-hidden="true"
+          />
+          <input
+            aria-label={t('search')}
+            placeholder={t('search')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={`${inputClass} h-10 pl-9`}
+          />
         </label>
         <label className="text-muted-foreground flex items-center gap-2 text-[13.5px]">
-          <input type="checkbox" checked={hideZero} onChange={(e) => setHideZero(e.target.checked)} className="accent-blue size-4" />
+          <input
+            type="checkbox"
+            checked={hideZero}
+            onChange={(e) => setHideZero(e.target.checked)}
+            className="accent-blue size-4"
+          />
           {t('hideZero')}
         </label>
-        <button type="button" onClick={() => setCollapsed(new Set())} className="text-blue text-[13px] font-semibold hover:underline">{t('expandAll')}</button>
-        <button type="button" onClick={() => setCollapsed(new Set(allIds))} className="text-blue text-[13px] font-semibold hover:underline">{t('collapseAll')}</button>
+        <button
+          type="button"
+          onClick={() => setCollapsed(new Set())}
+          className="text-blue text-[13px] font-semibold hover:underline"
+        >
+          {t('expandAll')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setCollapsed(new Set(allIds))}
+          className="text-blue text-[13px] font-semibold hover:underline"
+        >
+          {t('collapseAll')}
+        </button>
       </div>
 
       <div className="overflow-x-auto">
@@ -134,8 +183,13 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
                   key={node.id}
                   tabIndex={0}
                   onClick={() => select(node, parent)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(node, parent); } }}
-                  className={`hover:bg-blue-pale/60 focus-visible:bg-blue-pale/60 cursor-pointer outline-none transition ${node.isTotal ? 'bg-paper' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      select(node, parent);
+                    }
+                  }}
+                  className={`hover:bg-blue-pale/60 focus-visible:bg-blue-pale/60 cursor-pointer transition outline-none ${node.isTotal ? 'bg-paper' : ''}`}
                 >
                   <td className="px-3 py-2" style={{ paddingLeft: `${12 + node.depth * 18}px` }}>
                     <span className="flex items-center gap-1.5">
@@ -144,28 +198,52 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
                           type="button"
                           aria-label={collapsed.has(node.id) ? t('expandAll') : t('collapseAll')}
                           aria-expanded={!collapsed.has(node.id)}
-                          onClick={(e) => { e.stopPropagation(); toggle(node.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(node.id);
+                          }}
                           className="text-muted-foreground hover:text-ink -ml-1 inline-flex size-5 items-center justify-center rounded"
                         >
-                          <ChevronRight className={`size-4 transition ${collapsed.has(node.id) ? '' : 'rotate-90'}`} aria-hidden="true" />
+                          <ChevronRight
+                            className={`size-4 transition ${collapsed.has(node.id) ? '' : 'rotate-90'}`}
+                            aria-hidden="true"
+                          />
                         </button>
                       ) : (
                         <span className="inline-block size-5" aria-hidden="true" />
                       )}
-                      <span className={strong ? 'text-ink font-semibold' : 'text-ink'}>{node.accountName}</span>
-                      {node.accountNumber && <span className="text-muted-foreground text-[12px]">{node.accountNumber}</span>}
+                      <span className={strong ? 'text-ink font-semibold' : 'text-ink'}>
+                        {node.accountName}
+                      </span>
+                      {node.accountNumber && (
+                        <span className="text-muted-foreground text-[12px]">
+                          {node.accountNumber}
+                        </span>
+                      )}
                     </span>
                   </td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${strong ? 'font-semibold' : ''}`}>{money(node.currentCents)}</td>
-                  {meta.hasPrior && <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">{money(node.priorCents)}</td>}
+                  <td
+                    className={`px-3 py-2 text-right tabular-nums ${strong ? 'font-semibold' : ''}`}
+                  >
+                    {money(node.currentCents)}
+                  </td>
                   {meta.hasPrior && (
-                    <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(node)}`}>
-                      {node.deltaCents === null ? '' : `${node.deltaCents > 0 ? '+' : ''}${money(node.deltaCents)}`}
+                    <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                      {money(node.priorCents)}
                     </td>
                   )}
                   {meta.hasPrior && (
                     <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(node)}`}>
-                      {node.deltaPct === null ? '' : `${node.deltaPct > 0 ? '+' : ''}${node.deltaPct.toFixed(1)}%`}
+                      {node.deltaCents === null
+                        ? ''
+                        : `${node.deltaCents > 0 ? '+' : ''}${money(node.deltaCents)}`}
+                    </td>
+                  )}
+                  {meta.hasPrior && (
+                    <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(node)}`}>
+                      {node.deltaPct === null
+                        ? ''
+                        : `${node.deltaPct > 0 ? '+' : ''}${node.deltaPct.toFixed(1)}%`}
                     </td>
                   )}
                 </tr>
@@ -175,7 +253,12 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
         </table>
       </div>
 
-      <LineDrawer selected={selected?.node ?? null} parent={selected?.parent ?? null} meta={meta} onClose={() => setSelected(null)} />
+      <LineDrawer
+        selected={selected?.node ?? null}
+        parent={selected?.parent ?? null}
+        meta={meta}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

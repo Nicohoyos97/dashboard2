@@ -33,7 +33,13 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/taxes/income', labelKey: 'incomeTaxes', disabled: true },
   { href: '/taxes/sales', labelKey: 'salesTaxes', disabled: true },
   { href: '/chat', labelKey: 'nick' },
+];
+
+// Utility links under the user block at the bottom of the sidebar (§7:
+// Settings · Profile · Help & FAQs).
+export const BOTTOM_NAV_ITEMS: NavItem[] = [
   { href: '/settings', labelKey: 'settings' },
+  { href: '/help', labelKey: 'help' },
 ];
 
 // Active when the path equals the item href OR is a true sub-route (href + "/").

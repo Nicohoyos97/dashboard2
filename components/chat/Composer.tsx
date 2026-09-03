@@ -8,7 +8,15 @@ import { NICK_LIMITS } from '@/lib/ai/nick/config';
 
 // Message input: Enter sends, Shift+Enter adds a line; disabled while Nick is
 // answering so a turn can never overlap another on the same session.
-export function Composer({ onSend, disabled, autoFocus = false }: { onSend: (text: string) => void; disabled: boolean; autoFocus?: boolean }) {
+export function Composer({
+  onSend,
+  disabled,
+  autoFocus = false,
+}: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+  autoFocus?: boolean;
+}) {
   const t = useTranslations('Nick');
   const [value, setValue] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);

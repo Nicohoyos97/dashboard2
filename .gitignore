@@ -31,3 +31,6 @@ supabase/.temp
 # test artifacts
 test-results
 playwright-report
+
+/.next-e2e/
+/.next-build/

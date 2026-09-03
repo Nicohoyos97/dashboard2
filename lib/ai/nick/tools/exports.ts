@@ -16,7 +16,12 @@ import type { ToolInput } from './schemas';
 
 function isConfirmed(ctx: ToolContext, action: PendingAction, confirmed: boolean): boolean {
   const pending = ctx.confirmedAction;
-  return confirmed && pending !== null && pending.tool === action.tool && pending.resourceId === action.resourceId;
+  return (
+    confirmed &&
+    pending !== null &&
+    pending.tool === action.tool &&
+    pending.resourceId === action.resourceId
+  );
 }
 
 function askConfirmation(ctx: ToolContext, action: PendingAction, details: ToolResult): ToolResult {
@@ -26,11 +31,15 @@ function askConfirmation(ctx: ToolContext, action: PendingAction, details: ToolR
     action: action.tool,
     describe: action.label,
     ...details,
-    instruction: 'Describe this to the user and ask them to confirm. Do not call again with confirmed: true until the user explicitly confirms in a later message.',
+    instruction:
+      'Describe this to the user and ask them to confirm. Do not call again with confirmed: true until the user explicitly confirms in a later message.',
   };
 }
 
-export async function getReportDownloadLink(ctx: ToolContext, input: ToolInput<'get_report_download_link'>): Promise<ToolResult> {
+export async function getReportDownloadLink(
+  ctx: ToolContext,
+  input: ToolInput<'get_report_download_link'>,
+): Promise<ToolResult> {
   // Two lookups rather than an embed: documents and document_versions
   // reference each other (document_id / current_version_id), which makes a
   // PostgREST embed ambiguous. RLS still gates both reads.
@@ -52,16 +61,32 @@ export async function getReportDownloadLink(ctx: ToolContext, input: ToolInput<'
   if (!data || !doc || doc.status !== 'published' || doc.current_version_id !== data.id) {
     return { available: false, reason: 'document_not_published' };
   }
-  const period = doc.period_start && doc.period_end ? periodOf({ periodStart: doc.period_start, periodEnd: doc.period_end }, ctx.locale) : null;
+  const period =
+    doc.period_start && doc.period_end
+      ? periodOf({ periodStart: doc.period_start, periodEnd: doc.period_end }, ctx.locale)
+      : null;
   const action: PendingAction = {
     tool: 'get_report_download_link',
     resourceId: data.id,
     label: `${doc.title}${period ? ` (${period.label})` : ''} — ${data.original_filename}`,
   };
   if (!isConfirmed(ctx, action, input.confirmed)) {
-    return askConfirmation(ctx, action, { document: { title: doc.title, type: doc.document_type, period, filename: data.original_filename } });
+    return askConfirmation(ctx, action, {
+      document: {
+        title: doc.title,
+        type: doc.document_type,
+        period,
+        filename: data.original_filename,
+      },
+    });
   }
-  await logAccess({ action: 'chat.download_link.issued', resourceType: 'document_version', resourceId: data.id, businessEntityId: ctx.entityId, metadata: { session_id: ctx.sessionId } });
+  await logAccess({
+    action: 'chat.download_link.issued',
+    resourceType: 'document_version',
+    resourceId: data.id,
+    businessEntityId: ctx.entityId,
+    metadata: { session_id: ctx.sessionId },
+  });
   return {
     available: true,
     document: { title: doc.title, period, filename: data.original_filename },
@@ -70,13 +95,24 @@ export async function getReportDownloadLink(ctx: ToolContext, input: ToolInput<'
   };
 }
 
-export async function createFinancialExport(ctx: ToolContext, input: ToolInput<'create_financial_export'>): Promise<ToolResult> {
+export async function createFinancialExport(
+  ctx: ToolContext,
+  input: ToolInput<'create_financial_export'>,
+): Promise<ToolResult> {
   const report = await loadPublishedReport(ctx.supabase, ctx.entityId, input.report_id);
   if (!report) return { available: false, reason: 'report_not_published' };
   const filename = statementCsvFilename(report);
-  const action: PendingAction = { tool: 'create_financial_export', resourceId: report.id, label: `CSV export — ${filename}` };
+  const action: PendingAction = {
+    tool: 'create_financial_export',
+    resourceId: report.id,
+    label: `CSV export — ${filename}`,
+  };
   if (!isConfirmed(ctx, action, input.confirmed)) {
-    return askConfirmation(ctx, action, { report: reportOut(ctx, report), format: input.format, filename });
+    return askConfirmation(ctx, action, {
+      report: reportOut(ctx, report),
+      format: input.format,
+      filename,
+    });
   }
 
   const lines = await loadReportLines(ctx.supabase, ctx.entityId, report.id);
@@ -85,7 +121,9 @@ export async function createFinancialExport(ctx: ToolContext, input: ToolInput<'
   const path = `${ctx.entityId}/${exportId}/${filename}`;
   const expiresAt = new Date(Date.now() + NICK_LIMITS.exportTtlHours * 3_600_000).toISOString();
   const admin = ctx.admin();
-  const upload = await admin.storage.from('exports').upload(path, csv, { contentType: 'text/csv; charset=utf-8', upsert: false });
+  const upload = await admin.storage
+    .from('exports')
+    .upload(path, csv, { contentType: 'text/csv; charset=utf-8', upsert: false });
   if (upload.error) return { available: false, reason: 'export_failed' };
   const { error } = await admin.from('generated_exports').insert({
     id: exportId,
@@ -99,7 +137,13 @@ export async function createFinancialExport(ctx: ToolContext, input: ToolInput<'
   });
   if (error) return { available: false, reason: 'export_failed' };
 
-  await logAccess({ action: 'chat.export.created', resourceType: 'generated_export', resourceId: exportId, businessEntityId: ctx.entityId, metadata: { report_id: report.id, line_count: lines.length, kind: 'csv' } });
+  await logAccess({
+    action: 'chat.export.created',
+    resourceType: 'generated_export',
+    resourceId: exportId,
+    businessEntityId: ctx.entityId,
+    metadata: { report_id: report.id, line_count: lines.length, kind: 'csv' },
+  });
   return {
     available: true,
     report: reportOut(ctx, report),

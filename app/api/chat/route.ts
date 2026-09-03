@@ -55,7 +55,8 @@ export async function POST(request: Request) {
         emit,
       })
         .catch((error: unknown) => {
-          if (!(error instanceof NickError)) console.error('[nick] turn failed:', error instanceof Error ? error.name : 'unknown');
+          if (!(error instanceof NickError))
+            console.error('[nick] turn failed:', error instanceof Error ? error.name : 'unknown');
           emit({ type: 'error', code: error instanceof NickError ? error.code : 'model_error' });
         })
         .finally(() => controller.close());

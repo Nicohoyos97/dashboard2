@@ -58,3 +58,11 @@ One Google Cloud OAuth client serves both environments (two redirect URIs regist
 ## Variables that don't change per environment
 
 `ANTHROPIC_API_KEY`, `ANTHROPIC_FAST_MODEL`, `ANTHROPIC_REASONING_MODEL` and the Google OAuth pair are the same regardless of which Supabase you target — see `.env.example`.
+
+## One `.next` per process
+
+`next dev`, `next build` and a second `next dev` (Playwright's) all write to `.next`; run two of them at once and both end up with missing CSS or `__webpack_modules__[moduleId] is not a function`. `next.config.ts` therefore honours `NEXT_DIST_DIR`:
+
+- Playwright's own server (`PLAYWRIGHT_PORT=…` or `NICK_E2E=1`) builds into `.next-e2e` automatically.
+- A verification build beside a running dev server: `NEXT_DIST_DIR=.next-build pnpm build`.
+- If a dev server ever loses its styles, stop it, delete `.next`, and start it again.

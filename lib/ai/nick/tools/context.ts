@@ -45,8 +45,22 @@ export class ToolError extends Error {
 }
 
 const LABELS = {
-  en: { profit_and_loss: 'Profit & Loss', balance_sheet: 'Balance Sheet', bank: 'Bank statements', page: 'Page', tax: 'Tax record', reminder: 'Reminder' },
-  es: { profit_and_loss: 'Estado de resultados', balance_sheet: 'Balance general', bank: 'Estados de cuenta', page: 'Página', tax: 'Registro fiscal', reminder: 'Recordatorio' },
+  en: {
+    profit_and_loss: 'Profit & Loss',
+    balance_sheet: 'Balance Sheet',
+    bank: 'Bank statements',
+    page: 'Page',
+    tax: 'Tax record',
+    reminder: 'Reminder',
+  },
+  es: {
+    profit_and_loss: 'Estado de resultados',
+    balance_sheet: 'Balance general',
+    bank: 'Estados de cuenta',
+    page: 'Página',
+    tax: 'Registro fiscal',
+    reminder: 'Recordatorio',
+  },
 } as const;
 
 export function label(locale: NickLocale, key: keyof (typeof LABELS)['en']): string {
@@ -70,18 +84,26 @@ export const STATEMENT_PATHS: Record<ReportType, string> = {
   balance_sheet: '/statements/balance-sheet',
 };
 
-export function reportHref(report: Pick<ReportRow, 'reportType' | 'periodStart' | 'periodEnd'>): string {
+export function reportHref(
+  report: Pick<ReportRow, 'reportType' | 'periodStart' | 'periodEnd'>,
+): string {
   return `${STATEMENT_PATHS[report.reportType]}?period=${report.periodStart}_${report.periodEnd}`;
 }
 
 export function periodOf(report: Pick<ReportRow, 'periodStart' | 'periodEnd'>, locale: NickLocale) {
-  return { start: report.periodStart, end: report.periodEnd, label: periodText(report.periodStart, report.periodEnd, locale) };
+  return {
+    start: report.periodStart,
+    end: report.periodEnd,
+    label: periodText(report.periodStart, report.periodEnd, locale),
+  };
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /** `start_end` → range, or null for anything malformed (never throws on model input). */
-export function parsePeriodInput(value: string | null | undefined): { start: string; end: string } | null {
+export function parsePeriodInput(
+  value: string | null | undefined,
+): { start: string; end: string } | null {
   if (!value) return null;
   const [start, end] = value.split('_');
   if (!start || !end || !ISO.test(start) || !ISO.test(end) || start > end) return null;
@@ -93,7 +115,11 @@ export function parsePeriodInput(value: string | null | undefined): { start: str
  * period selected on the page, else the newest. `requested` set but unknown
  * yields null so the model learns the period does not exist.
  */
-export function pickReport(ctx: Pick<ToolContext, 'context'>, reports: readonly ReportRow[], requested: string | null): ReportRow | null {
+export function pickReport(
+  ctx: Pick<ToolContext, 'context'>,
+  reports: readonly ReportRow[],
+  requested: string | null,
+): ReportRow | null {
   const wanted = parsePeriodInput(requested);
   if (requested !== null && !wanted) return null;
   const range = wanted ?? ctx.context.period;
@@ -105,10 +131,17 @@ export function pickReport(ctx: Pick<ToolContext, 'context'>, reports: readonly 
 }
 
 export function availablePeriodsOf(reports: readonly ReportRow[], locale: NickLocale) {
-  return reports.map((r) => ({ period: `${r.periodStart}_${r.periodEnd}`, label: periodText(r.periodStart, r.periodEnd, locale) }));
+  return reports.map((r) => ({
+    period: `${r.periodStart}_${r.periodEnd}`,
+    label: periodText(r.periodStart, r.periodEnd, locale),
+  }));
 }
 
-export function citeLine(ctx: ShapeContext, report: ReportRow, line: Pick<LineNode, 'id' | 'pageNumber' | 'accountName'>): string {
+export function citeLine(
+  ctx: ShapeContext,
+  report: ReportRow,
+  line: Pick<LineNode, 'id' | 'pageNumber' | 'accountName'>,
+): string {
   return ctx.registry.add({
     label: citationLabel([
       statementLabel(ctx.locale, report.reportType),
@@ -130,7 +163,11 @@ export function citeLine(ctx: ShapeContext, report: ReportRow, line: Pick<LineNo
 /** A derived figure (working capital, a ratio, a share) cites the statement it was computed from. */
 export function citeDerived(ctx: ShapeContext, report: ReportRow, what: string): string {
   return ctx.registry.add({
-    label: citationLabel([statementLabel(ctx.locale, report.reportType), periodText(report.periodStart, report.periodEnd, ctx.locale), what]),
+    label: citationLabel([
+      statementLabel(ctx.locale, report.reportType),
+      periodText(report.periodStart, report.periodEnd, ctx.locale),
+      what,
+    ]),
     reportId: report.id,
     documentVersionId: report.documentVersionId,
     lineId: null,
@@ -144,24 +181,56 @@ export function citeDerived(ctx: ShapeContext, report: ReportRow, what: string):
 
 export type FigureOut = { amount: string; formatted: string; cite: string };
 
-export function figureOut(ctx: ShapeContext, report: ReportRow, figure: Figure | null, derivedLabel?: string): FigureOut | null {
+export function figureOut(
+  ctx: ShapeContext,
+  report: ReportRow,
+  figure: Figure | null,
+  derivedLabel?: string,
+): FigureOut | null {
   if (!figure) return null;
   const cite = figure.lineId
-    ? citeLine(ctx, report, { id: figure.lineId, pageNumber: figure.page, accountName: figure.label })
+    ? citeLine(ctx, report, {
+        id: figure.lineId,
+        pageNumber: figure.page,
+        accountName: figure.label,
+      })
     : citeDerived(ctx, report, derivedLabel ?? figure.label);
-  return { amount: fromCents(figure.cents), formatted: money(ctx, figure.cents, report.currency), cite };
+  return {
+    amount: fromCents(figure.cents),
+    formatted: money(ctx, figure.cents, report.currency),
+    cite,
+  };
 }
 
 export type ChangeOut = { amount: string; formatted: string; pct: number | null } | null;
 
-export function changeOut(ctx: ShapeContext, report: ReportRow, deltaCents: number | null, deltaPct: number | null): ChangeOut {
+export function changeOut(
+  ctx: ShapeContext,
+  report: ReportRow,
+  deltaCents: number | null,
+  deltaPct: number | null,
+): ChangeOut {
   if (deltaCents === null) return null;
-  return { amount: fromCents(deltaCents), formatted: money(ctx, deltaCents, report.currency), pct: deltaPct === null ? null : Math.round(deltaPct * 10) / 10 };
+  return {
+    amount: fromCents(deltaCents),
+    formatted: money(ctx, deltaCents, report.currency),
+    pct: deltaPct === null ? null : Math.round(deltaPct * 10) / 10,
+  };
 }
 
-export type MetricOut = { current: FigureOut | null; prior: FigureOut | null; change: ChangeOut; reason?: string };
+export type MetricOut = {
+  current: FigureOut | null;
+  prior: FigureOut | null;
+  change: ChangeOut;
+  reason?: string;
+};
 
-export function metricOut(ctx: ShapeContext, report: ReportRow, metric: Metric, derivedLabel?: string): MetricOut {
+export function metricOut(
+  ctx: ShapeContext,
+  report: ReportRow,
+  metric: Metric,
+  derivedLabel?: string,
+): MetricOut {
   const out: MetricOut = {
     current: figureOut(ctx, report, metric.current, derivedLabel),
     prior: figureOut(ctx, report, metric.prior, derivedLabel),
@@ -170,10 +239,24 @@ export function metricOut(ctx: ShapeContext, report: ReportRow, metric: Metric, 
   return metric.reason ? { ...out, reason: metric.reason } : out;
 }
 
-export type RatioOut = { current: number | null; prior: number | null; cite: string; reason?: string };
+export type RatioOut = {
+  current: number | null;
+  prior: number | null;
+  cite: string;
+  reason?: string;
+};
 
-export function ratioOut(ctx: ShapeContext, report: ReportRow, ratio: Ratio, what: string): RatioOut {
-  const out: RatioOut = { current: ratio.current, prior: ratio.prior, cite: citeDerived(ctx, report, what) };
+export function ratioOut(
+  ctx: ShapeContext,
+  report: ReportRow,
+  ratio: Ratio,
+  what: string,
+): RatioOut {
+  const out: RatioOut = {
+    current: ratio.current,
+    prior: ratio.prior,
+    cite: citeDerived(ctx, report, what),
+  };
   return ratio.reason ? { ...out, reason: ratio.reason } : out;
 }
 
@@ -182,7 +265,13 @@ export function reportOut(ctx: ShapeContext, report: ReportRow) {
     reportId: report.id,
     type: report.reportType,
     period: periodOf(report, ctx.locale),
-    comparativePeriod: report.comparativeStart && report.comparativeEnd ? periodOf({ periodStart: report.comparativeStart, periodEnd: report.comparativeEnd }, ctx.locale) : null,
+    comparativePeriod:
+      report.comparativeStart && report.comparativeEnd
+        ? periodOf(
+            { periodStart: report.comparativeStart, periodEnd: report.comparativeEnd },
+            ctx.locale,
+          )
+        : null,
     basis: report.basis,
     currency: report.currency,
     source: report.source,

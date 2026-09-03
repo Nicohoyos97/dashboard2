@@ -11,7 +11,10 @@ export const NICK_LIMITS = {
   // Tool results are small and answers are short prose; these cap runaway
   // output without truncating a normal explanation.
   maxTokens: { fast: 4000, reasoning: 8000 } as const,
-  effort: { fast: 'low', reasoning: 'high' } as const satisfies Record<'fast' | 'reasoning', Effort>,
+  effort: { fast: 'low', reasoning: 'high' } as const satisfies Record<
+    'fast' | 'reasoning',
+    Effort
+  >,
   // Non-streaming router call; the answer itself streams.
   routerMaxTokens: 400,
   exportTtlHours: 24,

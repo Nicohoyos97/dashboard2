@@ -12,13 +12,22 @@ import { CitationChip } from './CitationChip';
 const INLINE = /(\*\*[^*]+\*\*|\[c\d+\]|\/api\/(?:documents|exports)\/[0-9a-f-]{36}\/download)/g;
 const DOWNLOAD = /^\/api\/(?:documents|exports)\/[0-9a-f-]{36}\/download$/;
 
-function inline(text: string, citations: ReadonlyMap<string, CitationRecord>, keyPrefix: string, downloadLabel: string): React.ReactNode[] {
+function inline(
+  text: string,
+  citations: ReadonlyMap<string, CitationRecord>,
+  keyPrefix: string,
+  downloadLabel: string,
+): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   text.split(INLINE).forEach((part, index) => {
     if (part === '') return;
     const key = `${keyPrefix}-${index}`;
     if (part.startsWith('**') && part.endsWith('**')) {
-      nodes.push(<strong key={key} className="text-ink font-semibold">{part.slice(2, -2)}</strong>);
+      nodes.push(
+        <strong key={key} className="text-ink font-semibold">
+          {part.slice(2, -2)}
+        </strong>,
+      );
       return;
     }
     const marker = /^\[(c\d+)\]$/.exec(part);
@@ -69,7 +78,13 @@ function blocksOf(text: string): Block[] {
   return blocks;
 }
 
-export function AssistantText({ text, citations }: { text: string; citations: readonly CitationRecord[] }) {
+export function AssistantText({
+  text,
+  citations,
+}: {
+  text: string;
+  citations: readonly CitationRecord[];
+}) {
   const t = useTranslations('Nick');
   const downloadLabel = t('downloadLink');
   const byKey = new Map(citations.map((c) => [c.key, c] as const));
@@ -81,7 +96,9 @@ export function AssistantText({ text, citations }: { text: string; citations: re
         ) : (
           <ul key={index} className="flex list-disc flex-col gap-1 pl-5">
             {block.items.map((item, itemIndex) => (
-              <li key={itemIndex}>{inline(item, byKey, `l${index}-${itemIndex}`, downloadLabel)}</li>
+              <li key={itemIndex}>
+                {inline(item, byKey, `l${index}-${itemIndex}`, downloadLabel)}
+              </li>
             ))}
           </ul>
         ),
@@ -90,7 +107,15 @@ export function AssistantText({ text, citations }: { text: string; citations: re
   );
 }
 
-export function MessageBubble({ role, children, failed = false }: { role: 'user' | 'assistant'; children: React.ReactNode; failed?: boolean }) {
+export function MessageBubble({
+  role,
+  children,
+  failed = false,
+}: {
+  role: 'user' | 'assistant';
+  children: React.ReactNode;
+  failed?: boolean;
+}) {
   const t = useTranslations('Nick');
   const isUser = role === 'user';
   return (
@@ -114,7 +139,9 @@ export function SourcesRow({ citations }: { citations: readonly CitationRecord[]
   if (citations.length === 0) return null;
   return (
     <div className="border-line mt-3 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
-      <span className="text-muted-foreground mr-1 text-[11.5px] font-medium tracking-[0.08em] uppercase">{t('sources')}</span>
+      <span className="text-muted-foreground mr-1 text-[11.5px] font-medium tracking-[0.08em] uppercase">
+        {t('sources')}
+      </span>
       {citations.map((c) => (
         <CitationChip key={c.key} citation={c} />
       ))}

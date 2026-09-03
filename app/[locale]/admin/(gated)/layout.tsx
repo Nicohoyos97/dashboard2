@@ -5,6 +5,8 @@ import { getTranslations } from 'next-intl/server';
 
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AppShell } from '@/components/shell/AppShell';
+import { TopBar } from '@/components/shell/TopBar';
+import { ADMIN_NAV_ITEMS } from '@/lib/admin-nav';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
@@ -24,6 +26,7 @@ export default async function AdminGatedLayout({ children }: { children: React.R
     <AppShell
       brandHref="/admin"
       brandBadge={t('portalBadge')}
+      topBar={<TopBar items={ADMIN_NAV_ITEMS} namespace="Admin" askNick={false} helpHref={null} />}
       sidebar={
         <AdminSidebar
           role={firm.role}

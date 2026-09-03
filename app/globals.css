@@ -143,6 +143,14 @@
   }
 }
 
+/* Sidebar: a faint brand-blue glow rising from the foot of the rail (DESIGN.md → Navigation). */
+.sidebar-glow {
+  background-image: radial-gradient(70% 38% at 35% 100%, color-mix(in oklch, var(--brand-primary) 13%, transparent), transparent 72%);
+}
+.dark .sidebar-glow {
+  background-image: radial-gradient(70% 38% at 35% 100%, color-mix(in oklch, var(--brand-primary) 24%, transparent), transparent 72%);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   body,
   [data-slot='card'] {

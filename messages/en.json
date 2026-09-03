@@ -81,7 +81,9 @@
   "Theme": {
     "selector": "Color theme",
     "light": "Light theme",
-    "dark": "Dark theme"
+    "dark": "Dark theme",
+    "toDark": "Switch to dark theme",
+    "toLight": "Switch to light theme"
   },
   "AuthErrors": {
     "checkDetails": "Please check your details and try again.",
@@ -198,9 +200,10 @@
     "statementsBalanceSheet": "Balance Sheet",
     "expenses": "Expenses",
     "incomeTaxes": "Income Taxes",
-    "salesTaxes": "Sales Taxes",
-    "nick": "Insights with Nick",
-    "settings": "Settings"
+    "salesTaxes": "Sales",
+    "nick": "Ask Nick",
+    "settings": "Settings",
+    "help": "Help & support"
   },
   "Shell": {
     "openMenu": "Open menu",
@@ -215,7 +218,15 @@
     "roleViewer": "Viewer",
     "roleMasterAdmin": "Master admin",
     "roleFirmStaff": "Firm staff",
-    "comingSoon": "Soon"
+    "comingSoon": "Soon",
+    "search": "Search anything…",
+    "searchHint": "⌘K",
+    "searchGoTo": "Go to",
+    "searchAskNick": "Ask Nick: \"{query}\"",
+    "searchEmpty": "Type to jump to a page, or press Enter to ask Nick",
+    "help": "Help & support",
+    "accountMenu": "Account menu",
+    "topBar": "Toolbar"
   },
   "Admin": {
     "portalBadge": "Firm portal",
@@ -624,7 +635,7 @@
     "report_needs_review_body": "{count, plural, one {# document is} other {# documents are}} with your accountant for review and will appear once published."
   },
   "Nick": {
-    "title": "Insights with Nick",
+    "title": "Ask Nick",
     "lede": "Ask about {business}'s published statements, cash, taxes and reminders. Every figure comes with its source.",
     "ledeGeneric": "Ask about your published statements, cash, taxes and reminders. Every figure comes with its source.",
     "panelTitle": "Ask Nick",
@@ -695,6 +706,27 @@
     "s_chat_4": "Explain my largest expense",
     "s_line_1": "Explain this line",
     "s_line_2": "Why did this line change?",
-    "downloadLink": "Download file"
+    "downloadLink": "Download file",
+    "deleteConversation": "Delete conversation",
+    "deleteConfirm": "Delete this conversation?",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleteFailed": "The conversation couldn't be deleted."
+  },
+  "Help": {
+    "title": "Help & support",
+    "lede": "How the portal works, and how to reach your accountant.",
+    "q1": "Where do the numbers come from?",
+    "a1": "Every figure comes from a document your accountant published: a Profit & Loss, a Balance Sheet, a bank statement or a tax record. Cash in and cash out come only from bank statements; revenue and net income only from the Profit & Loss. Nothing is estimated unless it is labelled that way.",
+    "q2": "When do new statements appear?",
+    "a2": "When Hoyos Baker finishes reviewing and reconciling a document, it is published and shows up on your Overview, in the statements and in the reports library. Until then it stays with the firm.",
+    "q3": "What can Nick answer?",
+    "a3": "Nick explains your published figures, compares periods, lists reminders and can prepare a download or a CSV export after you confirm. Every number Nick states carries a source chip you can click. Nick is not a substitute for your accountant and gives no legal, tax or investment advice.",
+    "q4": "How do I download an original document?",
+    "a4": "Use Download Reports on the Overview, the download button on a statement, the reports library, or ask Nick. Every download serves the exact original file through a link that is valid for one minute.",
+    "q5": "Who do I contact?",
+    "a5": "Your accountant at Hoyos Baker, through the channel you already use. Mention the business name and the period you are asking about, and they will see the same screens you do.",
+    "conversationsTitle": "Your conversations with Nick",
+    "conversationsBody": "Conversations are private to you: neither other members of the business nor the firm can read them. You can delete a conversation at any time from the Ask Nick page."
   }
 }

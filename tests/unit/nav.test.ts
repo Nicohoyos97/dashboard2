@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAV_ITEMS, isActiveNav } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, NAV_ITEMS, isActiveNav } from '@/lib/nav';
 
 describe('isActiveNav', () => {
   it('activates on an exact path match (a statement sub-item)', () => {
@@ -30,14 +30,18 @@ describe('NAV_ITEMS', () => {
       'incomeTaxes',
       'salesTaxes',
       'nick',
-      'settings',
     ]);
+    expect(BOTTOM_NAV_ITEMS.map((i) => i.labelKey)).toEqual(['settings', 'help']);
   });
 
   it('only links to routes that exist — everything else is disabled, never a dead link', () => {
     const live = NAV_ITEMS.filter((i) => !i.disabled && !i.children).map((i) => i.href);
-    expect(live).toEqual(['/dashboard', '/chat', '/settings']);
+    expect(live).toEqual(['/dashboard', '/chat']);
+    expect(BOTTOM_NAV_ITEMS.every((i) => !i.disabled)).toBe(true);
     const liveChildren = NAV_ITEMS.flatMap((i) => i.children ?? []).filter((c) => !c.disabled);
-    expect(liveChildren.map((c) => c.href)).toEqual(['/statements/profit-and-loss', '/statements/balance-sheet']);
+    expect(liveChildren.map((c) => c.href)).toEqual([
+      '/statements/profit-and-loss',
+      '/statements/balance-sheet',
+    ]);
   });
 });
