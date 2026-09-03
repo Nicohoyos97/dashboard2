@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 
@@ -28,14 +28,19 @@ export function AuthExperience({
 
   return (
     <AuthSplit>
-      <div className="border-line bg-blue-pale text-blue mb-5 inline-flex size-11 items-center justify-center rounded-[14px] border">
-        <ShieldCheck className="size-5" aria-hidden="true" />
-      </div>
+      <Image
+        src="/brand/logo-wordmark.png"
+        alt="Hoyos Baker"
+        width={64}
+        height={64}
+        priority
+        className="mx-auto mb-5 size-16 rounded-full"
+      />
 
-      <h1 className="text-ink text-[34px] leading-tight font-bold tracking-[-0.025em]">
+      <h1 className="text-ink text-center text-[34px] leading-tight font-bold tracking-[-0.025em]">
         {isSignup ? t('signupTitle') : t('signinTitle')}
       </h1>
-      <p className="text-muted-foreground mt-2 text-[15px] leading-relaxed">
+      <p className="text-muted-foreground mt-2 text-center text-[15px] leading-relaxed">
         {isSignup ? t('signupLede') : t('signinLede')}
       </p>
 

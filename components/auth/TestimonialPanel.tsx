@@ -39,7 +39,7 @@ export function TestimonialPanel() {
         alt=""
         fill
         priority
-        sizes="(max-width: 1023px) calc(100vw - 24px), 56vw"
+        sizes="(max-width: 1023px) calc(100vw - 24px), 40vw"
         className="object-cover object-[44%_center]"
       />
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/5" />

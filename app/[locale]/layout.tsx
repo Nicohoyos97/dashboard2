@@ -4,7 +4,6 @@
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
-import Script from 'next/script';
 
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { routing } from '@/i18n/routing';
@@ -35,9 +34,11 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
-      <Script id="theme-init" strategy="beforeInteractive">
-        {THEME_INIT_SCRIPT}
-      </Script>
+      <head>
+        {/* Inline in <head> so the theme class is set before first paint; next/script
+            cannot be a direct child of <html> and triggered hydration errors. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
         <NextIntlClientProvider>
           <ThemeProvider>{children}</ThemeProvider>
