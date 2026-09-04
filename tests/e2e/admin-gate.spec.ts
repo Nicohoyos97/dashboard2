@@ -146,4 +146,34 @@ test.describe('Firm portal gate + entity switcher', () => {
     await page.reload();
     await expect(page.getByText(/how Beta Co is doing/i)).toBeVisible();
   });
+
+  test('an hb_entity cookie naming a business the user does not belong to is ignored', async ({
+    browser,
+  }) => {
+    // CLAUDE.md critical rule 2: never trust business_entity_id from the client.
+    // hb_entity is the one tenant identifier the browser holds, and the switcher
+    // test only ever moves between businesses the user belongs to — the case
+    // that cannot fail. Forge it and the portal must fall back to a real
+    // membership rather than switching.
+    const user = await fx.makeUser('forge');
+    const mine = await fx.makeEntity(await fx.makeClientRow('fg-a'), 'Mine Co');
+    await fx.addMembership(mine, user.id, 'client_owner');
+    const stranger = await fx.makeTenant('fg-b');
+
+    const page = await freshPage(browser);
+    await signIn(page, user.email);
+    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
+
+    await page.context().addCookies([
+      { name: 'hb_entity', value: stranger.entityId, url: page.url() },
+    ]);
+    await page.reload();
+    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
+    await expect(page.getByText(/fg-b Business/i)).toHaveCount(0);
+
+    // A cookie naming nothing at all must not empty the portal either.
+    await page.context().addCookies([{ name: 'hb_entity', value: randomUUID(), url: page.url() }]);
+    await page.reload();
+    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
+  });
 });
