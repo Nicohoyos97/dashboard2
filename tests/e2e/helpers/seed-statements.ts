@@ -149,7 +149,8 @@ export async function seedPublishedCashMonths(fx: Fixtures, entityId: string) {
     ]);
     if (txError) throw new Error(`seed cash transactions: ${txError.code}`);
   }
-  return { totalInCents, totalOutCents, netCents: totalInCents - totalOutCents };
+  // Per-month figures too: a portal page shows one period, not the run.
+  return { totalInCents, totalOutCents, netCents: totalInCents - totalOutCents, monthlyInCents: 100_000, monthlyOutCents: 110_000 };
 }
 
 export async function seedPublishedReminder(fx: Fixtures, entityId: string, dueDate: string) {

@@ -90,8 +90,8 @@ test.describe('Firm portal gate + entity switcher', () => {
       bank_account_id: draftAccount.id,
       bank_statement_id: draftStatement.id,
       txn_date: '2026-06-10',
-      description: 'Draft-only deposit',
-      credit: 999999.99,
+      description: 'Draft-only charge',
+      debit: 999999.99,
       source: 'firm_entry',
       dedupe_key: randomUUID().replace(/-/g, ''),
     });
@@ -110,8 +110,17 @@ test.describe('Firm portal gate + entity switcher', () => {
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText(/previewing the client portal for Preview Co/i)).toBeVisible();
     await expect(page.getByText(/how Preview Co is doing/i)).toBeVisible();
-    await expect(page.getByText('$1,000.00').first()).toBeVisible();
+
+    // The preview must show exactly what the client sees. Bank activity lives
+    // on Expenses now, so that is where the published/draft split is checked:
+    // the firm's RLS branch can read drafts, and the loaders' explicit
+    // published filter is what keeps them out of the preview.
+    await page.goto('/expenses');
+    await expect(page.getByText('$1,100.00').first()).toBeVisible();
     await expect(page.getByText('$999,999.99')).toHaveCount(0);
+    await expect(page.getByText('Draft-only charge')).toHaveCount(0);
+    await page.goto('/dashboard');
+    await expect(page.getByText(/previewing the client portal for Preview Co/i)).toBeVisible();
 
     await page.getByRole('button', { name: /exit preview/i }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/entities/${entityId}$`));

@@ -37,18 +37,28 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
 
     await expect(page.getByRole('heading', { name: /hello/i })).toBeVisible();
-    await expect(page.getByText(money(cash.totalInCents)).first()).toBeVisible();
-    await expect(page.getByText(money(cash.totalOutCents)).first()).toBeVisible();
-    await expect(page.getByText(money(cash.netCents)).first()).toBeVisible();
+
+    // The headline KPIs read the published P&L; the bank's own figures live on
+    // Expenses and in the insight rules (they moved off the Overview when the
+    // owner reshaped it — see docs/ASSUMPTIONS.md, 2026-09-03).
     const netIncome = pnl.totals.netIncome;
-    if (netIncome === null) throw new Error('P&L fixture has no net income total');
+    const revenue = pnl.totals.revenue;
+    if (netIncome === null || revenue === null) throw new Error('P&L fixture has no headline totals');
+    await expect(page.getByText(money(revenue)).first()).toBeVisible();
     await expect(page.getByText(money(netIncome)).first()).toBeVisible();
-    await expect(page.getByText(/source: bank statements/i).first()).toBeVisible();
-    await expect(page.getByText(/source: profit & loss/i).first()).toBeVisible();
-    await expect(page.getByText(/over 6 months/i)).toBeVisible();
+    await expect(page.getByText(/income minus operating expenses/i)).toBeVisible();
+    // A cash rule still runs over the bank statements, which proves the two
+    // sources are read side by side without being combined.
     await expect(page.getByText(/more cash went out than came in/i)).toBeVisible();
     await expect(page.getByText('Equipment loan payment')).toBeVisible();
     await expect(page.getByText('Schedule the payment.')).toBeVisible();
+
+    // Cash In / Cash Out are the Expenses page's source now, and it names it.
+    await page.goto('/expenses');
+    await expect(page.getByText(/debits on published bank statements/i)).toBeVisible();
+    // The page opens on the newest published month, so it shows that month's debits.
+    await expect(page.getByText(money(cash.monthlyOutCents)).first()).toBeVisible();
+    await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
 
     await page.getByRole('link', { name: /view all/i }).click();
     await expect(page).toHaveURL(/\/reports$/);
