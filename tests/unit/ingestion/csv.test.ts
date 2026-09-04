@@ -124,9 +124,31 @@ describe('applyCsvMapping', () => {
     expect(transactions.map((t) => [t.debit, t.credit, t.balance])).toEqual([
       ['25.00', null, null],
       [null, '10.00', null],
-      [null, null, null],
     ]);
-    expect(skipped).toEqual([]);
+    // A row that moves no money is skipped, not emitted. bank_transactions has
+    // `check (debit is not null or credit is not null)`, so emitting it made the
+    // chunked upsert throw and failed the whole import — one "BALANCE FORWARD,
+    // 0.00" line anywhere in a 400-row export killed it with an opaque
+    // persist_transactions code and no partial result.
+    expect(skipped).toEqual([{ row: 3, reason: 'missing_amount' }]);
+  });
+
+  it('skips a zero row rather than failing the import', () => {
+    const twoColumn = CsvMappingSchema.parse({
+      columns: { date: 'Date', description: 'Memo', debit: 'Debit', credit: 'Credit', amount: null, balance: null },
+      date_format: 'YYYY-MM-DD',
+      sign_convention: 'debit_credit',
+    });
+    const rows = [
+      { Date: '2026-06-01', Memo: 'BALANCE FORWARD', Debit: '0.00', Credit: '' },
+      { Date: '2026-06-02', Memo: 'rent', Debit: '25.00', Credit: '' },
+    ];
+    const { transactions, skipped } = applyCsvMapping(rows, twoColumn);
+    expect(transactions.map((t) => t.debit)).toEqual(['25.00']);
+    expect(skipped).toEqual([{ row: 1, reason: 'missing_amount' }]);
+    for (const transaction of transactions) {
+      expect(transaction.debit !== null || transaction.credit !== null).toBe(true);
+    }
   });
 });
 

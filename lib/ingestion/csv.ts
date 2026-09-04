@@ -106,7 +106,13 @@ function movement(row: CsvRow, mapping: CsvMapping): { debit: string | null; cre
     if (sign_convention === 'debit_credit') {
       const debit = columns.debit ? optionalCents(row[columns.debit]) : null;
       const credit = columns.credit ? optionalCents(row[columns.credit]) : null;
-      if (debit === null && credit === null) return 'missing_amount';
+      // A printed zero is a row that moves no money — a balance-forward line, a
+      // reversed fee. It has to be skipped here rather than emitted, because
+      // bank_transactions requires at least one side to be non-null and the
+      // chunked upsert fails the whole import on the constraint. The guard and
+      // the transform disagreeing about what "no amount" means is what let one
+      // such line kill a 400-row export.
+      if ((debit ?? 0) === 0 && (credit ?? 0) === 0) return 'missing_amount';
       return {
         debit: debit === null || debit === 0 ? null : fromCents(Math.abs(debit)),
         credit: credit === null || credit === 0 ? null : fromCents(Math.abs(credit)),
