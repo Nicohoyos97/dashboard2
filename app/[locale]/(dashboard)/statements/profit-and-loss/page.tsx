@@ -24,6 +24,7 @@ import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
+import { comparableSeries } from '@/lib/reports/series';
 import { formatPeriod } from '@/lib/utils/dates';
 
 const TREND_LIMIT = 8;
@@ -45,7 +46,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   const hasPrior = rows.some((r) => r.priorCents !== null);
 
   // Trend across published periods (oldest → newest), only when there are ≥ 2.
-  const trendReports = reports.slice(0, TREND_LIMIT).reverse();
+  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
   const trend =
     trendReports.length >= 2
       ? await Promise.all(

@@ -20,6 +20,7 @@ import { leafItems, reportPeriodOptions, selectReport } from '@/lib/portal/state
 import { BALANCE_SYNONYMS, balanceSheetMetrics } from '@/lib/reports/balance-sheet';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
+import { comparableSeries } from '@/lib/reports/series';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate } from '@/lib/utils/dates';
 
@@ -42,7 +43,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   const liabilities = leafItems(findSection(roots, BALANCE_SYNONYMS.totalLiabilities));
   const hasPrior = rows.some((r) => r.priorCents !== null);
 
-  const trendReports = reports.slice(0, TREND_LIMIT).reverse();
+  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
   const trend =
     trendReports.length >= 2
       ? await Promise.all(
