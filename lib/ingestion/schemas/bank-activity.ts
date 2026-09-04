@@ -30,8 +30,21 @@ const TransactionApiSchema = z.object({
   confidence: confidenceApi(),
 });
 
+// Whether the printed balance is something the business owns or something it
+// owes. It decides the reconciliation equation, so it cannot be inferred later:
+// on a depository account the balance rises with money in, on a credit card or
+// a loan the printed figure is the amount owed and rises with money out.
+export const ACCOUNT_KINDS = ['depository', 'credit_card', 'loan', 'other'] as const;
+
 export const BankActivityApiSchema = z.object({
   institution: z.string().describe('Bank name as printed'),
+  account_kind: z
+    .enum(ACCOUNT_KINDS)
+    .describe(
+      'What kind of account this statement is for. "depository" for a checking or savings account, ' +
+        '"credit_card" for a credit card statement, "loan" for a loan or line of credit, ' +
+        '"other" when the document does not say. Read it from the statement heading, not from the transactions.',
+    ),
   masked_account: z
     .string()
     .describe('Account identifier with at most the last four digits visible, e.g. "****4821". Never the full number'),
@@ -60,6 +73,7 @@ export const BankTransactionSchema = z
 export const BankActivitySchema = z
   .strictObject({
     institution: nonEmpty(),
+    account_kind: z.enum(ACCOUNT_KINDS).catch('other'),
     masked_account: nonEmpty().refine(
       (v) => (v.match(/\d/g) ?? []).length <= MAX_VISIBLE_ACCOUNT_DIGITS,
       { message: 'account number is not masked' },

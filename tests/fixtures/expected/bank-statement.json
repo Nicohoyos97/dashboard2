@@ -1,5 +1,6 @@
 {
   "institution": "First Harbor Bank",
+  "account_kind": "depository",
   "masked_account": "****4821",
   "period_start": "2026-06-01",
   "period_end": "2026-06-30",
