@@ -176,7 +176,15 @@
     "title": "Notifications",
     "open": "Notifications",
     "openWithCount": "{count, plural, one {# unread notification} other {# unread notifications}}",
-    "empty": "Nothing new. You'll see reminders, new reports and tax deadlines here."
+    "empty": "Nothing new. You'll see reminders, new reports and tax deadlines here.",
+    "body_document_published": "A new report was published for you.",
+    "body_document_updated": "This report was updated and replaces the earlier one.",
+    "body_document_unpublished": "Your accountant withdrew this document while they review it.",
+    "body_due_on": "Due {date}.",
+    "title_tax_deadline": "{tax} tax deadline",
+    "taxType_income": "Income",
+    "taxType_sales": "Sales",
+    "taxType_payroll": "Payroll"
   },
   "Overview": {
     "greeting": "Hello, {name} 👋",

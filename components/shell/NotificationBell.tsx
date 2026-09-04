@@ -53,13 +53,14 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
           ) : (
             <ul className="max-h-[min(60vh,420px)] overflow-y-auto">
               {notifications.map((notification) => {
+                const worded = wording(notification, t, format);
                 const body = (
                   <>
                     <span className="flex items-start gap-2">
                       {notification.readAt === null && <span className="bg-blue mt-1.5 size-1.5 shrink-0 rounded-full" aria-hidden="true" />}
-                      <span className={`text-ink text-[13.5px] font-semibold ${notification.readAt === null ? '' : 'ml-3.5'}`}>{notification.title}</span>
+                      <span className={`text-ink text-[13.5px] font-semibold ${notification.readAt === null ? '' : 'ml-3.5'}`}>{worded.title}</span>
                     </span>
-                    {notification.body && <span className="text-muted-foreground mt-0.5 ml-3.5 block text-[12.5px] leading-[1.45]">{notification.body}</span>}
+                    {worded.body && <span className="text-muted-foreground mt-0.5 ml-3.5 block text-[12.5px] leading-[1.45]">{worded.body}</span>}
                     {/* An absolute timestamp, not a relative one: "2 hours ago"
                         needs a reference time the server and the browser agree
                         on, and getting that wrong shifts every row on hydration. */}
@@ -88,4 +89,49 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
       </Popover.Portal>
     </Popover.Root>
   );
+}
+
+type Translate = ReturnType<typeof useTranslations<'Notifications'>>;
+type Format = ReturnType<typeof useFormatter>;
+
+/**
+ * A notification row stores facts, not sentences: the job that wrote it may
+ * have run while nobody was reading, and the reader's locale is only known
+ * here. Titles the firm authored (a document name, a reminder's own wording)
+ * are shown as written; everything around them is translated. Rows written
+ * before migration 0014 carry no payload and fall back to their stored text.
+ */
+function wording(notification: PortalNotification, t: Translate, format: Format): { title: string; body: string | null } {
+  const payload = notification.payload ?? {};
+  const due = typeof payload.dueDate === 'string' ? payload.dueDate : null;
+  // Anchored and formatted in UTC: `new Date('2026-09-15T00:00:00')` is parsed
+  // in the runtime's own zone, so the server and the browser would print
+  // different days for the same due date and the whole shell would fall back to
+  // client rendering on the mismatch.
+  const dueText = due ? format.dateTime(new Date(`${due}T00:00:00Z`), { dateStyle: 'medium', timeZone: 'UTC' }) : null;
+
+  switch (notification.kind) {
+    case 'document.published':
+      return {
+        title: notification.title,
+        body: t(payload.replaced === 'true' ? 'body_document_updated' : 'body_document_published'),
+      };
+    case 'document.unpublished':
+      return { title: notification.title, body: t('body_document_unpublished') };
+    case 'reminder.due':
+      return {
+        title: notification.title,
+        body: dueText ? t('body_due_on', { date: dueText }) : notification.body,
+      };
+    case 'tax.deadline': {
+      const type = typeof payload.taxType === 'string' ? payload.taxType : notification.title;
+      const label = type === 'income' || type === 'sales' || type === 'payroll' ? t(`taxType_${type}`) : type;
+      return {
+        title: t('title_tax_deadline', { tax: label }),
+        body: dueText ? t('body_due_on', { date: dueText }) : notification.body,
+      };
+    }
+    default:
+      return { title: notification.title, body: notification.body };
+  }
 }

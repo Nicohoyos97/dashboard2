@@ -96,6 +96,25 @@ Static assets (`/brand/*.png`) bypass the middleware, so a 200 there with a 503
 on every page means the build shipped fine and the environment is what is
 wrong.
 
+## Pointing local dev at the cloud project
+
+Sometimes you need it — verifying a deploy, reproducing something a client saw.
+Two rules make it safe:
+
+1. **The test suites never follow `.env.local`.** Playwright and Vitest read
+   `.env.test.local` first (`tests/setup/load-env.ts`), and Playwright hands
+   those values to the dev server it starts, so the whole run stays on local
+   Docker whatever the app's config says. Create it once with `pnpm env:test`.
+2. **The fixtures refuse a non-local Supabase outright.** They create and delete
+   users, businesses and storage objects with the service role; against a real
+   tenant that is data loss. The run fails with a named host rather than
+   skipping — a skipped suite looks like a pass. `ALLOW_REMOTE_TESTS=1` is the
+   deliberate override and nothing in the repo sets it.
+
+While `.env.local` points at the cloud, `pnpm seed:demo` also refuses to run
+(it has its own local-only check), and every page will fail until the cloud
+project actually has the schema — `npx supabase db push`.
+
 ## Use a single origin — `localhost` in dev
 
 Dev runs on **one** origin so session cookies and OAuth redirects never split. The browser treats `127.0.0.1:3000` and `localhost:3000` as different origins; a cookie set on one is not sent to the other, which breaks auth. Every host-bearing value — `NEXT_PUBLIC_APP_URL` / `APP_URL`, `supabase/config.toml` `site_url` + `additional_redirect_urls`, Playwright's `baseURL` — points at **`http://localhost:3000`**. Next.js dev normalizes `nextUrl.host` to `localhost` and next-intl builds its locale rewrite from it, so `127.0.0.1` cannot be kept in dev. Open the app at `http://localhost:3000`.
@@ -110,7 +129,8 @@ One Google Cloud OAuth client serves both environments (two redirect URIs regist
 |---|---|---|
 | `.env.example` | ✅ | Every variable the app uses, `REPLACE_ME` placeholders. Copy to `.env.local`. |
 | `.env.cloud.example` | ✅ | The cloud-only values (Supabase URL + keys). Placeholders; real values go to Vercel. |
-| `.env.local` | ❌ (gitignored) | Your local dev values — Docker Supabase demo keys + your Anthropic / Google keys. |
+| `.env.local` | ❌ (gitignored) | Your local dev values. May point at the **cloud** project while you verify production — see below. |
+| `.env.test.local` | ❌ (gitignored) | Local Docker values for the **test suites only**. Regenerate with `pnpm env:test`. |
 | `.mcp.json.example` | ✅ | Template for the Supabase MCP (read-only). Copy to `.mcp.json` (gitignored). |
 
 ## Where the real cloud secrets live

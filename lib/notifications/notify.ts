@@ -13,16 +13,19 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 export type NotificationKind =
   | 'document.published'
-  | 'document.replaced'
+  | 'document.unpublished'
   | 'reminder.due'
   | 'tax.deadline';
 
-// Which preference switch governs each kind. Publishing is what the client is
-// waiting for, so it rides the "new reports" channel (on by default);
-// `document_activity` is the noisier churn of uploads and replaced versions.
+// Which preference switch governs each kind. Every publication rides
+// "new reports" (on by default) — including a republished statement, because a
+// correction to figures the client already acted on must not be hidden behind
+// an off-by-default switch; the bell words it as "updated" from the payload.
+// `document_activity` carries the other direction: a report the client could
+// see was withdrawn.
 const CHANNEL: Record<NotificationKind, NotificationChannel> = {
   'document.published': 'new_reports',
-  'document.replaced': 'document_activity',
+  'document.unpublished': 'document_activity',
   'reminder.due': 'reminders',
   'tax.deadline': 'tax_deadlines',
 };
@@ -33,6 +36,12 @@ export async function notifyEntityMembers(input: {
   title: string;
   linkPath: string;
   body?: string;
+  /**
+   * Facts the bell renders through next-intl in the reader's own locale — a due
+   * date, a tax type. Never a sentence: a row written by a job would otherwise
+   * be frozen in whatever language the job ran in.
+   */
+  payload?: Record<string, string | number>;
 }): Promise<void> {
   const admin = createAdminClient();
   const { data: members } = await admin
@@ -67,6 +76,7 @@ export async function notifyEntityMembers(input: {
       title: input.title,
       body: input.body ?? null,
       link_path: input.linkPath,
+      payload: input.payload ?? null,
     })),
   );
 }

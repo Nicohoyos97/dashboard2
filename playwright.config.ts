@@ -1,18 +1,26 @@
-import { readFileSync } from 'node:fs';
-
 import { defineConfig, devices } from '@playwright/test';
 
-// Load .env.local into the test process (Playwright doesn't do this on its own).
-// The RLS test reads the local Supabase URL + keys from here, so we never hard
-// code keys in the test file. The webServer (`pnpm dev`) loads its own copy.
-try {
-  for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
-    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (match && match[1] && !process.env[match[1]]) process.env[match[1]] = match[2] ?? '';
-  }
-} catch {
-  // .env.local is optional in CI; tests that need it assert their own env.
-}
+import { loadTestEnv } from './tests/setup/load-env';
+
+// Environment for the run (Playwright doesn't load .env itself). `.env.test.local`
+// wins over `.env.local` so the suite always drives local Supabase, whatever the
+// app's dev config currently points at — these specs delete users and businesses.
+const testEnv = loadTestEnv();
+const SUPABASE_KEYS = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'NEXT_PUBLIC_APP_URL',
+  'APP_URL',
+] as const;
+// Passed to the dev server we start: a real environment variable beats a .env
+// file in Next, so the server under test reads the same database as the specs.
+const serverEnv = Object.fromEntries(
+  SUPABASE_KEYS.flatMap((key) => {
+    const value = process.env[key] ?? testEnv[key];
+    return value ? [[key, value] as [string, string]] : [];
+  }),
+);
 
 // NICK_E2E=1 also boots the mocked Messages API and points the dev server at
 // it (tests/e2e/nick.spec.ts). An already-running dev server cannot be reused
@@ -64,6 +72,7 @@ export default defineConfig({
       // Own build output, so a server started here never shares .next with the developer's.
       env: {
         NEXT_DIST_DIR: '.next-e2e',
+        ...serverEnv,
         ...(nickE2E ? { ANTHROPIC_BASE_URL: ANTHROPIC_MOCK_URL } : {}),
       },
       ...(nickE2E ? { stdout: 'pipe' as const, stderr: 'pipe' as const } : {}),

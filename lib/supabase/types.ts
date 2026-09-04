@@ -1492,6 +1492,38 @@ export type Database = {
           },
         ]
       }
+      notification_dispatches: {
+        Row: {
+          business_entity_id: string
+          kind: string
+          milestone: string
+          resource_id: string
+          sent_at: string
+        }
+        Insert: {
+          business_entity_id: string
+          kind: string
+          milestone: string
+          resource_id: string
+          sent_at?: string
+        }
+        Update: {
+          business_entity_id?: string
+          kind?: string
+          milestone?: string
+          resource_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dispatches_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           business_entity_id: string
@@ -1541,6 +1573,7 @@ export type Database = {
           id: string
           kind: string
           link_path: string | null
+          payload: Json | null
           read_at: string | null
           title: string
           user_id: string
@@ -1552,6 +1585,7 @@ export type Database = {
           id?: string
           kind: string
           link_path?: string | null
+          payload?: Json | null
           read_at?: string | null
           title: string
           user_id: string
@@ -1563,6 +1597,7 @@ export type Database = {
           id?: string
           kind?: string
           link_path?: string | null
+          payload?: Json | null
           read_at?: string | null
           title?: string
           user_id?: string

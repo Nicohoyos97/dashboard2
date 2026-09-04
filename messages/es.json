@@ -176,7 +176,15 @@
     "title": "Notificaciones",
     "open": "Notificaciones",
     "openWithCount": "{count, plural, one {# notificación sin leer} other {# notificaciones sin leer}}",
-    "empty": "Nada nuevo. Aquí verás recordatorios, nuevos reportes y vencimientos de impuestos."
+    "empty": "Nada nuevo. Aquí verás recordatorios, nuevos reportes y vencimientos de impuestos.",
+    "body_document_published": "Se publicó un reporte nuevo para ti.",
+    "body_document_updated": "Este reporte se actualizó y reemplaza al anterior.",
+    "body_document_unpublished": "Tu contador retiró este documento mientras lo revisa.",
+    "body_due_on": "Vence el {date}.",
+    "title_tax_deadline": "Vencimiento de impuesto {tax}",
+    "taxType_income": "de renta",
+    "taxType_sales": "a las ventas",
+    "taxType_payroll": "de nómina"
   },
   "Overview": {
     "greeting": "Hola, {name} 👋",

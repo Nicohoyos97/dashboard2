@@ -136,7 +136,8 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     .select('current_version_id')
     .eq('id', parsed.data.documentId)
     .maybeSingle();
-  if (doc?.current_version_id && doc.current_version_id !== versionId) {
+  const replacedVersion = Boolean(doc?.current_version_id && doc.current_version_id !== versionId);
+  if (replacedVersion && doc?.current_version_id) {
     await supabase
       .from('document_versions')
       .update({ superseded_at: now })
@@ -150,11 +151,14 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
   if (error || !published?.[0]) return { ok: false, error: t('errorSave') };
 
   if (entityId) {
+    // A republish is still a publication for the client — same channel, but the
+    // bell says "updated" so a corrected statement does not read as a new one.
     await notifyEntityMembers({
       entityId,
       kind: 'document.published',
       title: published[0].title,
       linkPath: '/dashboard',
+      payload: { replaced: supersededCount > 0 || replacedVersion ? 'true' : 'false' },
     });
   }
 
@@ -189,8 +193,19 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
     await supabase.from('financial_reports').update(hidden).eq('document_version_id', doc.current_version_id).eq('status', 'published');
     await supabase.from('bank_statements').update(hidden).eq('document_version_id', doc.current_version_id).eq('status', 'published');
   }
-  const { error } = await supabase.from('documents').update(hidden).eq('id', doc.id);
+  const { data: withdrawn, error } = await supabase.from('documents').update(hidden).eq('id', doc.id).select('title');
   if (error) return { ok: false, error: t('errorSave') };
+
+  // The client had this report and no longer does; that belongs on the document
+  // activity channel they opted into, not silently in the background.
+  if (doc.business_entity_id && withdrawn?.[0]) {
+    await notifyEntityMembers({
+      entityId: doc.business_entity_id,
+      kind: 'document.unpublished',
+      title: withdrawn[0].title,
+      linkPath: '/reports',
+    });
+  }
 
   await logAccess({
     action: 'document.unpublish',

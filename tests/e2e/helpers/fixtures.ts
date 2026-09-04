@@ -11,11 +11,35 @@ export const PASSWORD = 'Str0ng!Pass1';
 
 export type Db = SupabaseClient<Database>;
 
+const LOCAL_HOSTS = ['127.0.0.1', 'localhost', '[::1]'];
+
+/**
+ * These fixtures create and delete auth users, clients, businesses and storage
+ * objects with the service role. Against a real tenant that is data loss, so a
+ * non-local Supabase is refused outright rather than skipped: a skipped suite
+ * looks like a pass. `ALLOW_REMOTE_TESTS=1` is the deliberate override, and
+ * nothing in this repo sets it.
+ */
 export function supabaseEnv(): { url: string; anon: string; service: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && anon && service ? { url, anon, service } : null;
+  if (!url || !anon || !service) return null;
+  if (process.env.ALLOW_REMOTE_TESTS !== '1' && !LOCAL_HOSTS.includes(hostOf(url))) {
+    throw new Error(
+      `Refusing to run the test suite against ${hostOf(url)}: these fixtures delete users and businesses. ` +
+        'Point NEXT_PUBLIC_SUPABASE_URL at local Supabase (.env.test.local) — see docs/ENVIRONMENTS.md.',
+    );
+  }
+  return { url, anon, service };
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }
 
 export function adminClient(): Db {

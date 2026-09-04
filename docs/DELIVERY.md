@@ -187,9 +187,11 @@ Report history, pointing at what replaced it.
 
 Also open, recorded in `docs/ASSUMPTIONS.md`:
 
-- **Four of the five notification channels have no producer.** Only
-  `document.published` fires; reminders, tax deadlines, document activity and
-  the weekly email digest are switches without a job behind them.
+- **The weekly email digest has no producer.** The other four channels fire:
+  publishing rides `new_reports` (worded "updated" when it replaces an earlier
+  report), withdrawing a document rides `document_activity`, and the daily
+  `/api/jobs/notify-deadlines` cron rides `reminders` and `tax_deadlines`. The
+  digest needs an email provider and a secret — a decision, not a task.
 - **`StatCards` duplicates `KpiCard`'s delta logic**, and the income-tax
   derivations live in the card rather than `lib/reports/taxes.ts`.
 - **`scripts/seed-demo.ts` is 570 lines** against the ~300-line guide.

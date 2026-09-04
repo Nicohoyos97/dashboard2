@@ -34,6 +34,8 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0007 | `notification_preferences` | Per user, per business: which alerts they want | C | self SELECT/INSERT/UPDATE **and** member of the business; no firm read (delivery settings, not tenant data) |
 | 0007 / 0009 / 0013 | `account_requests` | Data-export / account-deletion requests queued for the firm | B | owner + firm SELECT; owner INSERT (`pending` only — `account_requests_guard()` refuses `firm_note`/`resolved_*` and stamps `requested_at` itself); owner UPDATE limited to `pending → cancelled` by the same guard, which stamps `resolved_at`; firm admin UPDATE, constrained by the same guard (0013): the firm may set `status` and `firm_note` only, a terminal request (`completed` / `declined` / `cancelled`) is never reopened, and a resolution stamps `resolved_at` / `resolved_by` itself; **no DELETE** |
 | 0008 | `insight_dismissals` | Which insights a user has checked off, keyed by rule + period | C | self SELECT/INSERT/DELETE **and** member of the business; no UPDATE (un-ticking is a delete) |
+| 0014 | `notifications.payload` | Facts a notification is worded from (due date, tax type) — the bell renders the sentence in the reader's locale | — | unchanged: `notifications_self_select` |
+| 0014 | `notification_dispatches` | One row per (kind, resource, milestone): a deadline is announced once however often the job runs | server-only | RLS on, **no policies** — service role only, like `rate_limits` |
 | 0010 | `business_entities.timezone` | The calendar the business keeps (IANA name), firm-set | — | `assert_valid_timezone()` rejects a name Postgres cannot resolve; every "today" in the portal is resolved in it |
 
 ## Storage buckets
