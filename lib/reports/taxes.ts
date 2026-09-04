@@ -241,3 +241,36 @@ export function salesTaxCardFigures(obligations: readonly TaxObligation[]): {
 export function isFirmStated(remaining: Remaining): boolean {
   return remaining !== null && remaining.basis !== 'estimated';
 }
+
+/**
+ * One row per tax year: what was projected, what has been paid, and what is
+ * still owed. The bars answer "did we set aside enough?", the line answers
+ * "where does the liability stand?".
+ *
+ * `projected` prefers the confirmed figure over the estimate, per row, because
+ * a year that has been confirmed should not keep charting its old estimate.
+ * `remaining` reuses remainingOwed, so a settled year sits at zero rather than
+ * re-printing what it once owed. A year that prints none of the three is left
+ * out rather than drawn as a zero, which would read as "nothing owed".
+ */
+export type TaxYearPoint = {
+  year: number;
+  projectedCents: number | null;
+  paidCents: number | null;
+  remainingCents: number | null;
+};
+
+export function taxYearSeries(obligations: readonly TaxObligation[]): TaxYearPoint[] {
+  const years = [...new Set(obligations.flatMap((o) => (o.taxYear === null ? [] : [o.taxYear])))].sort(
+    (a, b) => a - b,
+  );
+  return years.flatMap((year) => {
+    const rows = obligations.filter((o) => o.taxYear === year);
+    const projectedCents = sumField(rows, (o) => o.confirmedCents ?? o.estimatedCents);
+    const paidCents = sumField(rows, (o) => o.paidCents);
+    const remaining = remainingOwed(rows);
+    const remainingCents = remaining === null ? null : remaining.cents;
+    if (projectedCents === null && paidCents === null && remainingCents === null) return [];
+    return [{ year, projectedCents, paidCents, remainingCents }];
+  });
+}

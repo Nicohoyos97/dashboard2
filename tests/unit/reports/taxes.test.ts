@@ -8,6 +8,7 @@ import {
   remainingOwed,
   salesTaxCardFigures,
   salesTaxSeries,
+  taxYearSeries,
   sumField,
   taxAlerts,
 } from '@/lib/reports/taxes';
@@ -221,5 +222,43 @@ describe('is the amount owed firm-stated?', () => {
 
   it('is not firm-stated when nothing prints an amount', () => {
     expect(isFirmStated(null)).toBe(false);
+  });
+});
+
+describe('taxYearSeries', () => {
+  it('charts projected against paid, and the liability that is left', () => {
+    const rows = [
+      obligation({ id: '25', taxYear: 2025, status: 'paid', confirmedCents: 18_000_00, paidCents: 18_000_00 }),
+      obligation({ id: '26f', taxYear: 2026, status: 'firm_confirmed', confirmedCents: 12_000_00, paidCents: 4_000_00 }),
+      obligation({ id: '26s', taxYear: 2026, status: 'estimated', estimatedCents: 3_500_00 }),
+    ];
+    expect(taxYearSeries(rows)).toEqual([
+      // A settled year owes nothing, whatever it still prints.
+      { year: 2025, projectedCents: 18_000_00, paidCents: 18_000_00, remainingCents: 0 },
+      { year: 2026, projectedCents: 15_500_00, paidCents: 4_000_00, remainingCents: 11_500_00 },
+    ]);
+  });
+
+  it('prefers a confirmed figure over the estimate it replaced', () => {
+    const rows = [obligation({ id: 'a', taxYear: 2026, confirmedCents: 9_000_00, estimatedCents: 7_000_00 })];
+    expect(taxYearSeries(rows)[0]?.projectedCents).toBe(9_000_00);
+  });
+
+  it('drops a year that prints nothing rather than drawing it at zero', () => {
+    // A zero bar reads as "nothing owed"; a missing figure is not a zero.
+    const rows = [obligation({ id: 'empty', taxYear: 2024 }), obligation({ id: 'real', taxYear: 2025, estimatedCents: 100 })];
+    expect(taxYearSeries(rows).map((p) => p.year)).toEqual([2025]);
+  });
+
+  it('ignores a record the firm entered without a tax year', () => {
+    expect(taxYearSeries([obligation({ id: 'x', taxYear: null, estimatedCents: 500 })])).toEqual([]);
+  });
+
+  it('runs oldest first, so the line reads left to right', () => {
+    const rows = [
+      obligation({ id: 'b', taxYear: 2026, estimatedCents: 1 }),
+      obligation({ id: 'a', taxYear: 2024, estimatedCents: 1 }),
+    ];
+    expect(taxYearSeries(rows).map((p) => p.year)).toEqual([2024, 2026]);
   });
 });

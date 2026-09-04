@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
+import { TaxOpportunities } from '@/components/dashboard/TaxOpportunities';
+import { TaxYearChart } from '@/components/charts/TaxYearChart';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { ObligationList } from '@/components/taxes/ObligationList';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
@@ -16,7 +18,7 @@ import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
-import { nextDueDate, remainingOwed, sumField, taxAlerts } from '@/lib/reports/taxes';
+import { nextDueDate, remainingOwed, sumField, taxAlerts, taxYearSeries } from '@/lib/reports/taxes';
 import { todayIn } from '@/lib/utils/timezone';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate } from '@/lib/utils/dates';
@@ -72,6 +74,7 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const remaining = remainingOwed(obligations);
   const due = nextDueDate(obligations, today);
+  const series = taxYearSeries(all);
   const filed = obligations.filter((o) => o.filingStatus === 'filed' || o.filingStatus === 'amended').length;
   const notFinal = obligations.filter((o) => o.status !== 'firm_confirmed').length;
 
@@ -111,6 +114,20 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
         </div>
 
         <TaxAlerts alerts={taxAlerts(obligations, today)} />
+
+        {series.length >= 1 && (
+          <section aria-labelledby="income-tax-trend" className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <h2 id="income-tax-trend" className="text-ink text-[16px] font-semibold">
+              {t('chartTitle')}
+            </h2>
+            <p className="text-muted-foreground mt-1 text-[13px]">{t('chartLede')}</p>
+            <div className="mt-4">
+              <TaxYearChart points={series} currency={currency} summary={t('chartSummary', { count: series.length })} />
+            </div>
+          </section>
+        )}
+
+        <TaxOpportunities />
 
         <section aria-labelledby="income-obligations" className="mt-6">
           <h2 id="income-obligations" className="text-ink text-[16px] font-semibold">
