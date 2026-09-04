@@ -9,10 +9,11 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import { toCents } from '@/lib/money';
 import type { createAdminClient } from '@/lib/supabase/admin';
-import type { Json } from '@/lib/supabase/types';
+import type { Database, Json } from '@/lib/supabase/types';
 
 import { applyCsvMapping, dedupeKey, normalizeDescription, parseCsv, proposeCsvMapping } from './csv';
 import type { PipelineOutput, PipelineResult } from './pipeline';
+import { reconcileCsvExport } from './reconcile';
 import type { Reconciliation } from './reconciliation';
 import type { ClassifiedPage } from './schemas/classification';
 
@@ -139,11 +140,27 @@ async function persistStatement(
   }
 }
 
-async function bankAccountId(admin: Admin, ctx: PersistContext, institution: string, masked: string): Promise<string> {
+// account_type decides how the balance moves (see reconcileBankStatement), so
+// it is recorded from the extraction rather than left null as it was before.
+type AccountType = Database['public']['Tables']['bank_accounts']['Insert']['account_type'];
+
+async function bankAccountId(
+  admin: Admin,
+  ctx: PersistContext,
+  institution: string,
+  masked: string,
+  accountType: AccountType = null,
+): Promise<string> {
   const { data, error } = await admin
     .from('bank_accounts')
     .upsert(
-      { business_entity_id: ctx.entityId, institution, masked_number: masked, currency: ctx.currency },
+      {
+        business_entity_id: ctx.entityId,
+        institution,
+        masked_number: masked,
+        currency: ctx.currency,
+        ...(accountType ? { account_type: accountType } : {}),
+      },
       { onConflict: 'business_entity_id,institution,masked_number' },
     )
     .select('id')
@@ -207,7 +224,13 @@ async function persistBank(
   r: Extract<PipelineResult, { kind: 'bank_activity' }>,
 ): Promise<void> {
   const { data, reconciliation } = r;
-  const accountId = await bankAccountId(admin, ctx, data.institution, data.masked_account);
+  const accountId = await bankAccountId(
+    admin,
+    ctx,
+    data.institution,
+    data.masked_account,
+    data.account_kind === 'depository' ? 'checking' : data.account_kind === 'other' ? 'other' : data.account_kind,
+  );
   const confidence = Math.min(1, ...data.transactions.map((tx) => tx.confidence));
   const { data: statement, error } = await admin
     .from('bank_statements')
@@ -272,6 +295,10 @@ async function persistTax(admin: Admin, ctx: PersistContext, r: Extract<Pipeline
       document_version_id: ctx.versionId,
       page_number: data.page,
       confidence: data.confidence,
+      // The pipeline already cross-checked this filing; without recording it,
+      // publishBlockers has nothing to gate on and the row can never be
+      // published (0016).
+      reconciliation: asJson(r.reconciliation),
     })
     .select('id')
     .single();
@@ -322,10 +349,14 @@ export async function persistCsv(admin: Admin, ctx: PersistContext, text: string
   if (!first || !last) throw new WorkerError('csv_no_transactions');
 
   const masked = 'CSV export';
-  const accountId = await bankAccountId(admin, ctx, 'CSV export', masked);
+  const accountId = await bankAccountId(admin, ctx, 'CSV export', masked, 'other');
+  // A ledger has its own invariants — every row understood, and continuity
+  // where the export prints a balance. Recording an unconditional failure here
+  // meant publishBlockers could never clear, so no CSV export ever reached a
+  // client however clean it was.
+  const checked = reconcileCsvExport(transactions, skipped);
   const reconciliation: Reconciliation = {
-    passed: false,
-    checks: [],
+    ...checked,
     lowConfidence: { count: skipped.length, refs: skipped.map((s) => `row ${s.row}: ${s.reason}`) },
   };
   const { data: statement, error } = await admin
@@ -363,5 +394,9 @@ export async function persistCsv(admin: Admin, ctx: PersistContext, text: string
       confidence: null,
     })),
   );
-  return { results: 1, passed: false, warnings: skipped.map((s) => `csv row ${s.row}: ${s.reason}`) };
+  return {
+    results: 1,
+    passed: reconciliation.passed,
+    warnings: skipped.map((s) => `csv row ${s.row}: ${s.reason}`),
+  };
 }

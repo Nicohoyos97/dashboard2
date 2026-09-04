@@ -1626,6 +1626,7 @@ export type Database = {
           period_start: string | null
           published_at: string | null
           published_by: string | null
+          reconciliation: Json | null
           source: string
           status: string
           tax_deposit_amount: number | null
@@ -1644,6 +1645,7 @@ export type Database = {
           period_start?: string | null
           published_at?: string | null
           published_by?: string | null
+          reconciliation?: Json | null
           source: string
           status?: string
           tax_deposit_amount?: number | null
@@ -1662,6 +1664,7 @@ export type Database = {
           period_start?: string | null
           published_at?: string | null
           published_by?: string | null
+          reconciliation?: Json | null
           source?: string
           status?: string
           tax_deposit_amount?: number | null
@@ -1882,6 +1885,7 @@ export type Database = {
           period_start: string | null
           published_at: string | null
           published_by: string | null
+          reconciliation: Json | null
           source: string
           status: string
           superseded_by: string | null
@@ -1913,6 +1917,7 @@ export type Database = {
           period_start?: string | null
           published_at?: string | null
           published_by?: string | null
+          reconciliation?: Json | null
           source: string
           status?: string
           superseded_by?: string | null
@@ -1944,6 +1949,7 @@ export type Database = {
           period_start?: string | null
           published_at?: string | null
           published_by?: string | null
+          reconciliation?: Json | null
           source?: string
           status?: string
           superseded_by?: string | null

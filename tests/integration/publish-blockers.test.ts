@@ -114,6 +114,108 @@ describe.skipIf(!env)('publish blockers', () => {
     expect(entityId).not.toBeNull();
   });
 
+  it('treats a tax filing as data to publish, and gates it on its own reconciliation', async () => {
+    // A sales-tax return produces neither a financial_report nor a
+    // bank_statement, so publishBlockers saw a document with nothing in it and
+    // reported publishBlockedNoData — the firm could never publish one, which
+    // is why the client's Taxes pages could only ever show seed data.
+    const tenant = await fx.makeTenant('pb-tax');
+    const be = { business_entity_id: tenant.entityId };
+    const doc = await A.from('documents')
+      .insert({ ...be, document_type: 'sales_tax_filing', title: 'DR-15', status: 'reconciled' })
+      .select('id')
+      .single();
+    if (doc.error) throw new Error(`document: ${doc.error.message}`);
+    const version = await A.from('document_versions')
+      .insert({
+        ...be,
+        document_id: doc.data.id,
+        version_no: 1,
+        storage_path: `${tenant.entityId}/${doc.data.id}/v1/dr15.pdf`,
+        original_filename: 'dr15.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 512,
+        upload_status: 'uploaded',
+      })
+      .select('id')
+      .single();
+    if (version.error) throw new Error(`version: ${version.error.message}`);
+    await A.from('documents').update({ current_version_id: version.data.id }).eq('id', doc.data.id);
+
+    const obligation = {
+      ...be,
+      tax_type: 'sales' as const,
+      source: 'firm_document' as const,
+      document_version_id: version.data.id,
+    };
+    const unreconciled = await A.from('tax_obligations')
+      .insert({ ...obligation, reconciliation: failed })
+      .select('id')
+      .single();
+    if (unreconciled.error) throw new Error(`obligation: ${unreconciled.error.message}`);
+
+    const blocked = await publishBlockers(A, doc.data.id);
+    expect(blocked.blockers).not.toContain('publishBlockedNoData');
+    expect(blocked.blockers).toContain('publishBlockedReconciliation');
+
+    await A.from('tax_obligations').update({ reconciliation: passed }).eq('id', unreconciled.data.id);
+    const clear = await publishBlockers(A, doc.data.id);
+    expect(clear.blockers).toEqual([]);
+  });
+
+  it('reviews the newest uploaded version, not the one the client is seeing', async () => {
+    // Replacing a published document was a dead end: current_version_id is the
+    // publication pointer and deliberately does not move while published, and
+    // the review target was derived from it — so v2 uploaded, processed, and
+    // was unreachable while the reviewer corrected and re-published v1.
+    const tenant = await fx.makeTenant('pb-v2');
+    const be = { business_entity_id: tenant.entityId };
+    const doc = await A.from('documents')
+      .insert({ ...be, document_type: 'profit_and_loss', title: 'P&L', status: 'published', published_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    if (doc.error || !doc.data) throw new Error(`document: ${doc.error?.message}`);
+    const documentId = doc.data.id;
+
+    async function addVersion(no: number, reconciliation: Json): Promise<string> {
+      const v = await A.from('document_versions')
+        .insert({
+          ...be,
+          document_id: documentId,
+          version_no: no,
+          storage_path: `${tenant.entityId}/${documentId}/v${no}/p.pdf`,
+          original_filename: 'p.pdf',
+          mime_type: 'application/pdf',
+          size_bytes: 10,
+          upload_status: 'uploaded',
+        })
+        .select('id')
+        .single();
+      if (v.error) throw new Error(`version ${no}: ${v.error.message}`);
+      const r = await A.from('financial_reports').insert({
+        ...be,
+        report_type: 'profit_and_loss',
+        source: 'firm_document',
+        document_version_id: v.data.id,
+        reconciliation,
+        ...PERIOD,
+      });
+      if (r.error) throw new Error(`report ${no}: ${r.error.message}`);
+      return v.data.id;
+    }
+
+    const v1 = await addVersion(1, passed);
+    await A.from('documents').update({ current_version_id: v1 }).eq('id', documentId);
+    const v2 = await addVersion(2, failed);
+
+    // The client still sees v1; review must be looking at v2, and its failed
+    // reconciliation must block the republish.
+    const { versionId, blockers } = await publishBlockers(A, documentId);
+    expect(versionId).toBe(v2);
+    expect(versionId).not.toBe(v1);
+    expect(blockers).toContain('publishBlockedReconciliation');
+  });
+
   it('blocks a document that has no derived rows to publish', async () => {
     const tenant = await fx.makeTenant('pb-empty');
     const doc = await A.from('documents')

@@ -37,6 +37,33 @@ export type PublishBlocker =
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
+/**
+ * The version the firm reviews and publishes next, which is not always the one
+ * the client is seeing.
+ *
+ * `current_version_id` is the publication pointer, and it deliberately does not
+ * move while a document is published — history is never hidden. Deriving the
+ * review target from it as well made replacing a published document a dead end:
+ * v2 uploaded, processed and created its own reports, but the review page and
+ * publishBlockers both looked at v1, so the reviewer corrected and re-published
+ * v1 while v2 sat unreachable for good.
+ */
+export async function reviewVersion(
+  supabase: Db,
+  documentId: string,
+  fallback: string | null = null,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('document_versions')
+    .select('id')
+    .eq('document_id', documentId)
+    .eq('upload_status', 'uploaded')
+    .order('version_no', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? fallback;
+}
+
 // Everything that must be true before a version can go to the client.
 export async function publishBlockers(
   supabase: Db,
@@ -47,8 +74,11 @@ export async function publishBlockers(
     .select('id, status, current_version_id, business_entity_id')
     .eq('id', documentId)
     .maybeSingle();
-  if (!doc || !doc.current_version_id) {
-    return { blockers: ['publishBlockedNoData'], versionId: null, entityId: doc?.business_entity_id ?? null };
+  if (!doc) return { blockers: ['publishBlockedNoData'], versionId: null, entityId: null };
+
+  const reviewVersionId = await reviewVersion(supabase, documentId, doc.current_version_id);
+  if (!reviewVersionId) {
+    return { blockers: ['publishBlockedNoData'], versionId: null, entityId: doc.business_entity_id };
   }
 
   const blockers = new Set<PublishBlocker>();
@@ -56,17 +86,30 @@ export async function publishBlockers(
     blockers.add('publishBlockedStatus');
   }
 
-  const [{ data: reports }, { data: statements }] = await Promise.all([
-    supabase
-      .from('financial_reports')
-      .select('id, reconciliation')
-      .eq('document_version_id', doc.current_version_id),
-    supabase
-      .from('bank_statements')
-      .select('id, reconciliation')
-      .eq('document_version_id', doc.current_version_id),
-  ]);
-  const derived = [...(reports ?? []), ...(statements ?? [])];
+  // Everything a version can produce. Tax filings and payroll summaries are as
+  // publishable as a statement — leaving them out meant a document that yields
+  // only tax rows looked empty, so it could never be published and the client's
+  // Taxes pages could only ever show seed data.
+  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }] =
+    await Promise.all([
+      supabase
+        .from('financial_reports')
+        .select('id, reconciliation')
+        .eq('document_version_id', reviewVersionId),
+      supabase
+        .from('bank_statements')
+        .select('id, reconciliation')
+        .eq('document_version_id', reviewVersionId),
+      supabase
+        .from('tax_obligations')
+        .select('id, reconciliation')
+        .eq('document_version_id', reviewVersionId),
+      supabase
+        .from('payroll_obligations')
+        .select('id, reconciliation')
+        .eq('document_version_id', reviewVersionId),
+    ]);
+  const derived = [...(reports ?? []), ...(statements ?? []), ...(taxes ?? []), ...(payroll ?? [])];
   if (derived.length === 0) blockers.add('publishBlockedNoData');
 
   for (const row of derived) {
@@ -84,7 +127,7 @@ export async function publishBlockers(
     if ((count ?? 0) > 0) blockers.add('publishBlockedLowConfidence');
   }
 
-  return { blockers: [...blockers], versionId: doc.current_version_id, entityId: doc.business_entity_id };
+  return { blockers: [...blockers], versionId: reviewVersionId, entityId: doc.business_entity_id };
 }
 
 export async function publishDocument(input: unknown): Promise<ActionResult> {
@@ -127,8 +170,14 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
   }
 
   const publishRow = { status: 'published', published_at: now, published_by: firm.userId };
+  // tax_obligations / tax_payments / payroll_obligations have no `status`
+  // column: publication is `published_at` alone, and every reader gates on it.
+  const stamp = { published_at: now, published_by: firm.userId };
   await supabase.from('financial_reports').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('bank_statements').update(publishRow).eq('document_version_id', versionId);
+  await supabase.from('tax_obligations').update(stamp).eq('document_version_id', versionId);
+  await supabase.from('tax_payments').update(stamp).eq('document_version_id', versionId);
+  await supabase.from('payroll_obligations').update(stamp).eq('document_version_id', versionId);
 
   // A replaced version: the previous current version is marked superseded.
   const { data: doc } = await supabase
