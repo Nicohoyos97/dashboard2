@@ -50,7 +50,26 @@ export default defineConfig({
   // Several specs drive TOTP enrolment, Mailpit round-trips and server actions
   // through one dev server at once; give each test room beyond the defaults.
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  // These suites are the only tenant-isolation coverage in the repo, so a run
+  // that goes red at random is worse than a slow one: it teaches people to
+  // re-run, and then to ignore. Measured, on this machine, against the whole
+  // suite:
+  //   workers: 2, expect 10s          → 1 failure per run, moving between the
+  //                                      heaviest specs, sometimes ECONNRESET
+  //                                      from the dev server
+  //   compiling every route up front  → no effect, so it is not first-request
+  //                                      compilation
+  //   workers: 1                      → worse (5 then 3 of 50): these files
+  //                                      share fixture state across one worker
+  //                                      process
+  //   expect 20s                      → helped, still not deterministic
+  // What is left is resource contention between the dev server, Docker
+  // Supabase and two browsers, which no amount of test logic fixes. So: a
+  // wider assertion budget, plus one retry. A retry does not hide anything
+  // here — Playwright reports a test that needed one as `flaky`, its own
+  // outcome, while a test that fails both attempts is still red.
+  retries: 1,
+  expect: { timeout: 20_000 },
   use: {
     // Single dev origin = localhost (Next/next-intl force it in dev) — see
     // docs/ENVIRONMENTS.md. Using 127.0.0.1 here would make every navigation
