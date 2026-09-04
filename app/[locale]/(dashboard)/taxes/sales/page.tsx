@@ -17,7 +17,7 @@ import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
-import { nextDueDate, salesTaxSeries, sumField, taxAlerts } from '@/lib/reports/taxes';
+import { nextDueDate, salesTaxCardFigures, salesTaxSeries, taxAlerts } from '@/lib/reports/taxes';
 import { todayIn } from '@/lib/utils/timezone';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
@@ -70,11 +70,19 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const due = nextDueDate(obligations, today);
   const pendingReview = obligations.filter((o) => o.status === 'pending_review').length;
 
+  // Collected / paid / taxable sales are historical totals across the filings on
+  // screen; payable is what is still owed, so a settled quarter counts as zero.
+  const figures = salesTaxCardFigures(obligations);
   const cards: StatCardItem[] = [
-    { label: t('cardCollected'), value: format(sumField(obligations, (o) => o.collectedCents)), unavailable: t('notPrinted') },
-    { label: t('cardPaid'), value: format(sumField(obligations, (o) => o.paidCents)), unavailable: t('nothingRecordedPaid') },
-    { label: t('cardPayable'), value: format(sumField(obligations, (o) => o.payableCents)), unavailable: t('notPrinted') },
-    { label: t('cardTaxableSales'), value: format(sumField(obligations, (o) => o.taxableSalesCents)), unavailable: t('notPrinted') },
+    { label: t('cardCollected'), value: format(figures.collectedCents), unavailable: t('notPrinted') },
+    { label: t('cardPaid'), value: format(figures.paidCents), unavailable: t('nothingRecordedPaid') },
+    {
+      label: t('cardPayable'),
+      value: figures.payableCents === null ? null : format(figures.payableCents.cents),
+      unavailable: t('notPrinted'),
+      ...(figures.payableCents ? { detail: t(`basis_${figures.payableCents.basis}`) } : {}),
+    },
+    { label: t('cardTaxableSales'), value: format(figures.taxableSalesCents), unavailable: t('notPrinted') },
     { label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
     {
       label: t('cardJurisdictions'),

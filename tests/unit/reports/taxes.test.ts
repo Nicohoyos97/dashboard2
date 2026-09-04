@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type TaxObligation,
+  isFirmStated,
   nextDueDate,
   remainingOwed,
+  salesTaxCardFigures,
   salesTaxSeries,
   sumField,
   taxAlerts,
@@ -148,5 +150,76 @@ describe('sales tax series', () => {
       ['q1', 100_00],
       ['q2', 200_00],
     ]);
+  });
+});
+
+describe('sales tax card figures', () => {
+  // Eight quarterly Florida filings, every one of them settled: the client
+  // owes nothing. The page used to sum the payable column straight across
+  // every published row, so it printed the gross of eight quarters as money
+  // still due.
+  const settledQuarters = Array.from({ length: 8 }, (_, i) =>
+    obligation({
+      id: `q${i}`,
+      status: 'paid',
+      collectedCents: 9_150_00,
+      paidCents: 9_150_00,
+      payableCents: 9_150_00,
+      taxableSalesCents: 130_714_00,
+    }),
+  );
+
+  it('reports nothing still owed once every filing is settled', () => {
+    const cards = salesTaxCardFigures(settledQuarters);
+    expect(cards.payableCents).toEqual({ cents: 0, basis: 'payable' });
+  });
+
+  it('reports what is still owed when one quarter is not settled', () => {
+    const open = obligation({ id: 'open', status: 'payable', payableCents: 2_400_00 });
+    expect(salesTaxCardFigures([...settledQuarters, open]).payableCents).toEqual({
+      cents: 2_400_00,
+      basis: 'payable',
+    });
+  });
+
+  it('still reports collected, paid and taxable sales cumulatively', () => {
+    // Those three are historical totals of what was filed; only "payable" is a
+    // statement about the present.
+    const cards = salesTaxCardFigures(settledQuarters);
+    expect(cards.collectedCents).toBe(73_200_00);
+    expect(cards.paidCents).toBe(73_200_00);
+    expect(cards.taxableSalesCents).toBe(1_045_712_00);
+  });
+
+  it('leaves a figure null when no row prints it', () => {
+    const cards = salesTaxCardFigures([obligation({ id: 'a' })]);
+    expect(cards.collectedCents).toBeNull();
+    expect(cards.payableCents).toBeNull();
+  });
+});
+
+describe('is the amount owed firm-stated?', () => {
+  // The badge sits directly above the figure remainingOwed() produced, so it
+  // has to report the same basis. It used to ask "is ANY row confirmed?",
+  // which is the strongest basis, while the figure below it reports the
+  // weakest — a total straddling a confirmed federal amount and an estimated
+  // state one was labelled "Confirmed by your accountant".
+  it('is not firm-stated when any part of the total rests on an estimate', () => {
+    const rows = [
+      obligation({ id: 'federal', status: 'firm_confirmed', confirmedCents: 12_000_00 }),
+      obligation({ id: 'state', status: 'estimated', estimatedCents: 3_500_00 }),
+    ];
+    const remaining = remainingOwed(rows);
+    expect(remaining).toEqual({ cents: 15_500_00, basis: 'estimated' });
+    expect(isFirmStated(remaining)).toBe(false);
+  });
+
+  it('is firm-stated when every part is confirmed or payable', () => {
+    expect(isFirmStated({ cents: 100, basis: 'confirmed' })).toBe(true);
+    expect(isFirmStated({ cents: 100, basis: 'payable' })).toBe(true);
+  });
+
+  it('is not firm-stated when nothing prints an amount', () => {
+    expect(isFirmStated(null)).toBe(false);
   });
 });

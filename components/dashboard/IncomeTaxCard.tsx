@@ -5,7 +5,7 @@ import { TrendBars, type TrendPoint } from '@/components/charts/TrendBars';
 import { Link } from '@/i18n/navigation';
 import { formatCents } from '@/lib/money';
 import type { TaxObligation } from '@/lib/reports/taxes';
-import { nextDueDate, remainingOwed, sumField } from '@/lib/reports/taxes';
+import { isFirmStated, nextDueDate, remainingOwed, sumField } from '@/lib/reports/taxes';
 import { formatIsoDate } from '@/lib/utils/dates';
 
 /**
@@ -36,7 +36,9 @@ export async function IncomeTaxCard({
   const current = latest === null ? obligations : obligations.filter((o) => o.taxYear === latest);
   const remaining = remainingOwed(current);
   const due = nextDueDate(current, today);
-  const anyConfirmed = current.some((o) => o.status === 'firm_confirmed');
+  // Must agree with the figure below it, which reports the weakest basis any
+  // row relied on — a total that is part estimate is not "confirmed".
+  const firmStated = isFirmStated(remaining);
 
   const points: TrendPoint[] = years.flatMap((year) => {
     const rows = obligations.filter((o) => o.taxYear === year);
@@ -52,8 +54,8 @@ export async function IncomeTaxCard({
       <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
         <Landmark className="text-blue size-[18px] shrink-0" aria-hidden="true" />
         <span className="min-w-0 truncate">{t('incomeTaxTitle')}</span>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${anyConfirmed ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
-          {anyConfirmed ? tTax('status_firm_confirmed') : tTax('status_estimated')}
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${firmStated ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
+          {firmStated ? tTax('status_firm_confirmed') : tTax('status_estimated')}
         </span>
       </h2>
       <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45]">

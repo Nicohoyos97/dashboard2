@@ -206,3 +206,38 @@ export function salesTaxSeries(obligations: readonly TaxObligation[], labelOf: (
       nonTaxableSalesCents: o.nonTaxableSalesCents,
     }));
 }
+
+/**
+ * The four money figures on the Sales Taxes cards.
+ *
+ * Collected, paid and taxable sales are historical totals: summing them across
+ * every published filing is what they mean. "Payable" is not — it is a claim
+ * about what the client owes right now, so it goes through `remainingOwed`,
+ * which zeroes a filing the firm marked `paid`. Summing the payable column
+ * instead printed the gross of every quarter ever filed as money still due.
+ */
+export function salesTaxCardFigures(obligations: readonly TaxObligation[]): {
+  collectedCents: number | null;
+  paidCents: number | null;
+  payableCents: Remaining;
+  taxableSalesCents: number | null;
+} {
+  return {
+    collectedCents: sumField(obligations, (o) => o.collectedCents),
+    paidCents: sumField(obligations, (o) => o.paidCents),
+    payableCents: remainingOwed(obligations),
+    taxableSalesCents: sumField(obligations, (o) => o.taxableSalesCents),
+  };
+}
+
+/**
+ * Whether an amount owed rests entirely on figures the firm stated, rather than
+ * on an estimate. `remainingOwed` reports the weakest basis any row relied on,
+ * so anything a badge or label says about the total has to be derived from that
+ * — asking "is any row confirmed?" reports the strongest, and labels a total
+ * that is part estimate as confirmed. Spec §7: nothing is final unless
+ * firm_confirmed.
+ */
+export function isFirmStated(remaining: Remaining): boolean {
+  return remaining !== null && remaining.basis !== 'estimated';
+}
