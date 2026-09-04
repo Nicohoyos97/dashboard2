@@ -204,6 +204,7 @@
     "kpiGrossProfit": "Utilidad bruta",
     "kpiNetIncome": "Utilidad neta",
     "howCalculated": "¿Cómo se calcula?",
+    "priorColumn": "la columna anterior del estado",
     "vsPrior": "vs {period}",
     "noPrior": "Sin periodo anterior para comparar",
     "viewDetail": "Ver detalle",

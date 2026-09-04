@@ -43,7 +43,17 @@ import { loadTaxObligations } from '@/lib/portal/taxes';
 import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
-type Delta = { cents: number | null; deltaCents: number | null; deltaPct: number | null };
+// Which figure the delta was measured against. The statement's own comparative
+// column and the previous published period are different periods, and labelling
+// one with the other's name is how "+12.0% vs Jul–Dec 2025" appeared over a
+// year-over-year comparison. Nick already distinguishes the two.
+type ComparedTo = 'comparative_column' | 'prior_period_report';
+type Delta = {
+  cents: number | null;
+  deltaCents: number | null;
+  deltaPct: number | null;
+  comparedTo: ComparedTo | null;
+};
 
 /** How many published P&L periods the headline sparklines run over. */
 const PNL_TREND_LIMIT = 6;
@@ -59,14 +69,19 @@ function exactReport(reports: ReportRow[], type: ReportRow['reportType'], range:
 
 function metricDelta(metric: Metric | undefined, priorMetric: Metric | undefined): Delta {
   const cents = metric?.current?.cents ?? null;
-  if (cents === null) return { cents: null, deltaCents: null, deltaPct: null };
+  if (cents === null) return { cents: null, deltaCents: null, deltaPct: null, comparedTo: null };
   if (metric?.deltaCents !== null && metric?.deltaCents !== undefined) {
-    return { cents, deltaCents: metric.deltaCents, deltaPct: metric.deltaPct };
+    return { cents, deltaCents: metric.deltaCents, deltaPct: metric.deltaPct, comparedTo: 'comparative_column' };
   }
   const prior = priorMetric?.current?.cents;
-  if (prior === null || prior === undefined) return { cents, deltaCents: null, deltaPct: null };
+  if (prior === null || prior === undefined) return { cents, deltaCents: null, deltaPct: null, comparedTo: null };
   const deltaCents = cents - prior;
-  return { cents, deltaCents, deltaPct: prior === 0 ? null : (deltaCents / Math.abs(prior)) * 100 };
+  return {
+    cents,
+    deltaCents,
+    deltaPct: prior === 0 ? null : (deltaCents / Math.abs(prior)) * 100,
+    comparedTo: 'prior_period_report',
+  };
 }
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
@@ -223,6 +238,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
   const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
   const priorLabel = priorRange?.label ?? selected.label;
+  // A statement's comparative column names its own period; when it does not, say
+  // so rather than borrowing the previous period's name.
+  const comparativeLabel =
+    currentPnlReport?.comparativeStart && currentPnlReport?.comparativeEnd
+      ? formatPeriod(currentPnlReport.comparativeStart, currentPnlReport.comparativeEnd, locale)
+      : null;
+  const periodLabelFor = (delta: Delta): string =>
+    delta.comparedTo === 'comparative_column' ? (comparativeLabel ?? t('priorColumn')) : priorLabel;
   // Income and expenses come from the same statement, period by period; a
   // period that prints neither total is dropped rather than drawn at zero.
   const incomeExpense = pnlTrendReports.flatMap((report, index) => {
@@ -253,10 +276,10 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       }
     >
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={priorLabel} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={periodLabelFor(revenue)} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={periodLabelFor(grossProfit)} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={periodLabelFor(netIncome)} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">

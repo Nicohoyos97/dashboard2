@@ -204,6 +204,7 @@
     "kpiGrossProfit": "Gross Profit",
     "kpiNetIncome": "Net Income",
     "howCalculated": "How is this calculated?",
+    "priorColumn": "the statement's prior column",
     "vsPrior": "vs {period}",
     "noPrior": "No prior period to compare",
     "viewDetail": "View details",
