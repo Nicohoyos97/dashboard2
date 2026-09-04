@@ -13,17 +13,20 @@ export default async function HelpPage() {
       <p className="text-muted-foreground mt-1.5 text-[15px]">{t('lede')}</p>
 
       <dl className="divide-line mt-8 flex flex-col divide-y">
+        {/* A <div> inside a <dl> may hold only <dt>/<dd>, so the icon lives in
+            the term rather than in a wrapper of its own; the answer is indented
+            to clear it. */}
         {QUESTIONS.map((n) => (
-          <div key={n} className="flex gap-4 py-5">
-            <span className="bg-blue-pale text-blue mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
-              <CircleHelp className="size-4" strokeWidth={1.75} aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <dt className="text-ink text-[16px] font-semibold">{t(`q${n}`)}</dt>
-              <dd className="text-muted-foreground mt-1.5 max-w-[68ch] text-[14.5px] leading-[1.6]">
-                {t(`a${n}`)}
-              </dd>
-            </div>
+          <div key={n} className="py-5">
+            <dt className="text-ink flex items-start gap-4 text-[16px] font-semibold">
+              <span className="bg-blue-pale text-blue mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
+                <CircleHelp className="size-4" strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">{t(`q${n}`)}</span>
+            </dt>
+            <dd className="text-muted-foreground mt-1.5 ml-12 max-w-[68ch] text-[14.5px] leading-[1.6]">
+              {t(`a${n}`)}
+            </dd>
           </div>
         ))}
       </dl>

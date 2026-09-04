@@ -52,7 +52,9 @@ export function TestimonialPanel() {
               aria-hidden={active !== index}
               className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-700 motion-reduce:transition-none ${active === index ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
             >
-              <div className="mb-4 flex gap-1 text-warning" aria-label={t('fiveStars')}>
+              {/* role="img": a bare div may not carry aria-label, so the rating had no
+                  accessible name at all — the stars inside are decorative. */}
+              <div role="img" className="mb-4 flex gap-1 text-warning" aria-label={t('fiveStars')}>
                 {Array.from({ length: 5 }, (_, star) => (
                   <Star key={star} className="size-[18px] fill-current" aria-hidden="true" />
                 ))}

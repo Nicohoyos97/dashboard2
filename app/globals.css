@@ -45,10 +45,15 @@
   --color-line: var(--border); /* borders, dividers */
   --color-line-soft: var(--border-soft);
   --color-muted-ink: var(--muted-foreground); /* muted text */
-  --color-success: #10b981; /* positive */
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444; /* critical */
-  --color-info: #3b82f6;
+  /* Status hues are theme-aware because they are *text* as often as fill: a
+     `text-success` pill sits on `bg-success/10`, and the light-theme mint that
+     reads on navy is 2.3:1 on white. Values below are the darkest that keep the
+     hue while clearing 4.5:1 on white, on --secondary and on their own tint —
+     checked with axe in tests/e2e/accessibility.spec.ts. */
+  --color-success: var(--success); /* positive */
+  --color-warning: var(--warning);
+  --color-danger: var(--danger); /* critical */
+  --color-info: var(--info);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
 }
@@ -60,6 +65,10 @@
   --brand-primary: #2563eb;
   --brand-primary-hover: #1d4ed8;
   --brand-primary-soft: #eef5ff;
+  --success: #047857;
+  --warning: #92400e;
+  --danger: #b91c1c;
+  --info: #1d4ed8;
   --heading: #0f172a;
   --page: #f7f9fc;
   --page-alt: #f1f5f9;
@@ -86,7 +95,7 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted-foreground: #5c6b7f;
   --accent: #eef5ff;
   --accent-foreground: #2563eb;
   --destructive: #ef4444;
@@ -100,6 +109,10 @@
   --brand-primary: #2563eb;
   --brand-primary-hover: #3b82f6;
   --brand-primary-soft: #142b55;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
   --heading: #f8fafc;
   --page: #08111f;
   --page-alt: #0c1728;

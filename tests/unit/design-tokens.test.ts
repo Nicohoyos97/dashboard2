@@ -18,9 +18,18 @@ describe('design tokens', () => {
     expect(css).toContain('--color-paper: var(--page)');
     expect(css).toContain('--color-ink: var(--heading)');
     expect(css).toContain('--color-line: var(--border)');
-    expect(css).toContain('--color-success: #10b981');
-    expect(css).toContain('--color-danger: #ef4444');
+    // Status hues became theme-aware in the Phase 6 accessibility pass: the
+    // mint that reads on navy is 2.3:1 on white, and these are text as often as
+    // fill. The light values below clear 4.5:1 on white, on --secondary and on
+    // their own 10% tint (tests/e2e/accessibility.spec.ts checks it with axe).
+    expect(css).toContain('--color-success: var(--success)');
+    expect(css).toContain('--color-danger: var(--danger)');
     const light = css.slice(0, css.indexOf('\n.dark {'));
+    expect(light).toContain('--success: #047857');
+    expect(light).toContain('--warning: #92400e');
+    expect(light).toContain('--danger: #b91c1c');
+    // slate-500 (#64748b) is 4.34:1 on --secondary; muted text sits on it.
+    expect(light).toContain('--muted-foreground: #5c6b7f');
     expect(light).toContain('--brand-primary: #2563eb');
     expect(light).toContain('--brand-primary-hover: #1d4ed8');
     expect(light).toContain('--brand-primary-soft: #eef5ff');
@@ -28,6 +37,13 @@ describe('design tokens', () => {
     expect(light).toContain('--heading: #0f172a');
     expect(light).toContain('--border: #e6ecf4');
     expect(light).toContain('--primary: #2563eb');
+  });
+
+  it('keeps a light status palette for dark surfaces', () => {
+    const dark = css.slice(css.indexOf('\n.dark {'));
+    expect(dark).toContain('--success: #34d399');
+    expect(dark).toContain('--warning: #fbbf24');
+    expect(dark).toContain('--danger: #f87171');
   });
 
   it('uses Inter as the single typeface', () => {

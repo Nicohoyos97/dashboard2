@@ -129,12 +129,17 @@ export async function ExpenseTable({
       <nav aria-label={t('paginationLabel')} className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px]">
         <p className="text-muted-foreground">{t('showing', { from, to, total })}</p>
         <div className="flex items-center gap-2">
+          {/* At the ends these are disabled *controls*, not dimmed text: as a
+              span the greyed label was a 2.46:1 contrast failure and a screen
+              reader read it as stray words rather than an unavailable button. */}
           {page > 1 ? (
             <Link href={expenseHref(path, params, { page: String(page - 1) })} className="text-blue font-semibold hover:underline">
               {t('previous')}
             </Link>
           ) : (
-            <span className="text-muted-foreground/60">{t('previous')}</span>
+            <button type="button" disabled className="text-muted-foreground/60">
+              {t('previous')}
+            </button>
           )}
           <span className="text-muted-foreground">{t('pageOf', { page, pages })}</span>
           {page < pages ? (
@@ -142,7 +147,9 @@ export async function ExpenseTable({
               {t('next')}
             </Link>
           ) : (
-            <span className="text-muted-foreground/60">{t('next')}</span>
+            <button type="button" disabled className="text-muted-foreground/60">
+              {t('next')}
+            </button>
           )}
         </div>
       </nav>
