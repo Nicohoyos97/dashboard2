@@ -153,6 +153,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const priorPnlReport = priorRange ? exactReport(reports, 'profit_and_loss', priorRange) : null;
   const balanceReport = reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null;
   const currency = currentPnlReport?.currency ?? settings.currency;
+  const modules = settings.modules;
 
   // The headline sparklines run over the published P&Ls of the same kind as the
   // selected period, oldest first — a monthly view trends months, an annual one
@@ -271,19 +272,29 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       logoUrl={settings.logoUrl}
       actions={
         <>
-          <GranularityTabs choices={granularityChoices(periods, selected)} />
-          <PeriodSelector options={periods.map((period) => ({ value: periodParam(period), label: period.label }))} current={periodParam(selected)} />
+          {modules.statements && (
+            <>
+              <GranularityTabs choices={granularityChoices(periods, selected)} />
+              <PeriodSelector options={periods.map((period) => ({ value: periodParam(period), label: period.label }))} current={periodParam(selected)} />
+            </>
+          )}
           <DownloadReportsMenu items={downloadItems} />
         </>
       }
     >
+      {/* Everything below the greeting is module-scoped. The Overview is the
+          home of every package, so it shows what the client bought and nothing
+          else — a sales-tax-only client has no Profit & Loss for these to read. */}
+      {modules.statements && (
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={periodLabelFor(revenue)} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={periodLabelFor(grossProfit)} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={periodLabelFor(netIncome)} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
       </div>
+      )}
 
+      {modules.statements && (
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <section id="income-expense" className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -313,11 +324,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           <div className="mt-4 flex-1">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('expensesEmpty')}</p>}</div>
         </section>
       </div>
+      )}
 
+      {(modules.statements || modules.income_taxes) && (
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <InsightsCard insights={insights} currency={currency} />
-        <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />
+        {modules.statements && <InsightsCard insights={insights} currency={currency} />}
+        {modules.income_taxes && <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />}
       </div>
+      )}
 
       <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} today={today} /></div>
       <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>

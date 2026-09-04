@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
+import { seedPublishedStatement } from './helpers/seed-statements';
 
 // What the firm sold is what the client sees (§5, §8). Until 0018 the portal
 // read only sales_tax_enabled, so the Expenses and Income Taxes switches in
@@ -26,6 +27,9 @@ test.describe('the portal shows the modules the firm sold', () => {
       .eq('id', entityId);
     if (error) throw new Error(`configure: ${error.message}`);
     await fx.addMembership(entityId, user.id, 'client_owner');
+    // Both clients get a published P&L, so "the Overview shows no statement
+    // cards" means the module hid them — not that there was nothing to show.
+    await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded: [] });
     return user;
   }
 
@@ -38,6 +42,9 @@ test.describe('the portal shows the modules the firm sold', () => {
   }
 
   test('a sales-tax-only client gets Sales Taxes and Nick, and nothing else', async ({ page }) => {
+    // Visits four routes this run has not compiled yet; each first request
+    // costs seconds on the dev server, which is real work rather than waiting.
+    test.slow();
     const user = await clientOn(
       'salesonly',
       { statements: false, expenses: false, income_taxes: false },
@@ -52,6 +59,16 @@ test.describe('the portal shows the modules the firm sold', () => {
     await expect(nav.getByRole('link', { name: /income taxes/i })).toHaveCount(0);
     await expect(nav.getByRole('link', { name: /financial statements/i })).toHaveCount(0);
 
+    // The Overview is the home of every package, so it stays — but its cards
+    // are module-scoped too. This is the half the nav check misses: the page
+    // kept rendering Profit & Loss KPIs for a client with no Profit & Loss.
+    const main = page.getByRole('main');
+    await expect(main.getByText(/reminders & obligations/i)).toBeVisible();
+    await expect(main.getByText('Gross Income')).toHaveCount(0);
+    await expect(main.getByText('Net Income')).toHaveCount(0);
+    await expect(main.getByText(/income vs expense/i)).toHaveCount(0);
+    await expect(main.getByText(/income tax, projected/i)).toHaveCount(0);
+
     // The link is gone; the URL has to be gone too. Asserted on what renders
     // rather than the status code: notFound() inside a streamed Server
     // Component does not reliably change the HTTP status, which is why every
@@ -63,6 +80,7 @@ test.describe('the portal shows the modules the firm sold', () => {
   });
 
   test('a bookkeeping client gets everything except Sales Taxes', async ({ page }) => {
+    test.slow();
     const user = await clientOn(
       'bookkeeping',
       { statements: true, expenses: true, income_taxes: true },
@@ -80,5 +98,9 @@ test.describe('the portal shows the modules the firm sold', () => {
 
     await page.goto('/expenses');
     await expect(page.getByRole('heading', { name: /expenses/i }).first()).toBeVisible();
+
+    // And the Overview keeps the statement cards this client did buy.
+    await page.goto('/dashboard');
+    await expect(page.getByRole('main').getByText('Gross Income')).toBeVisible();
   });
 });
