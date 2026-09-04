@@ -193,8 +193,15 @@ Also open, recorded in `docs/ASSUMPTIONS.md`:
 - **`StatCards` duplicates `KpiCard`'s delta logic**, and the income-tax
   derivations live in the card rather than `lib/reports/taxes.ts`.
 - **`scripts/seed-demo.ts` is 570 lines** against the ~300-line guide.
-- **The cloud Supabase project is not created.** Migrations have only been
-  applied locally; see `docs/ENVIRONMENTS.md`.
+- **The cloud Supabase project is not created**, and the production deploy at
+  `app.hoyosbaker.com` (live 2026-09-04) cannot serve a page until its URL and
+  keys are in Vercel — every route answers `503 supabase_env_missing` until
+  then. Migrations 0001–0013 have only been applied locally. The runbook,
+  including why neither the local values nor the v1 project can be used, is in
+  `docs/ENVIRONMENTS.md`.
+- **The resource CSP is not written yet** (`script-src`/`connect-src`); it needs
+  a middleware nonce and a preview deploy to verify. The rest of the security
+  headers and `robots.txt` ship — `docs/SECURITY.md` → Headers.
 
 ---
 

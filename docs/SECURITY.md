@@ -65,16 +65,29 @@ The Supabase security advisor flags items that are correct for this schema — d
 - No financial content, PII, tokens or secrets in logs, error messages, audit metadata, or cache rows. Masked account numbers only. Job errors store an error *code*, never document content.
 - `logAccess()` records identifiers and counts, never content.
 
-### Headers (Phase 6 hardening)
+### Headers
+
+Shipped in `next.config.ts` on every response (2026-09-04, with the first deploy):
 
 ```
-Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Content-Security-Policy: frame-ancestors 'none'
 Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: camera=(), microphone=(), geolocation=()
-Content-Security-Policy: strict; allow self, fonts.gstatic.com, *.supabase.co, api.anthropic.com
+Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+X-Robots-Tag: noindex, nofollow          # plus app/robots.ts — a private portal is not indexed
 ```
+
+`Strict-Transport-Security` is sent by Vercel for the custom domain
+(`max-age=63072000`); we do not add a second, differing one.
+
+**Still open — the resource CSP** (`script-src` / `style-src` / `connect-src`,
+self + `fonts.gstatic.com` + `*.supabase.co` + `api.anthropic.com`). Next injects
+inline scripts, so a real policy needs a per-request nonce from the middleware,
+and `pnpm dev` — which the e2e suite drives — needs an `'unsafe-eval'` that
+production must not carry. It therefore has to be verified against a preview
+deployment, not locally. `frame-ancestors` is the part with no such caveat and
+it already ships.
 
 ### Dependencies & SSRF
 
