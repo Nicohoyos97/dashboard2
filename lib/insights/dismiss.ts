@@ -34,6 +34,10 @@ export async function dismissInsight(input: DismissInsightInput): Promise<{ ok: 
   } = await supabase.auth.getUser();
   if (!user) return { ok: false };
 
+  // ignoreDuplicates → ON CONFLICT DO NOTHING. A plain upsert would take the
+  // DO UPDATE branch on a repeat tick (second tab, double click), and 0008
+  // deliberately has no UPDATE policy, so RLS rejected the second dismissal of
+  // a row that already existed.
   const { error } = await supabase.from('insight_dismissals').upsert(
     {
       user_id: user.id,
@@ -42,7 +46,7 @@ export async function dismissInsight(input: DismissInsightInput): Promise<{ ok: 
       period_start: parsed.data.periodStart,
       period_end: parsed.data.periodEnd,
     },
-    { onConflict: 'user_id,business_entity_id,rule_key,period_start,period_end' },
+    { onConflict: 'user_id,business_entity_id,rule_key,period_start,period_end', ignoreDuplicates: true },
   );
   if (error) return { ok: false };
 

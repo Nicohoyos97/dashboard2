@@ -27,21 +27,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const supabase = await createClient();
-  const [entities, currentEntity, { data: profile }] = await Promise.all([
-    listEntities(),
-    getCurrentEntity(),
-    supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
-  ]);
-
+  const currentEntity = await getCurrentEntity();
   const preview = currentEntity?.role === 'firm_preview' ? currentEntity : null;
-  const t = preview ? await getTranslations('Overview') : null;
-  // Sales Taxes is hidden for a business the firm has not enabled it for; the
-  // route 404s on the same flag, so a hidden module is not merely a hidden link.
-  const settings = currentEntity ? await loadPortalEntitySettings(supabase, currentEntity.id) : null;
+  const [entities, { data: profile }, settings, notifications, t] = await Promise.all([
+    listEntities(),
+    supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
+    // Sales Taxes is hidden for a business the firm has not enabled it for; the
+    // route 404s on the same flag, so a hidden module is not merely a hidden
+    // link. The layout has no error boundary of its own, so a failed read here
+    // falls back to the conservative nav rather than taking every route down.
+    currentEntity ? loadPortalEntitySettings(supabase, currentEntity.id).catch(() => null) : Promise.resolve(null),
+    // A firm user previewing the portal sees the client's chrome but their own
+    // notifications would be noise here, so the bell is client-side only.
+    preview ? Promise.resolve([]) : loadNotifications(user.id, currentEntity?.id ?? null).catch(() => []),
+    preview ? getTranslations('Overview') : Promise.resolve(null),
+  ]);
   const navItems = clientNavItems(settings?.salesTaxEnabled ?? false);
-  // A firm user previewing the portal sees the client's chrome but their own
-  // notifications would be noise here, so the bell is client-side only.
-  const notifications = preview ? [] : await loadNotifications(currentEntity?.id ?? null);
 
   return (
     <AppShell

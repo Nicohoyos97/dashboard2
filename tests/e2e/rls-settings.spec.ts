@@ -53,13 +53,21 @@ test.describe('RLS — notification preferences and account requests', () => {
       .eq('business_entity_id', a.entityId);
     expect(peek.data ?? []).toHaveLength(0);
 
-    // And cannot flip it either.
+    // And cannot flip it either — asserted on the row itself, not on the
+    // update's return: an invisible row also returns zero rows.
     const flip = await mateClient
       .from('notification_preferences')
       .update({ reminders: true })
       .eq('business_entity_id', a.entityId)
       .select();
     expect(flip.data ?? []).toHaveLength(0);
+    const untouched = await adminClient()
+      .from('notification_preferences')
+      .select('reminders')
+      .eq('user_id', a.userId)
+      .eq('business_entity_id', a.entityId)
+      .maybeSingle();
+    expect(untouched.data?.reminders).toBe(false);
   });
 
   test('a client may raise and withdraw a request but never edit or delete one', async () => {
@@ -111,14 +119,15 @@ test.describe('RLS — notification preferences and account requests', () => {
       .select();
     expect(selfComplete.data ?? []).toHaveLength(0);
 
-    // Withdrawing it is.
+    // Withdrawing it is, and the guard stamps when it happened.
     const withdraw = await a.client
       .from('account_requests')
       .update({ status: 'cancelled' })
       .eq('id', requestId)
-      .select();
+      .select('resolved_at');
     expect(withdraw.error).toBeNull();
     expect(withdraw.data ?? []).toHaveLength(1);
+    expect(withdraw.data?.[0]?.resolved_at).not.toBeNull();
 
     // No client delete path at all: a request is history the firm may need.
     const removed = await a.client.from('account_requests').delete().eq('id', requestId).select();
@@ -130,6 +139,24 @@ test.describe('RLS — notification preferences and account requests', () => {
       .maybeSingle();
     expect(stillThere.data?.status).toBe('cancelled');
     expect(stillThere.data?.message).toBe('please include 2026');
+  });
+
+  test('a client cannot raise a request that already carries the firm\'s reply or a chosen timestamp', async () => {
+    const a = await fx.makeTenant('ag-a');
+    const base = { business_entity_id: a.entityId, user_id: a.userId, kind: 'data_export' as const };
+
+    // Firm-owned columns on INSERT are refused by the guard (0009), whatever RLS allows.
+    expect(insertDenied(await a.client.from('account_requests').insert({ ...base, firm_note: 'Approved — proceed' }).select())).toBe(true);
+    expect(insertDenied(await a.client.from('account_requests').insert({ ...base, resolved_by: a.userId }).select())).toBe(true);
+    expect(insertDenied(await a.client.from('account_requests').insert({ ...base, resolved_at: '2020-01-01T00:00:00Z' }).select())).toBe(true);
+
+    // A client-supplied requested_at is replaced by the server clock.
+    const backdated = await a.client
+      .from('account_requests')
+      .insert({ ...base, requested_at: '2020-01-01T00:00:00Z' })
+      .select('requested_at');
+    expect(backdated.error).toBeNull();
+    expect(new Date(backdated.data?.[0]?.requested_at ?? '').getFullYear()).toBeGreaterThan(2020);
   });
 
   test('an insight tick is the ticker\'s own and stays inside their business', async () => {

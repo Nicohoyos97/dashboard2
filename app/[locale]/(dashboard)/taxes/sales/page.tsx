@@ -13,10 +13,12 @@ import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { ObligationList } from '@/components/taxes/ObligationList';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
 import { logAccess } from '@/lib/audit/logAccess';
+import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { nextDueDate, salesTaxSeries, sumField, taxAlerts } from '@/lib/reports/taxes';
+import { isoToday } from '@/lib/reminders/status';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
 
@@ -62,8 +64,8 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const selectedCode = jurisdictions.some((j) => j.code === params.jurisdiction) ? (params.jurisdiction ?? '') : '';
   const obligations = selectedCode === '' ? all : all.filter((o) => o.jurisdiction?.code === selectedCode);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const today = isoToday();
+  const money = (cents: number) => formatCents(cents, currency, locale);
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const due = nextDueDate(obligations, today);
   const pendingReview = obligations.filter((o) => o.status === 'pending_review').length;
@@ -131,10 +133,10 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
           <Section title={t('taxableSalesTitle')}>
             {salesTrend ? (
               <TrendBars
-                points={showsNonTaxable ? salesTrend : salesTrend.map((point) => ({ label: point.label, a: point.a, b: null }))}
+                points={salesTrend}
                 currency={currency}
                 seriesA={t('amountTaxableSales')}
-                seriesB={showsNonTaxable ? t('amountNonTaxableSales') : ''}
+                {...(showsNonTaxable ? { seriesB: t('amountNonTaxableSales') } : {})}
                 summary={t('taxableSalesSummary', { count: salesTrend.length })}
               />
             ) : (

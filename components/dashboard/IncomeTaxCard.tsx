@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import { TrendBars, type TrendPoint } from '@/components/charts/TrendBars';
 import { Link } from '@/i18n/navigation';
+import { formatCents } from '@/lib/money';
 import type { TaxObligation } from '@/lib/reports/taxes';
 import { nextDueDate, remainingOwed, sumField } from '@/lib/reports/taxes';
 import { formatIsoDate } from '@/lib/utils/dates';
@@ -28,7 +29,7 @@ export async function IncomeTaxCard({
     getTranslations('Taxes'),
     getLocale(),
   ]);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const money = (cents: number) => formatCents(cents, currency, locale);
 
   const years = [...new Set(obligations.flatMap((o) => (o.taxYear === null ? [] : [o.taxYear])))].sort((a, b) => a - b);
   const latest = years[years.length - 1] ?? null;
@@ -59,19 +60,22 @@ export async function IncomeTaxCard({
         {latest === null ? t('incomeTaxLede') : t('incomeTaxLedeYear', { year: latest })}
       </p>
 
-      {points.length === 0 ? (
+      {obligations.length === 0 ? (
         <p className="text-muted-foreground mt-4 text-[14px]">{t('incomeTaxEmpty')}</p>
       ) : (
         <>
-          <div className="mt-4">
-            <TrendBars
-              points={points}
-              currency={currency}
-              seriesA={t('incomeTaxProjected')}
-              seriesB={t('incomeTaxPaid')}
-              summary={t('incomeTaxSummary', { count: points.length })}
-            />
-          </div>
+          {/* No chart when the firm's records carry no tax year — the footer still states what is owed. */}
+          {points.length > 0 && (
+            <div className="mt-4">
+              <TrendBars
+                points={points}
+                currency={currency}
+                seriesA={t('incomeTaxProjected')}
+                seriesB={t('incomeTaxPaid')}
+                summary={t('incomeTaxSummary', { count: points.length })}
+              />
+            </div>
+          )}
           <div className="border-line-soft mt-auto flex flex-wrap items-end justify-between gap-3 border-t pt-4">
             <div className="min-w-0">
               <p className="text-muted-foreground text-[12px] font-medium">{t('incomeTaxRemaining')}</p>

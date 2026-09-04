@@ -13,10 +13,12 @@ import { ExpenseFilterBar } from '@/components/expenses/ExpenseFilterBar';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
 import { PortalPage, PortalEmpty } from '@/components/portal/PortalPage';
 import { logAccess } from '@/lib/audit/logAccess';
+import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import {
   EXPENSE_PAGE_SIZE,
   type ExpenseSearchParams,
+  expenseHref,
   parseExpenseQuery,
   sortTransactions,
 } from '@/lib/portal/expense-filters';
@@ -87,7 +89,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const topCategory = categoryGroups[0] ?? null;
   const topVendor = vendorGroups.find((group) => group.key !== '') ?? null;
 
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const money = (cents: number) => formatCents(cents, currency, locale);
   const unavailable = covered ? undefined : t('incompletePeriod');
   const deltaOf = (currentCents: number, priorCents: number | null) => expenseDelta(currentCents, priorCents).deltaPct;
   // A one-month period has no shape of its own, so the card falls back to the
@@ -158,16 +160,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   ];
 
   const ordered = sortTransactions(current, sort);
-  const pageRows = ordered.slice((page - 1) * EXPENSE_PAGE_SIZE, page * EXPENSE_PAGE_SIZE);
+  // A stale link can name a page past the end; clamp rather than render an
+  // empty table that says "Showing 276–30 of 30".
+  const pages = Math.max(1, Math.ceil(ordered.length / EXPENSE_PAGE_SIZE));
+  const currentPage = Math.min(page, pages);
+  const pageRows = ordered.slice((currentPage - 1) * EXPENSE_PAGE_SIZE, currentPage * EXPENSE_PAGE_SIZE);
   const accountLabels = new Map(accounts.map((account) => [account.id, account.label]));
   const activeFilters = Object.values(filters).filter((value) => value !== null).length;
-  const csvQuery = new URLSearchParams(
-    Object.entries(params).flatMap(([key, value]) => {
-      const first = Array.isArray(value) ? value[0] : value;
-      return first === undefined || first === '' || key === 'page' ? [] : [[key, first] as [string, string]];
-    }),
-  );
-  csvQuery.set('period', periodParam(selected));
+  // The export link is built by the same helper as every table link, so the
+  // CSV can never describe a different set than the page; the app locale rides
+  // along so the file's headers match the UI rather than the browser's language.
+  const csvHref = expenseHref('/api/expenses/csv', params, { period: periodParam(selected), locale });
 
   await logAccess({
     action: 'expenses.view',
@@ -185,7 +188,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         controls={
           <>
             <PeriodSelector options={periods.map((p) => ({ value: periodParam(p), label: p.label }))} current={periodParam(selected)} />
-            <a href={`/api/expenses/csv?${csvQuery.toString()}`} className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-[14px] font-semibold transition">
+            <a href={csvHref} className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-[14px] font-semibold transition">
               {t('exportCsv')}
             </a>
           </>
@@ -200,8 +203,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
         <div className="mt-6">
           <ExpenseFilterBar
+            key={`${periodParam(selected)}|${JSON.stringify(filters)}`}
             path={path}
             period={periodParam(selected)}
+            sort={sort === 'date_desc' ? null : sort}
             values={{
               category: filters.categoryId ?? '',
               vendor: filters.vendor ?? '',
@@ -220,14 +225,18 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[3fr_2fr]">
           <Section title={t('trendTitle')}>
-            {months.length >= 2 ? (
+            {!covered ? (
+              <Muted text={t('incompletePeriod')} />
+            ) : months.length >= 2 ? (
               <MonthlySpendChart months={months} currency={currency} seriesLabel={t('cardTotal')} summary={t('trendSummary', { months: months.length, total: money(totals.totalCents) })} />
             ) : (
               <Muted text={months.length === 1 ? t('trendSingleMonth') : t('tableEmpty')} />
             )}
           </Section>
           <Section title={t('byCategoryTitle')}>
-            {categoryGroups.length > 0 ? (
+            {!covered ? (
+              <Muted text={t('incompletePeriod')} />
+            ) : categoryGroups.length > 0 ? (
               <CompositionBars items={categoryGroups.map((group) => ({ label: group.label, cents: group.cents }))} currency={currency} otherLabel={t('other')} />
             ) : (
               <Muted text={t('noCategories')} />
@@ -237,14 +246,18 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
         <div className="mt-6 grid gap-6 xl:grid-cols-2">
           <Section title={t('byVendorTitle')}>
-            {vendorGroups.some((group) => group.key !== '') ? (
+            {!covered ? (
+              <Muted text={t('incompletePeriod')} />
+            ) : vendorGroups.some((group) => group.key !== '') ? (
               <CompositionBars items={vendorGroups.map((group) => ({ label: group.label, cents: group.cents }))} currency={currency} otherLabel={t('other')} />
             ) : (
               <Muted text={t('noVendors')} />
             )}
           </Section>
           <Section title={t('recurringTitle')} lede={t('recurringLede')}>
-            {totals.totalCents > 0 ? (
+            {!covered ? (
+              <Muted text={t('incompletePeriod')} />
+            ) : totals.totalCents > 0 ? (
               <CompositionBars
                 items={[
                   { label: t('recurringYes'), cents: totals.recurring.yesCents },
@@ -264,7 +277,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <ExpenseTable
             rows={pageRows}
             total={ordered.length}
-            page={page}
+            page={currentPage}
             pageSize={EXPENSE_PAGE_SIZE}
             sort={sort}
             path={path}

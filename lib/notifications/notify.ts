@@ -42,20 +42,17 @@ export async function notifyEntityMembers(input: {
   if (!members?.length) return;
 
   const channel = CHANNEL[input.kind];
-  const { data: preferences } = await admin
+  const { data: preferences, error } = await admin
     .from('notification_preferences')
-    .select(`user_id, ${channel}`)
+    .select('user_id, reminders, new_reports, tax_deadlines, document_activity, email_digest')
     .eq('business_entity_id', input.entityId)
     .in(
       'user_id',
       members.map((member) => member.user_id),
     );
-  const wants = new Map<string, boolean>(
-    (preferences ?? []).map((row) => [
-      (row as unknown as { user_id: string }).user_id,
-      Boolean((row as unknown as Record<string, unknown>)[channel]),
-    ]),
-  );
+  // Silently defaulting here would notify a member who explicitly opted out.
+  if (error) throw new Error('notification_preferences_read_failed');
+  const wants = new Map<string, boolean>((preferences ?? []).map((row) => [row.user_id, row[channel]]));
 
   const recipients = members.filter(
     (member) => wants.get(member.user_id) ?? DEFAULT_NOTIFICATION_PREFERENCES[channel],

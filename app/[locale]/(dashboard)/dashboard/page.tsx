@@ -13,6 +13,8 @@ import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
 import { logAccess } from '@/lib/audit/logAccess';
+import { formatCents } from '@/lib/money';
+import { isoToday } from '@/lib/reminders/status';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
@@ -148,14 +150,22 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     .slice(0, PNL_TREND_LIMIT)
     .reverse();
 
-  const [currentLines, priorLines, balanceLines, currentTransactions, priorTransactions, pnlTrendLines] = await Promise.all([
-    currentPnlReport ? loadReportLines(supabase, entity.id, currentPnlReport.id) : Promise.resolve([]),
-    priorPnlReport ? loadReportLines(supabase, entity.id, priorPnlReport.id) : Promise.resolve([]),
-    balanceReport ? loadReportLines(supabase, entity.id, balanceReport.id) : Promise.resolve([]),
+  // Every statement's lines are read once: the selected and prior P&Ls are
+  // normally inside the trend window too, and were being fetched twice.
+  const lineReportIds = [
+    ...new Set([currentPnlReport?.id, priorPnlReport?.id, balanceReport?.id, ...pnlTrendReports.map((report) => report.id)].filter((id): id is string => id !== undefined)),
+  ];
+  const [lineSets, currentTransactions, priorTransactions] = await Promise.all([
+    Promise.all(lineReportIds.map((id) => loadReportLines(supabase, entity.id, id))),
     cashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, selected) : Promise.resolve([]),
     priorRange && priorCashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, priorRange) : Promise.resolve([]),
-    Promise.all(pnlTrendReports.map((report) => loadReportLines(supabase, entity.id, report.id))),
   ]);
+  const linesById = new Map(lineReportIds.map((id, index) => [id, lineSets[index] ?? []]));
+  const linesOf = (report: ReportRow | null) => (report ? (linesById.get(report.id) ?? []) : []);
+  const currentLines = linesOf(currentPnlReport);
+  const priorLines = linesOf(priorPnlReport);
+  const balanceLines = linesOf(balanceReport);
+  const pnlTrendLines = pnlTrendReports.map((report) => linesOf(report));
 
   const currentRoots = buildTree(currentLines);
   const priorRoots = buildTree(priorLines);
@@ -176,6 +186,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     });
     return points.length === pnlTrend.length && points.length >= 2 ? points : [];
   };
+  const trendFor = (pick: (m: PnlMetrics) => Metric, delta: Delta): number[] => {
+    const series = pnlSeries(pick);
+    return series.length >= 2 ? series : priorAndCurrent(delta.cents, delta.deltaCents);
+  };
+  // The cards dropped the source pill at the owner's request; the source still
+  // travels in the "how is this calculated" tooltip (§2 rule 10), and says
+  // "entered by your accountant" when there is no document behind the figure.
+  const pnlSourceNote = t(currentPnlReport?.source === 'firm_entry' ? 'sourceEntryNote' : 'sourceDocumentNote');
   const months = cashCovered ? cashByMonth(currentTransactions, selected) : [];
   const priorMonths = priorRange && priorCashCovered ? cashByMonth(priorTransactions, priorRange) : [];
   const totals = cashCovered ? cashTotals(months) : null;
@@ -184,7 +202,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     lines: currentRoots,
     ...(priorPnl ? { prior: priorPnl, priorLines: priorRoots } : {}),
   } : undefined;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = isoToday();
   // Insights run over the last few published periods, not only the selected
   // one: the earlier periods get the statement rules (their cash and balance
   // figures are not loaded), and the selected period gets the full set. Rows
@@ -212,7 +230,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       today,
     },
     MAX_INSIGHTS + INSIGHT_PERIODS,
-  ).filter((insight) => !dismissedInsights.has(insight.key));
+    dismissedInsights,
+  );
   const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
   const priorLabel = priorRange?.label ?? selected.label;
   // Income and expenses come from the same statement, period by period; a
@@ -228,7 +247,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   });
   const netForPeriod = revenue.cents !== null && operatingExpenses.cents !== null ? revenue.cents - operatingExpenses.cents : null;
 
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const money = (cents: number) => formatCents(cents, currency, locale);
 
   await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
 
@@ -244,10 +263,10 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       }
     >
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={priorLabel} how={t('howGrossIncome')} href="/statements/profit-and-loss" trend={pnlSeries((m) => m.revenue).length >= 2 ? pnlSeries((m) => m.revenue) : priorAndCurrent(revenue.cents, revenue.deltaCents)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={priorLabel} how={t('howTotalExpenses')} href="/statements/profit-and-loss" trend={pnlSeries((m) => m.operatingExpenses).length >= 2 ? pnlSeries((m) => m.operatingExpenses) : priorAndCurrent(operatingExpenses.cents, operatingExpenses.deltaCents)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={priorLabel} how={t('howGrossProfit')} href="/statements/profit-and-loss" trend={pnlSeries((m) => m.grossProfit).length >= 2 ? pnlSeries((m) => m.grossProfit) : priorAndCurrent(grossProfit.cents, grossProfit.deltaCents)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} how={t('howNetIncome')} href="/statements/profit-and-loss" trend={pnlSeries((m) => m.netIncome).length >= 2 ? pnlSeries((m) => m.netIncome) : priorAndCurrent(netIncome.cents, netIncome.deltaCents)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={priorLabel} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={priorLabel} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">

@@ -7,6 +7,7 @@ export const SUGGESTIONS: Record<NickPage, readonly string[]> = {
   overview: ['s_overview_1', 's_overview_2', 's_overview_3', 's_overview_4'],
   profit_and_loss: ['s_pnl_1', 's_pnl_2', 's_pnl_3', 's_pnl_4', 's_pnl_5', 's_pnl_6'],
   balance_sheet: ['s_bs_1', 's_bs_2', 's_bs_3', 's_bs_4', 's_bs_5'],
+  // Nick's expense tool reads the P&L breakdown, so the prompts stay on what it can cite.
   expenses: ['s_exp_1', 's_exp_2', 's_exp_3', 's_exp_4'],
   income_tax: ['s_itax_1', 's_itax_2', 's_itax_3'],
   sales_tax: ['s_stax_1', 's_stax_2', 's_stax_3'],

@@ -46,7 +46,12 @@ export async function GET(request: Request) {
 
   const { filters, sort } = parseExpenseQuery(Object.fromEntries(url.searchParams.entries()));
   const rows = sortTransactions(await loadExpenseTransactions(supabase, entity.id, currency, wanted, filters), sort);
-  const locale = request.headers.get('accept-language')?.toLowerCase().startsWith('es') ? 'es' : 'en';
+  // The page passes the locale it rendered in; the browser's language is only
+  // a fallback, so the file's headers match the screen it was exported from.
+  const requested = url.searchParams.get('locale');
+  const locale = requested === 'es' || requested === 'en'
+    ? requested
+    : request.headers.get('accept-language')?.toLowerCase().startsWith('es') ? 'es' : 'en';
   const csv = expensesCsv(rows, {
     locale,
     ...(locale === 'es' ? { yes: 'Sí', no: 'No' } : { yes: 'Yes', no: 'No' }),

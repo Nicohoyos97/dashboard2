@@ -5,6 +5,8 @@
 // null rather than becoming a zero that reads as "nothing owed".
 import { sumCents } from '@/lib/money';
 
+import { daysBetween } from './dates';
+
 export const TAX_STATUSES = ['estimated', 'firm_confirmed', 'paid', 'payable', 'pending_review'] as const;
 export type TaxStatus = (typeof TAX_STATUSES)[number];
 
@@ -63,21 +65,38 @@ export function sumField(obligations: readonly TaxObligation[], pick: (o: TaxObl
 }
 
 /**
- * What is still owed, and on which printed figure that rests. A payable the
- * firm printed always wins; otherwise it is confirmed (or, failing that,
- * estimated) minus what has been paid. Null when nothing supports a number.
+ * What is still owed, and on which printed figure that rests. Worked out per
+ * obligation and then summed, so a row that prints a payable and one that
+ * prints only an estimate both count — summing one column across rows would
+ * silently drop whichever rows do not print it. A row the firm marked `paid`
+ * owes nothing whatever it still prints. The basis reported is the weakest one
+ * any row relied on (estimated < confirmed < payable). Null when no row
+ * supports a number.
  */
-export type Remaining = { cents: number; basis: 'payable' | 'confirmed' | 'estimated' } | null;
+export type RemainingBasis = 'payable' | 'confirmed' | 'estimated';
+export type Remaining = { cents: number; basis: RemainingBasis } | null;
+
+const BASIS_RANK: Record<RemainingBasis, number> = { estimated: 0, confirmed: 1, payable: 2 };
+
+function remainingFor(o: TaxObligation): { cents: number; basis: RemainingBasis } | null {
+  if (o.status === 'paid') return { cents: 0, basis: o.payableCents !== null ? 'payable' : o.confirmedCents !== null ? 'confirmed' : 'estimated' };
+  if (o.payableCents !== null) return { cents: o.payableCents, basis: 'payable' };
+  const paid = o.paidCents ?? 0;
+  if (o.confirmedCents !== null) return { cents: o.confirmedCents - paid, basis: 'confirmed' };
+  if (o.estimatedCents !== null) return { cents: o.estimatedCents - paid, basis: 'estimated' };
+  return null;
+}
 
 export function remainingOwed(obligations: readonly TaxObligation[]): Remaining {
-  const payable = sumField(obligations, (o) => o.payableCents);
-  if (payable !== null) return { cents: payable, basis: 'payable' };
-  const paid = sumField(obligations, (o) => o.paidCents) ?? 0;
-  const confirmed = sumField(obligations, (o) => o.confirmedCents);
-  if (confirmed !== null) return { cents: confirmed - paid, basis: 'confirmed' };
-  const estimated = sumField(obligations, (o) => o.estimatedCents);
-  if (estimated !== null) return { cents: estimated - paid, basis: 'estimated' };
-  return null;
+  const parts = obligations.flatMap((o) => {
+    const part = remainingFor(o);
+    return part ? [part] : [];
+  });
+  if (parts.length === 0) return null;
+  return {
+    cents: sumCents(parts.map((part) => part.cents)),
+    basis: parts.reduce<RemainingBasis>((weakest, part) => (BASIS_RANK[part.basis] < BASIS_RANK[weakest] ? part.basis : weakest), 'payable'),
+  };
 }
 
 /** The earliest due date not yet in the past, so the card points at what is next rather than what is over. */
@@ -109,12 +128,8 @@ export type TaxAlert = {
 
 const SOON_DAYS = 30;
 
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-}
-
 function owesMoney(o: TaxObligation): boolean {
-  const remaining = remainingOwed([o]);
+  const remaining = remainingFor(o);
   return remaining !== null && remaining.cents > 0;
 }
 
@@ -131,13 +146,17 @@ export function taxAlerts(obligations: readonly TaxObligation[], today: string):
     const due = obligation.dueDate;
     const days = due === null ? null : daysBetween(today, due);
     const overdue = days !== null && days < 0;
-    const filed = obligation.filingStatus === 'filed' || obligation.filingStatus === 'amended';
+    // `extended` is a filing the authority has already granted more time for;
+    // an unknown status is not evidence of a missing one. Only `not_filed`
+    // past its date is a missing filing.
+    const filed = obligation.filingStatus === 'filed' || obligation.filingStatus === 'amended' || obligation.filingStatus === 'extended';
+    const unfiled = obligation.filingStatus === 'not_filed';
 
-    if (overdue && (owesMoney(obligation) || !filed)) {
+    if (overdue && owesMoney(obligation)) {
       alerts.push({ ...base, kind: 'past_due', tone: 'critical' });
       continue;
     }
-    if (overdue && obligation.filingStatus === 'not_filed') {
+    if (overdue && unfiled) {
       alerts.push({ ...base, kind: 'missing_filing', tone: 'critical' });
       continue;
     }
@@ -151,7 +170,7 @@ export function taxAlerts(obligations: readonly TaxObligation[], today: string):
       alerts.push({ ...base, kind: 'missing_payment_confirmation', tone: 'warning' });
       continue;
     }
-    if (days !== null && days <= SOON_DAYS) {
+    if (days !== null && days >= 0 && days <= SOON_DAYS) {
       if (owesMoney(obligation)) alerts.push({ ...base, kind: 'upcoming_payment', tone: 'warning' });
       else if (!filed) alerts.push({ ...base, kind: 'upcoming_filing', tone: 'warning' });
     }

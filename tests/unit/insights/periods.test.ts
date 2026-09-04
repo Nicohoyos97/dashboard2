@@ -107,4 +107,32 @@ describe('insights across periods', () => {
   it('builds a dismissal key from the rule and the period, not the figures', () => {
     expect(insightKey('margin_changed', '2026-07-01', '2026-07-31')).toBe('margin_changed|2026-07-01|2026-07-31');
   });
+
+  it('drops dismissed insights before applying the cap, so a checked-off row never holds a slot', () => {
+    const earlier = [
+      period('2026-06-01', '2026-06-30', 'Jun 2026', 100_000_00, 30_000_00, 40_000_00),
+      period('2026-07-01', '2026-07-31', 'Jul 2026', 100_000_00, 45_000_00, 25_000_00),
+    ];
+    const selected = { start: '2026-08-01', end: '2026-08-31', label: 'Aug 2026' };
+    const all = insightsAcrossPeriods(selected, earlier, NOTHING, 10);
+    expect(all.length).toBeGreaterThan(1);
+    const first = all[0];
+    if (!first) throw new Error('expected an insight');
+
+    // Cap of one: with the first row dismissed, the second must surface instead of an empty list.
+    const remaining = insightsAcrossPeriods(selected, earlier, NOTHING, 1, new Set([first.key]));
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.key).toBe(all[1]?.key);
+  });
+
+  it('keys a due-date insight on the date, not on the period being viewed', () => {
+    const selected = { start: '2026-08-01', end: '2026-08-31', label: 'Aug 2026' };
+    const reminders = [{ reminderType: 'sales_tax_deadline', status: 'upcoming', dueDate: '2026-09-10', amountCents: 5_000_00 }];
+    const fromAugust = insightsAcrossPeriods(selected, [], { ...NOTHING, reminders }, 10);
+    const fromMay = insightsAcrossPeriods({ start: '2026-05-01', end: '2026-05-31', label: 'May 2026' }, [], { ...NOTHING, reminders }, 10);
+    expect(fromAugust[0]?.ruleKey).toBe('sales_tax_due_soon');
+    expect(fromAugust[0]?.key).toBe(insightKey('sales_tax_due_soon', '2026-09-10', '2026-09-10'));
+    // Ticking it off while viewing one month hides it on every other month too.
+    expect(fromMay[0]?.key).toBe(fromAugust[0]?.key);
+  });
 });

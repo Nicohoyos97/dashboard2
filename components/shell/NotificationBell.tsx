@@ -6,7 +6,8 @@ import { Popover } from 'radix-ui';
 import { useTransition } from 'react';
 
 import { Link } from '@/i18n/navigation';
-import { markNotificationsRead, type PortalNotification } from '@/lib/portal/notifications';
+import { markNotificationsRead } from '@/lib/portal/notification-actions';
+import type { PortalNotification } from '@/lib/portal/notifications';
 
 // The notifications control in the top bar (§7). The badge counts unread rows
 // and the panel marks them read when it opens, so the count means "since you

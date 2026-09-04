@@ -11,10 +11,12 @@ import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { ObligationList } from '@/components/taxes/ObligationList';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
 import { logAccess } from '@/lib/audit/logAccess';
+import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { nextDueDate, remainingOwed, sumField, taxAlerts } from '@/lib/reports/taxes';
+import { isoToday } from '@/lib/reminders/status';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate } from '@/lib/utils/dates';
 
@@ -57,10 +59,12 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
   const years = [...new Set(all.flatMap((o) => (o.taxYear === null ? [] : [o.taxYear])))].sort((a, b) => b - a);
   const requested = Number(params.year);
   const year = years.includes(requested) ? requested : (years[0] ?? null);
-  const obligations = year === null ? all : all.filter((o) => o.taxYear === year);
+  // A record the firm entered without a tax year belongs to no year's filter;
+  // it stays visible whichever year is selected rather than vanishing.
+  const obligations = year === null ? all : all.filter((o) => o.taxYear === year || o.taxYear === null);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const today = isoToday();
+  const money = (cents: number) => formatCents(cents, currency, locale);
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const remaining = remainingOwed(obligations);
   const due = nextDueDate(obligations, today);

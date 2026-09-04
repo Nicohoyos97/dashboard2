@@ -26,6 +26,7 @@ export type ExpenseFilterValues = {
 export function ExpenseFilterBar({
   path,
   period,
+  sort,
   values,
   categories,
   vendors,
@@ -34,6 +35,8 @@ export function ExpenseFilterBar({
 }: {
   path: string;
   period: string | null;
+  /** The table's sort, carried through every filter change rather than reset. */
+  sort: string | null;
   values: ExpenseFilterValues;
   categories: FilterOption[];
   vendors: FilterOption[];
@@ -66,6 +69,7 @@ export function ExpenseFilterBar({
       className="border-line bg-card rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
     >
       {period && <input type="hidden" name="period" value={period} />}
+      {sort && <input type="hidden" name="sort" value={sort} />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <label className="block">
           <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterSearch')}</span>
@@ -125,7 +129,7 @@ export function ExpenseFilterBar({
             {t('filterApply')}
           </button>
           {activeCount > 0 && (
-            <Link href={period ? `${path}?period=${period}` : path} className={`${secondaryButton} h-10 px-3`} aria-label={t('filterClear')}>
+            <Link href={clearHref(path, period, sort)} className={`${secondaryButton} h-10 px-3`} aria-label={t('filterClear')}>
               <X className="size-4" aria-hidden="true" />
             </Link>
           )}
@@ -134,4 +138,12 @@ export function ExpenseFilterBar({
       {activeCount > 0 && <p className="text-muted-foreground mt-3 text-[12.5px]">{t('filtersActive', { count: activeCount })}</p>}
     </form>
   );
+}
+
+function clearHref(path: string, period: string | null, sort: string | null): string {
+  const search = new URLSearchParams();
+  if (period) search.set('period', period);
+  if (sort) search.set('sort', sort);
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
 }

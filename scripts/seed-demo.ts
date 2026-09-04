@@ -97,8 +97,14 @@ async function main(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing');
-  if (!url.includes('localhost') && !url.includes('127.0.0.1') && !args.includes('--force-remote')) {
+  const remote = !url.includes('localhost') && !url.includes('127.0.0.1');
+  if (remote && !args.includes('--force-remote')) {
     throw new Error('Refusing to seed a non-local Supabase. Pass --force-remote if you really mean it.');
+  }
+  // The default password is printed in this file; it must never become a
+  // confirmed account on a real project.
+  if (remote && !arg('--password')) {
+    throw new Error('--force-remote requires an explicit --password.');
   }
 
   const admin = createClient<Database>(url, key, { auth: { persistSession: false } });

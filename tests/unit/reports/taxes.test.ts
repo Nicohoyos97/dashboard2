@@ -58,6 +58,22 @@ describe('tax totals', () => {
     expect(remainingOwed([obligation({ id: 'a' })])).toBeNull();
   });
 
+  it('works each obligation out on its own figures and then sums, reporting the weakest basis', () => {
+    // Federal prints a payable; State prints only a confirmed amount. Summing the
+    // payable column alone would have dropped the state's $500 entirely.
+    const rows = [
+      obligation({ id: 'federal', payableCents: 1_000_00 }),
+      obligation({ id: 'state', confirmedCents: 500_00 }),
+    ];
+    expect(remainingOwed(rows)).toEqual({ cents: 1_500_00, basis: 'confirmed' });
+  });
+
+  it('treats a row the firm marked paid as settled whatever it still prints', () => {
+    const settled = obligation({ id: 'a', status: 'paid', payableCents: 1_000_00 });
+    expect(remainingOwed([settled])).toEqual({ cents: 0, basis: 'payable' });
+    expect(taxAlerts([{ ...settled, dueDate: '2026-09-20' }], TODAY)).toEqual([]);
+  });
+
   it('points at the next due date, ignoring dates already past', () => {
     const rows = [
       obligation({ id: 'a', dueDate: '2026-07-20' }),
@@ -71,12 +87,20 @@ describe('tax totals', () => {
 });
 
 describe('tax alerts', () => {
-  it('raises past due only when money is still owed or the filing is missing', () => {
+  it('raises past due when money is still owed, and missing filing when only the filing is late', () => {
     const owing = obligation({ id: 'a', dueDate: '2026-08-01', payableCents: 500_00 });
     expect(taxAlerts([owing], TODAY).map((alert) => alert.kind)).toEqual(['past_due']);
 
     const settled = obligation({ id: 'b', dueDate: '2026-08-01', payableCents: 0, filingStatus: 'filed' });
     expect(taxAlerts([settled], TODAY)).toEqual([]);
+
+    const unfiled = obligation({ id: 'c', dueDate: '2026-08-01', payableCents: 0, filingStatus: 'not_filed' });
+    expect(taxAlerts([unfiled], TODAY).map((alert) => alert.kind)).toEqual(['missing_filing']);
+
+    // An extension is not a missing filing, and an unknown status is not evidence of one.
+    const extended = obligation({ id: 'd', dueDate: '2026-08-01', payableCents: 0, filingStatus: 'extended' });
+    const unknown = obligation({ id: 'e', dueDate: '2026-08-01', payableCents: 0, filingStatus: null });
+    expect(taxAlerts([extended, unknown], TODAY)).toEqual([]);
   });
 
   it('flags a recorded payment that carries no confirmation number', () => {

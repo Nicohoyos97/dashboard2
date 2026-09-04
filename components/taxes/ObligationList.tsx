@@ -1,6 +1,7 @@
 import { Download } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
+import { formatCents } from '@/lib/money';
 import type { TaxObligation } from '@/lib/reports/taxes';
 import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
 
@@ -20,7 +21,7 @@ export async function ObligationList({
   kind: 'income' | 'sales';
 }) {
   const [t, locale] = await Promise.all([getTranslations('Taxes'), getLocale()]);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const money = (cents: number) => formatCents(cents, currency, locale);
 
   if (obligations.length === 0) return <p className="text-muted-foreground text-[14px]">{t('noObligations')}</p>;
 
@@ -127,7 +128,8 @@ export async function ObligationList({
                 {obligation.documentVersionId && (
                   <a href={`/api/documents/${obligation.documentVersionId}/download`} className="text-blue inline-flex items-center gap-1 font-semibold hover:underline">
                     <Download className="size-3.5" aria-hidden="true" />
-                    {obligation.pageNumber ? t('openDocumentPage', { page: obligation.pageNumber }) : t('openDocument')}
+                    {t('openDocument')}
+                    {obligation.pageNumber && <span className="text-muted-foreground font-normal">{t('pageRef', { page: obligation.pageNumber })}</span>}
                   </a>
                 )}
               </div>

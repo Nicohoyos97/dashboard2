@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, FileText } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Link } from '@/i18n/navigation';
+import { formatCents } from '@/lib/money';
 import { type ExpenseSearchParams, type ExpenseSort, expenseHref } from '@/lib/portal/expense-filters';
 import type { ExpenseTxn } from '@/lib/reports/expenses';
 import { formatIsoDate } from '@/lib/utils/dates';
@@ -33,7 +34,7 @@ export async function ExpenseTable({
   accountLabels: ReadonlyMap<string, string>;
 }) {
   const [t, locale] = await Promise.all([getTranslations('Expenses'), getLocale()]);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const money = (cents: number) => formatCents(cents, currency, locale);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
@@ -104,11 +105,13 @@ export async function ExpenseTable({
                     {row.documentVersionId && (
                       <a
                         href={`/api/documents/${row.documentVersionId}/download`}
-                        className="text-muted-foreground hover:text-blue shrink-0"
-                        aria-label={row.pageNumber ? t('openSourcePage', { page: row.pageNumber }) : t('openSource')}
-                        title={row.pageNumber ? t('openSourcePage', { page: row.pageNumber }) : t('openSource')}
+                        className="text-muted-foreground hover:text-blue flex shrink-0 items-center gap-1 text-[11px]"
+                        aria-label={t('openSource')}
+                        title={t('openSource')}
                       >
                         <FileText className="size-3.5" aria-hidden="true" />
+                        {/* The route serves the file as an attachment, so a page cannot be opened directly; it is stated, not linked. */}
+                        {row.pageNumber && <span aria-hidden="true">{t('pageRef', { page: row.pageNumber })}</span>}
                       </a>
                     )}
                   </span>

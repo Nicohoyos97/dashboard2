@@ -4,6 +4,7 @@
 // sees (the firm can otherwise read drafts). Money leaves here as integer cents.
 import 'server-only';
 
+import { insightKey } from '@/lib/insights/periods';
 import type { LineRow, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
 
@@ -275,5 +276,5 @@ export async function loadInsightDismissals(supabase: Db, entityId: string): Pro
     .select('rule_key, period_start, period_end')
     .eq('business_entity_id', entityId);
   if (error) throw readError('portal_insight_dismissals_read_failed');
-  return new Set((data ?? []).map((row) => `${row.rule_key}|${row.period_start}|${row.period_end}`));
+  return new Set((data ?? []).map((row) => insightKey(row.rule_key, row.period_start, row.period_end)));
 }

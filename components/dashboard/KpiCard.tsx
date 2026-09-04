@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import { Sparkline, type SparklineTone } from '@/components/charts/Sparkline';
 import { Link } from '@/i18n/navigation';
+import { formatCents } from '@/lib/money';
 
 import { InfoTip } from './InfoTip';
 
@@ -39,7 +40,7 @@ export async function KpiCard({
   unavailableReason?: string;
 }) {
   const [t, locale] = await Promise.all([getTranslations('Overview'), getLocale()]);
-  const money = (v: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(v / 100);
+  const money = (v: number) => formatCents(v, currency, locale);
   const up = deltaCents !== null && deltaCents > 0;
   const down = deltaCents !== null && deltaCents < 0;
   const good = (up && upIsGood) || (down && !upIsGood);
@@ -73,6 +74,12 @@ export async function KpiCard({
               )}
             </div>
             <Sparkline values={trend} tone={tone} />
+            {/* The sparkline is aria-hidden; this is its text equivalent (§1: every chart ships one). */}
+            {trend.length >= 2 && (
+              <span className="sr-only">
+                {t('trendSummary', { count: trend.length, first: money(trend[0] ?? 0), last: money(trend[trend.length - 1] ?? 0) })}
+              </span>
+            )}
           </div>
         </>
       )}

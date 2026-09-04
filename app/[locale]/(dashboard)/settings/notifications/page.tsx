@@ -38,7 +38,9 @@ export default async function NotificationsPage() {
   return (
     <section className="max-w-[560px]">
       <Heading eyebrow={t('notifyEyebrow')} title={t('navNotifications')} lede={t('notifyLede')} />
-      <NotificationForm businessName={entity.name} canEdit={entity.role !== 'firm_preview'} initial={initial} />
+      {/* Keyed on the business: the entity switcher refreshes in place, and a
+          form whose state survived the switch would save A's switches onto B. */}
+      <NotificationForm key={entity.id} businessName={entity.name} canEdit={entity.role !== 'firm_preview'} initial={initial} />
     </section>
   );
 }

@@ -15,14 +15,11 @@ export function QuerySelector({
   label,
   options,
   current,
-  keep = [],
 }: {
   param: string;
   label: string;
   options: SelectorOption[];
   current: string;
-  /** Other params to carry across, as [name, value] pairs. */
-  keep?: readonly (readonly [string, string])[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,7 +32,7 @@ export function QuerySelector({
         aria-label={label}
         value={current}
         onChange={(event) => {
-          const search = new URLSearchParams(keep.flatMap(([name, value]) => (value === '' ? [] : [[name, value] as [string, string]])));
+          const search = new URLSearchParams();
           if (event.target.value !== '') search.set(param, event.target.value);
           const query = search.toString();
           router.push(query ? `${pathname}?${query}` : pathname);

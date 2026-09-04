@@ -44,10 +44,11 @@ function kindOf(value: string | null | undefined): ExpenseKind | null {
   return EXPENSE_KINDS.find((kind) => kind === value) ?? null;
 }
 
-// PostgREST treats % and _ as wildcards and , as a filter separator: escape
-// them so a client's search text can never widen or reshape the query.
+// PostgREST treats % and _ as wildcards, rewrites * to %, and uses , ( ) as
+// filter syntax: escape them all so a client's search text can never widen or
+// reshape the query.
 function escapeLike(value: string): string {
-  return value.replace(/[\\%_,()]/g, (match) => `\\${match}`);
+  return value.replace(/[\\%_*,()]/g, (match) => `\\${match}`);
 }
 
 type TxnRow = {
@@ -169,6 +170,7 @@ export async function loadExpenseVendors(
       .eq('bank_accounts.currency', currency)
       .not('vendor', 'is', null)
       .not('debit', 'is', null)
+      .gt('debit', 0)
       .gte('txn_date', range.start)
       .lte('txn_date', range.end)
       .order('vendor')

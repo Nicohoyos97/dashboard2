@@ -12,7 +12,9 @@ export type TrendPoint = { label: string; a: number | null; b: number | null };
 
 // Two measures across periods (revenue vs expenses, assets vs liabilities):
 // grouped thin columns on one axis, fixed colors (a = blue, b = teal).
-export function TrendBars({ points, currency, seriesA, seriesB, summary }: { points: TrendPoint[]; currency: string; seriesA: string; seriesB: string; summary: string }) {
+// `seriesB` is optional: a caller whose source never prints the second figure
+// omits it, and neither a swatch nor a column is drawn for it.
+export function TrendBars({ points, currency, seriesA, seriesB, summary }: { points: TrendPoint[]; currency: string; seriesA: string; seriesB?: string; summary: string }) {
   const locale = useLocale();
   // Null stays null: a figure the statement does not print must not become a
   // zero bar, which would read as "nothing" rather than "not stated". Recharts
@@ -28,10 +30,12 @@ export function TrendBars({ points, currency, seriesA, seriesB, summary }: { poi
           <span className="size-2.5 rounded-full" style={{ background: SERIES.primary }} aria-hidden="true" />
           {seriesA}
         </li>
-        <li className="flex items-center gap-2">
-          <span className="size-2.5 rounded-full" style={{ background: SERIES.secondary }} aria-hidden="true" />
-          {seriesB}
-        </li>
+        {seriesB && (
+          <li className="flex items-center gap-2">
+            <span className="size-2.5 rounded-full" style={{ background: SERIES.secondary }} aria-hidden="true" />
+            {seriesB}
+          </li>
+        )}
       </ul>
       <div className="h-[240px] w-full">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -52,7 +56,7 @@ export function TrendBars({ points, currency, seriesA, seriesB, summary }: { poi
               )}
             />
             <Bar dataKey="a" name={seriesA} fill={SERIES.primary} radius={[4, 4, 0, 0]} maxBarSize={24} />
-            <Bar dataKey="b" name={seriesB} fill={SERIES.secondary} radius={[4, 4, 0, 0]} maxBarSize={24} />
+            {seriesB && <Bar dataKey="b" name={seriesB} fill={SERIES.secondary} radius={[4, 4, 0, 0]} maxBarSize={24} />}
           </BarChart>
         </ResponsiveContainer>
       </div>
