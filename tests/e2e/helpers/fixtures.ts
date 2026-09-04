@@ -24,7 +24,19 @@ export function supabaseEnv(): { url: string; anon: string; service: string } | 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anon || !service) return null;
+  if (!url || !anon || !service) {
+    // Returning null here quietly turned every RLS spec into a skip, so on a
+    // machine without `.env.test.local` the run finished green with none of
+    // this coverage — the failure mode the comment above exists to prevent,
+    // reached through the other door. Skipping is now something you ask for.
+    if (process.env.SKIP_DB_TESTS === '1') return null;
+    throw new Error(
+      'Supabase test environment missing (NEXT_PUBLIC_SUPABASE_URL / ' +
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY). These suites are ' +
+        'the only coverage of tenant isolation, so they fail rather than skip. ' +
+        'Run `pnpm supabase:start && pnpm env:test`, or set SKIP_DB_TESTS=1 to skip them deliberately.',
+    );
+  }
   if (process.env.ALLOW_REMOTE_TESTS !== '1' && !LOCAL_HOSTS.includes(hostOf(url))) {
     throw new Error(
       `Refusing to run the test suite against ${hostOf(url)}: these fixtures delete users and businesses. ` +
