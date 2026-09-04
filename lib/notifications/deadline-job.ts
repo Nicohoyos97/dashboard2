@@ -10,7 +10,12 @@
 import 'server-only';
 
 import { notifyEntityMembers } from '@/lib/notifications/notify';
-import { type DeadlineSource, NOTICE_DAYS, pendingDeadlines } from '@/lib/notifications/deadlines';
+import {
+  type DeadlineSource,
+  NOTICE_DAYS,
+  OVERDUE_GRACE_DAYS,
+  pendingDeadlines,
+} from '@/lib/notifications/deadlines';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { addDays } from '@/lib/reports/dates';
 import { DEFAULT_TIMEZONE, todayIn } from '@/lib/utils/timezone';
@@ -38,6 +43,10 @@ export async function runDeadlineNotifications(now: Date = new Date()): Promise<
   for (const entity of entities ?? []) {
     const today = todayIn(entity.timezone ?? DEFAULT_TIMEZONE, now);
     const horizon = addDays(today, NOTICE_DAYS);
+    // Bounded on both sides: the floor keeps a long-overdue row out of the query
+    // entirely, and `order` makes `limit` take the nearest deadlines rather than
+    // an arbitrary slice — without it Postgres may return any 100 of them.
+    const floor = addDays(today, -OVERDUE_GRACE_DAYS);
     summary.entities += 1;
 
     const [{ data: reminders }, { data: obligations }] = await Promise.all([
@@ -47,7 +56,9 @@ export async function runDeadlineNotifications(now: Date = new Date()): Promise<
         .eq('business_entity_id', entity.id)
         .not('published_at', 'is', null)
         .not('status', 'in', `(${SETTLED_REMINDERS.join(',')})`)
+        .gte('due_date', floor)
         .lte('due_date', horizon)
+        .order('due_date', { ascending: true })
         .limit(MAX_PER_ENTITY),
       admin
         .from('tax_obligations')
@@ -57,7 +68,9 @@ export async function runDeadlineNotifications(now: Date = new Date()): Promise<
         .is('superseded_by', null)
         .neq('status', 'paid')
         .not('due_date', 'is', null)
+        .gte('due_date', floor)
         .lte('due_date', horizon)
+        .order('due_date', { ascending: true })
         .limit(MAX_PER_ENTITY),
     ]);
 

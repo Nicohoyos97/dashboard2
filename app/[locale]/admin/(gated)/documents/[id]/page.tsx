@@ -16,6 +16,7 @@ import { VersionsJobs } from '@/components/admin/review/VersionsJobs';
 import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
+import { logAccess } from '@/lib/audit/logAccess';
 import { loadDerivedHistory } from '@/lib/documents/history';
 import { publishBlockers } from '@/lib/documents/publish';
 import { parseReconciliation } from '@/lib/documents/reconciliation';
@@ -41,6 +42,16 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
     .eq('id', id)
     .maybeSingle();
   if (!doc) notFound();
+
+  // The side that reads every tenant's unpublished figures must be audited too:
+  // firm_staff holds no write permission, so without this a read-only firm
+  // account leaves no trace at all (docs/SECURITY.md incident response).
+  await logAccess({
+    action: 'admin.document.view',
+    resourceType: 'document',
+    resourceId: doc.id,
+    businessEntityId: doc.business_entity_id,
+  });
 
   const versionId = doc.current_version_id;
   const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers] =

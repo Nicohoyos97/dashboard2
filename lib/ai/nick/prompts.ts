@@ -61,10 +61,28 @@ export type ContextFacts = {
 
 const LANGUAGE: Record<ContextFacts['locale'], string> = { en: 'English', es: 'Spanish' };
 
+/**
+ * Untrusted text that has to be named inside the context envelope: an account
+ * name transcribed verbatim off an uploaded PDF, a business name any
+ * client_owner can set, a document title and the uploader's own filename.
+ *
+ * This block is a *system* block, so the untrusted-data notice — which covers
+ * tool results, document text and what the user types — does not reach it.
+ * Angle brackets are what would let such a value close `</context>` and have
+ * the remainder read as an instruction, so they come out; the cap stops a long
+ * value from burying the real instructions.
+ */
+const MAX_UNTRUSTED = 160;
+
+function quoted(value: string): string {
+  const flat = value.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+  return flat.length > MAX_UNTRUSTED ? `${flat.slice(0, MAX_UNTRUSTED)}…` : flat;
+}
+
 /** Volatile context appended after the cached system prompt. Facts only; the model cannot change them. */
 export function contextBlock(facts: ContextFacts): string {
   const lines = [
-    `Business: ${facts.entityName}`,
+    `Business: ${quoted(facts.entityName)}`,
     `Reporting currency: ${facts.currency}`,
     `Today: ${facts.today}`,
     `Answer language: ${LANGUAGE[facts.locale]}`,
@@ -79,15 +97,15 @@ export function contextBlock(facts: ContextFacts): string {
       : '';
     const page = line.page ? `, page ${line.page}` : '';
     lines.push(
-      `Selected line: "${line.accountName}" on the ${type} for ${line.periodStart} to ${line.periodEnd}${page}: ` +
+      `Selected line: "${quoted(line.accountName)}" on the ${type} for ${line.periodStart} to ${line.periodEnd}${page}: ` +
         `${facts.selectedLineFormatted.current ?? 'no printed amount'}${prior}. Cite it as [${facts.selectedLineCite}].`,
     );
   }
   if (facts.pending) {
     lines.push(
       facts.pending.confirmed
-        ? `Pending confirmation: the user has now confirmed "${facts.pending.action.label}". You may call ${facts.pending.action.tool} with confirmed: true for that exact item.`
-        : `Pending confirmation: your previous answer asked the user to confirm "${facts.pending.action.label}". The user's new message does not confirm it; do not perform the action.`,
+        ? `Pending confirmation: the user has now confirmed "${quoted(facts.pending.action.label)}". You may call ${facts.pending.action.tool} with confirmed: true for that exact item.`
+        : `Pending confirmation: your previous answer asked the user to confirm "${quoted(facts.pending.action.label)}". The user's new message does not confirm it; do not perform the action.`,
     );
   }
   return `<context>\n${lines.join('\n')}\n</context>`;

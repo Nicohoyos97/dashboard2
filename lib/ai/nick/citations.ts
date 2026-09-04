@@ -61,17 +61,58 @@ export function stripMarkers(text: string): string {
 }
 
 // A "financial figure": a currency amount, a decimal, a percentage, a
-// comma-grouped number, or five or more digits. Years, page numbers and small
-// counts pass on their own — those are not figures the reader could mistake
-// for a statement value.
+// comma-grouped number, or three or more bare digits. Each alternative matches
+// the WHOLE amount, so "$80,000.00" is one figure rather than "$8" followed by
+// a stray decimal — the span matters, because the gate below asks whether a
+// marker follows each figure.
+//
+// Three bare digits, not five: "you kept 2600" is money to the reader, and
+// plain language like that is exactly what the system prompt asks the model to
+// write. Page numbers and counts below 100 still pass.
 const FIGURE =
-  /[$€£]\s?\d|\d[\d,]*\.\d{1,2}(?!\d)|\d+(?:\.\d+)?\s?%|\b\d{1,3}(?:,\d{3})+\b|\b\d{5,}\b/;
-// Download links and identifiers carry digits that are not statement values.
+  /[$€£]\s?\d[\d,]*(?:\.\d+)?%?|\b\d[\d,]*\.\d{1,2}(?!\d)|\b\d+(?:\.\d+)?\s?%|\b\d{1,3}(?:,\d{3})+\b|\b\d{3,}\b/g;
+
+// Digits that are not statement values: download links and identifiers, ISO
+// dates, and four-digit calendar years. Masking a year leaves a real amount
+// written bare as "2000" undetected; that is the deliberate trade, because the
+// alternative is demanding a citation from every sentence that names a year.
 const NOT_FIGURES =
-  /https?:\/\/\S+|\/\S*\/\S*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  /https?:\/\/\S+|\/\S*\/\S*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b\d{4}-\d{2}-\d{2}\b|\b(?:19|20)\d{2}\b/gi;
+
+/** Blanks a region while preserving length, so match offsets stay comparable. */
+function mask(text: string, pattern: RegExp): string {
+  return text.replace(pattern, (match) => ' '.repeat(match.length));
+}
+
+/** The text as the figure scanner sees it: identifiers, dates and markers blanked. */
+function maskedForFigures(text: string): string {
+  return mask(mask(text, NOT_FIGURES), MARKER);
+}
 
 export function hasFinancialFigure(text: string): boolean {
-  return FIGURE.test(text.replace(NOT_FIGURES, ' '));
+  return new RegExp(FIGURE.source).test(maskedForFigures(text));
+}
+
+/**
+ * Figures that no marker follows. The system prompt tells the model to write
+ * the marker immediately after the figure it came from, so a figure is cited
+ * when a marker appears between its end and the start of the next figure.
+ *
+ * Checking this per figure rather than per message is the point: a single [c1]
+ * anywhere used to satisfy the whole answer, which let a real, sourced number
+ * carry fabricated ones along beside it.
+ */
+export function uncitedFigures(text: string): string[] {
+  const figures = [...maskedForFigures(text).matchAll(new RegExp(FIGURE.source, 'g'))];
+  if (figures.length === 0) return [];
+  const markerAt = [...text.matchAll(new RegExp(MARKER.source, 'g'))].map((m) => m.index ?? 0);
+
+  return figures.flatMap((figure, i) => {
+    const from = (figure.index ?? 0) + figure[0].length;
+    const next = figures[i + 1]?.index ?? text.length;
+    const cited = markerAt.some((at) => at >= from && at < next);
+    return cited ? [] : [figure[0].trim()];
+  });
 }
 
 export type AnswerCheck =
@@ -83,7 +124,7 @@ export function checkAnswer(text: string, registry: CitationRegistry): AnswerChe
   const keys = markersIn(text);
   const unknown = keys.filter((key) => !registry.get(key));
   if (unknown.length > 0) return { ok: false, reason: 'unknown_marker', unknown };
-  if (keys.length === 0 && hasFinancialFigure(stripMarkers(text))) {
+  if (uncitedFigures(text).length > 0) {
     return { ok: false, reason: 'uncited_figure', unknown: [] };
   }
   const citations = keys.flatMap((key) => {

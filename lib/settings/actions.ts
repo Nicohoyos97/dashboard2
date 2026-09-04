@@ -4,6 +4,8 @@ import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
+import { isOwnAvatarUrl } from '@/lib/settings/avatar';
+import { supabaseEnv } from '@/lib/supabase/env';
 import { createClient } from '@/lib/supabase/server';
 
 // Profile update — name + (optional) avatar URL. The avatar file is uploaded
@@ -34,8 +36,19 @@ export async function updateProfile(input: {
   const update: { full_name: string; avatar_url?: string | null } = {
     full_name: parsed.data.fullName,
   };
-  // Only touch avatar_url when the caller actually changed the photo.
-  if (parsed.data.avatarUrl !== undefined) update.avatar_url = parsed.data.avatarUrl;
+  // Only touch avatar_url when the caller actually changed the photo. The URL
+  // comes from the browser after a direct-to-Storage upload, so it is checked
+  // against what the uploader should have produced for this user's own folder —
+  // an arbitrary host here becomes a tracking pixel on the members page.
+  if (parsed.data.avatarUrl !== undefined) {
+    if (
+      parsed.data.avatarUrl !== null &&
+      !isOwnAvatarUrl(parsed.data.avatarUrl, user.id, supabaseEnv().url)
+    ) {
+      return { ok: false, error: t('saveError') };
+    }
+    update.avatar_url = parsed.data.avatarUrl;
+  }
 
   // RLS (profiles_self_update) + the id filter both scope this to the caller.
   const { error } = await supabase.from('profiles').update(update).eq('id', user.id);

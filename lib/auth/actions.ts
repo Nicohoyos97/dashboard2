@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { safeRedirectPath } from '@/lib/auth/redirect';
 import { createClient } from '@/lib/supabase/server';
 import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE } from '@/lib/supabase/env';
 
@@ -71,7 +72,7 @@ export async function signInWithPassword(
   }
 
   // redirectTo (from the guard's redirectedFrom) is already locale-prefixed.
-  redirect(redirectTo && redirectTo.startsWith('/') ? redirectTo : await localePath('/dashboard'));
+  redirect(safeRedirectPath(redirectTo) ?? (await localePath('/dashboard')));
 }
 
 export async function signUpWithPassword(values: SignUpValues): Promise<AuthResult> {
@@ -116,8 +117,7 @@ export async function signInWithGoogle(redirectTo?: string): Promise<AuthResult>
   const t = await getTranslations('AuthErrors');
   const supabase = await createClient();
   const origin = await getOrigin();
-  const next =
-    redirectTo && redirectTo.startsWith('/') ? redirectTo : await localePath('/dashboard');
+  const next = safeRedirectPath(redirectTo) ?? (await localePath('/dashboard'));
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

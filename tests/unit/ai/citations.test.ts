@@ -117,3 +117,68 @@ describe('citationLabel', () => {
     );
   });
 });
+
+describe('checkAnswer — every figure needs its own marker', () => {
+  function registryWith(n: number) {
+    const registry = new CitationRegistry();
+    for (let i = 0; i < n; i += 1) registry.add(record(`Figure ${i}`, `l${i}`));
+    return registry;
+  }
+
+  it('rejects an answer where one marker covers several figures', () => {
+    // The gate used to run the figure check only when the answer had NO marker,
+    // so a single [c1] exempted every other number in the message.
+    const check = checkAnswer(
+      'Revenue was $80,000.00 [c1] and your net income was $19,500.00, so your margin is about 24%.',
+      registryWith(1),
+    );
+    expect(check.ok).toBe(false);
+    if (!check.ok) expect(check.reason).toBe('uncited_figure');
+  });
+
+  it('accepts the same answer once every figure carries its own marker', () => {
+    const check = checkAnswer(
+      'Revenue was $80,000.00 [c1], net income $19,500.00 [c2], a margin of 24% [c3].',
+      registryWith(3),
+    );
+    expect(check.ok).toBe(true);
+  });
+
+  it('rejects bare integers a reader would read as money', () => {
+    // The figure pattern only recognised >= 5 digits, a decimal, a grouping
+    // comma or a currency symbol, so plain-language amounts passed uncited —
+    // exactly the phrasing the system prompt asks for.
+    for (const answer of [
+      'Your net income last month was 4500 dollars.',
+      'Revenue was 9800 and expenses 7200, so you kept 2600.',
+      'You owe 950 in sales tax.',
+    ]) {
+      const check = checkAnswer(answer, registryWith(3));
+      expect(check.ok, answer).toBe(false);
+      if (!check.ok) expect(check.reason).toBe('uncited_figure');
+    }
+  });
+
+  it('does not mistake dates, years, page numbers or small counts for figures', () => {
+    for (const answer of [
+      'Your Q3 filing is due on 2026-09-30.',
+      'That statement covers 2025 and 2026.',
+      'I found 3 published statements; the detail is on page 12.',
+    ]) {
+      expect(checkAnswer(answer, registryWith(1)).ok, answer).toBe(true);
+    }
+  });
+
+  it('does not treat digits inside a citation marker as an uncited figure', () => {
+    const registry = registryWith(140);
+    expect(checkAnswer('Payroll was $4,000.00 [c137].', registry).ok).toBe(true);
+  });
+
+  it('still accepts a download link, whose path carries digits', () => {
+    const check = checkAnswer(
+      'Here is the export: https://example.com/exports/2026/report-12345.csv',
+      registryWith(1),
+    );
+    expect(check.ok).toBe(true);
+  });
+});

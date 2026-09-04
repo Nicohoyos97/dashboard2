@@ -68,7 +68,11 @@ export async function notifyEntityMembers(input: {
   );
   if (recipients.length === 0) return;
 
-  await admin.from('notifications').insert(
+  // supabase-js resolves with `{ error }` rather than throwing, so an unchecked
+  // insert reports success on a write that never happened. The deadline job
+  // releases its dispatch claim on a throw — silence here would mark the
+  // milestone sent forever while nobody was told.
+  const { error: insertError } = await admin.from('notifications').insert(
     recipients.map((member) => ({
       user_id: member.user_id,
       business_entity_id: input.entityId,
@@ -79,4 +83,5 @@ export async function notifyEntityMembers(input: {
       payload: input.payload ?? null,
     })),
   );
+  if (insertError) throw new Error('notifications_insert_failed');
 }

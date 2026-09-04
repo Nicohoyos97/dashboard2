@@ -12,6 +12,7 @@ import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
 import { previewEntity } from '@/lib/entities/actions';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
+import { logAccess } from '@/lib/audit/logAccess';
 import type { EnabledModules } from '@/lib/firm/entities';
 import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
@@ -58,6 +59,13 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         .limit(200),
     ]);
   if (!entity) notFound();
+
+  await logAccess({
+    action: 'admin.entity.view',
+    resourceType: 'business_entity',
+    resourceId: entity.id,
+    businessEntityId: entity.id,
+  });
 
   const reminderItems: ReminderItem[] = (reminders ?? []).map((r) => ({
     id: r.id,

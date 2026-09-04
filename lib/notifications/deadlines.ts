@@ -26,6 +26,15 @@ export type PendingDeadline = DeadlineSource & { milestone: DeadlineMilestone };
 export const NOTICE_DAYS = 7;
 
 /**
+ * How far past the due date a milestone may still fire. The window is what
+ * makes a missed run recoverable; without a floor it also means the first run
+ * against an existing database announces every overdue row ever published —
+ * `notification_dispatches` starts empty, so nothing has been claimed yet, and
+ * a client would wake to a year of past dates all worded "due today".
+ */
+export const OVERDUE_GRACE_DAYS = 7;
+
+/**
  * A range rather than an exact day: a job that misses a run (a deploy, an
  * outage) would otherwise skip the milestone entirely. Sending late is
  * recoverable; never sending is not, and `notification_dispatches` is what
@@ -34,6 +43,7 @@ export const NOTICE_DAYS = 7;
 export function dueMilestone(dueDate: string, today: string): DeadlineMilestone | null {
   const days = daysBetween(today, dueDate);
   if (days === null) return null;
+  if (days < -OVERDUE_GRACE_DAYS) return null;
   if (days <= 0) return 'due_today';
   if (days <= NOTICE_DAYS) return 'due_in_7';
   return null;
