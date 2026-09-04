@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { TOOL_INPUTS, TOOL_NAMES, isToolName, toolDefinitions } from '@/lib/ai/nick/tools/schemas';
+import { PACKAGE_MODULES } from '@/lib/portal/modules';
 
 const SPEC_TOOLS = [
   'get_overview_metrics',
@@ -20,11 +21,11 @@ const SPEC_TOOLS = [
 describe('Nick tool definitions', () => {
   it('exposes exactly the eleven tools of INITIAL_PROMPT.md §10, in a fixed order', () => {
     expect(TOOL_NAMES).toEqual(SPEC_TOOLS);
-    expect(toolDefinitions().map((tool) => tool.name)).toEqual(SPEC_TOOLS);
+    expect(toolDefinitions(PACKAGE_MODULES.full).map((tool) => tool.name)).toEqual(SPEC_TOOLS);
   });
 
   it('sends strict, closed JSON schemas with every property required', () => {
-    for (const tool of toolDefinitions()) {
+    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
       expect(tool.strict).toBe(true);
       expect(tool.input_schema.type).toBe('object');
       expect(tool.input_schema.additionalProperties).toBe(false);
@@ -36,7 +37,7 @@ describe('Nick tool definitions', () => {
   });
 
   it('never accepts a tenant identifier in any tool', () => {
-    for (const tool of toolDefinitions()) {
+    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
       const text = JSON.stringify(tool.input_schema).toLowerCase();
       expect(text).not.toContain('entity');
       expect(text).not.toContain('tenant');
@@ -97,5 +98,36 @@ describe('Nick tool definitions', () => {
     expect(isToolName('get_profit_and_loss')).toBe(true);
     expect(isToolName('drop_tables')).toBe(false);
     expect(isToolName('constructor')).toBe(false);
+  });
+});
+
+describe('tools follow the modules the firm sold', () => {
+  const names = (modules: Parameters<typeof toolDefinitions>[0]) =>
+    toolDefinitions(modules).map((tool) => tool.name);
+
+  it('offers no statement, expense or income-tax tool to a sales-tax-only client', () => {
+    // Nick ships with every package, but answering from a module the client did
+    // not buy would contradict the portal, where those pages are 404.
+    const offered = names(PACKAGE_MODULES.sales_tax);
+    expect(offered).toContain('get_sales_tax_status');
+    expect(offered).not.toContain('get_profit_and_loss');
+    expect(offered).not.toContain('get_balance_sheet');
+    expect(offered).not.toContain('get_expense_breakdown');
+    expect(offered).not.toContain('get_income_tax_status');
+    expect(offered).not.toContain('get_overview_metrics');
+  });
+
+  it('offers everything but sales tax to a bookkeeping client', () => {
+    const offered = names(PACKAGE_MODULES.bookkeeping);
+    expect(offered).toContain('get_profit_and_loss');
+    expect(offered).toContain('get_expense_breakdown');
+    expect(offered).not.toContain('get_sales_tax_status');
+  });
+
+  it('keeps the tools that belong to no module, so the library always works', () => {
+    for (const modules of [PACKAGE_MODULES.sales_tax, PACKAGE_MODULES.bookkeeping]) {
+      expect(names(modules)).toContain('list_available_reports');
+      expect(names(modules)).toContain('get_report_download_link');
+    }
   });
 });

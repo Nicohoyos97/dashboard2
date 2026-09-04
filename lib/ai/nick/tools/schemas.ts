@@ -5,6 +5,8 @@
 // closed over from the session (./context.ts).
 import { z } from 'zod';
 
+import type { PortalModule, PortalModules } from '@/lib/portal/modules';
+
 const PERIOD_DESCRIPTION =
   'Reporting period as start_end in ISO dates, e.g. 2026-01-01_2026-06-30. Null uses the period selected on the page, or the newest published one.';
 
@@ -156,9 +158,29 @@ export type ToolDefinition = {
   input_schema: JsonSchema & { type: 'object' };
 };
 
+/**
+ * Which module each tool draws on. A tool with no entry works for every client
+ * — reading the document library or resolving a download is not module-specific.
+ * Nick ships with every package, but it must not answer from a module the firm
+ * did not sell: a sales-tax-only client asking "what was my net income?" has no
+ * Profit & Loss to be told about, and the page is 404 for them.
+ */
+const TOOL_MODULE: Partial<Record<ToolName, PortalModule>> = {
+  get_profit_and_loss: 'statements',
+  get_balance_sheet: 'statements',
+  compare_financial_periods: 'statements',
+  get_overview_metrics: 'statements',
+  get_expense_breakdown: 'expenses',
+  get_income_tax_status: 'income_taxes',
+  get_sales_tax_status: 'sales_taxes',
+};
+
 /** The definitions sent with every request, in a fixed order so the prompt prefix stays cacheable. */
-export function toolDefinitions(): ToolDefinition[] {
-  return TOOL_NAMES.map((name) => {
+export function toolDefinitions(modules: PortalModules): ToolDefinition[] {
+  return TOOL_NAMES.filter((name) => {
+    const required = TOOL_MODULE[name];
+    return required === undefined || modules[required];
+  }).map((name) => {
     const raw: unknown = z.toJSONSchema(TOOL_INPUTS[name]);
     const schema = closeObjects(isObject(raw) ? raw : { type: 'object', properties: {} });
     return {

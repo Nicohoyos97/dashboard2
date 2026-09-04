@@ -177,7 +177,7 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
     maxTokens: NICK_LIMITS.maxTokens[role],
     effort: NICK_LIMITS.effort[role],
     system,
-    tools: toolDefinitions(),
+    tools: toolDefinitions(settings.modules),
     messages: [
       ...threadToModelMessages(thread, NICK_LIMITS.historyMessages),
       { role: 'user', content: input.message },
