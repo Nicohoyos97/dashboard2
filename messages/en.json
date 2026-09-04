@@ -258,6 +258,7 @@
     "granularityUnavailable": "Views unavailable: {kinds}. Your accountant has not published reports for those periods, and nothing is estimated from a longer one."
   },
   "Nav": {
+    "breadcrumbRoot": "Dashboard",
     "overview": "Overview",
     "statements": "Financial Statements",
     "statementsPnl": "Profit & Loss",
@@ -291,7 +292,8 @@
     "help": "Help & support",
     "accountMenu": "Account menu",
     "topBar": "Toolbar",
-    "waiting": "waiting"
+    "waiting": "waiting",
+    "breadcrumb": "Breadcrumb"
   },
   "Admin": {
     "portalBadge": "Firm portal",

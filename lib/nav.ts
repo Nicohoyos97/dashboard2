@@ -100,3 +100,37 @@ export function currentNavLabelKey(pathname: string, items: readonly NavItem[]):
   }
   return bestKey;
 }
+
+/**
+ * The trail to the page you are on: "Dashboard › Financial Statements ›
+ * Profit & Loss". The root always names the portal itself and links home; a
+ * parent that groups children (Financial Statements) is a label rather than a
+ * link, because no route serves it; the last crumb is where you already are,
+ * so it is not a link either.
+ *
+ * Derived from the same nav list the sidebar renders, so a module the firm did
+ * not sell can never appear in a trail — the list is already filtered.
+ */
+export type Crumb = { labelKey: string; href?: string };
+
+export const BREADCRUMB_ROOT: Crumb = { labelKey: 'breadcrumbRoot', href: '/dashboard' };
+
+export function breadcrumbFor(pathname: string, items: readonly NavItem[]): Crumb[] {
+  if (pathname === '/dashboard') return [{ labelKey: BREADCRUMB_ROOT.labelKey }];
+
+  for (const item of items) {
+    for (const child of item.children ?? []) {
+      if (isActiveNav(pathname, child.href)) {
+        return [BREADCRUMB_ROOT, { labelKey: item.labelKey }, { labelKey: child.labelKey }];
+      }
+    }
+  }
+  for (const item of items) {
+    if (item.href !== '/dashboard' && isActiveNav(pathname, item.href, item.exact)) {
+      return [BREADCRUMB_ROOT, { labelKey: item.labelKey }];
+    }
+  }
+  // A route no nav entry covers (Settings sub-pages, Help): name the root only,
+  // rather than guessing a label and being wrong about where the user is.
+  return [BREADCRUMB_ROOT];
+}

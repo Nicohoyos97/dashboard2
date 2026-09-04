@@ -258,6 +258,7 @@
     "granularityUnavailable": "Vistas no disponibles: {kinds}. Tu contador no ha publicado reportes para esos periodos y nada se estima a partir de uno más largo."
   },
   "Nav": {
+    "breadcrumbRoot": "Panel",
     "overview": "Resumen",
     "statements": "Estados financieros",
     "statementsPnl": "Estado de resultados",
@@ -291,7 +292,8 @@
     "help": "Ayuda y soporte",
     "accountMenu": "Menú de la cuenta",
     "topBar": "Barra de herramientas",
-    "waiting": "en espera"
+    "waiting": "en espera",
+    "breadcrumb": "Ruta de navegación"
   },
   "Admin": {
     "portalBadge": "Portal de la firma",

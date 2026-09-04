@@ -58,6 +58,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
           askNick={!preview}
           helpHref="/help"
           notifications={notifications}
+          {...(currentEntity
+            ? {
+                account: {
+                  businessName: currentEntity.name,
+                  logoUrl: settings?.logoUrl ?? null,
+                  profileHref: '/settings/profile',
+                },
+              }
+            : {})}
         />
       }
       sidebar={
