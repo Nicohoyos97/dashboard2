@@ -11,7 +11,8 @@ import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
-import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
+import { periodPickerProps } from '@/lib/portal/period-picker';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
 import { logAccess } from '@/lib/audit/logAccess';
@@ -275,7 +276,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           {modules.statements && (
             <>
               <GranularityTabs choices={granularityChoices(periods, selected)} />
-              <PeriodSelector options={periods.map((period) => ({ value: periodParam(period), label: period.label }))} current={periodParam(selected)} />
+              <PeriodPicker {...periodPickerProps({ periods, selected, today, locale, presetLabel: (preset) => t(`preset_${preset}`) })} />
             </>
           )}
           <DownloadReportsMenu items={downloadItems} />

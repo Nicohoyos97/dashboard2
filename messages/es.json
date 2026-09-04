@@ -255,7 +255,19 @@
     "granularity_month": "Mensual",
     "granularity_quarter": "Trimestral",
     "granularity_year": "Anual",
-    "granularityUnavailable": "Vistas no disponibles: {kinds}. Tu contador no ha publicado reportes para esos periodos y nada se estima a partir de uno más largo."
+    "granularityUnavailable": "Vistas no disponibles: {kinds}. Tu contador no ha publicado reportes para esos periodos y nada se estima a partir de uno más largo.",
+    "periodCustom": "Rango personalizado…",
+    "periodFrom": "Desde",
+    "periodTo": "Hasta",
+    "periodApply": "Aplicar",
+    "periodPublished": "Períodos publicados",
+    "periodNoReport": "Ningún informe publicado cubre este período",
+    "preset_this_month": "Este mes",
+    "preset_last_month": "Mes pasado",
+    "preset_this_quarter": "Este trimestre",
+    "preset_last_quarter": "Trimestre pasado",
+    "preset_this_year": "Este año",
+    "preset_last_year": "Año pasado"
   },
   "Nav": {
     "breadcrumbRoot": "Panel",
@@ -723,7 +735,11 @@
     "reason_divide_by_zero": "No se puede calcular (división por cero)",
     "noPriorShort": "Sin periodo anterior",
     "other": "Otros",
-    "granularityNoteAsOf": "Las vistas mensual y trimestral no están disponibles: el balance general es una foto al {date}. Nada se estima."
+    "granularityNoteAsOf": "Las vistas mensual y trimestral no están disponibles: el balance general es una foto al {date}. Nada se estima.",
+    "export": "Exportar",
+    "exportCsvOption": "Hoja de cálculo CSV",
+    "exportPdfOption": "Informe en PDF",
+    "exportPdfPending": "Aún no disponible — la plantilla del informe en PDF de la firma está en preparación."
   },
   "Expenses": {
     "title": "Gastos",

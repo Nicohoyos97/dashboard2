@@ -8,7 +8,10 @@ import { notFound } from 'next/navigation';
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { MonthlySpendChart } from '@/components/charts/MonthlySpendChart';
 import { NickPanel } from '@/components/chat/NickPanel';
-import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import { ExportMenu } from '@/components/dashboard/ExportMenu';
+import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
+import { periodPickerProps } from '@/lib/portal/period-picker';
+import { todayIn } from '@/lib/utils/timezone';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { ExpenseFilterBar } from '@/components/expenses/ExpenseFilterBar';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
@@ -36,9 +39,11 @@ import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/re
 import { createClient } from '@/lib/supabase/server';
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<ExpenseSearchParams> }) {
-  const [entity, t, locale, params] = await Promise.all([
+  const [entity, t, tStatements, tOverview, locale, params] = await Promise.all([
     getCurrentEntity(),
     getTranslations('Expenses'),
+    getTranslations('Statements'),
+    getTranslations('Overview'),
     getLocale(),
     searchParams,
   ]);
@@ -196,10 +201,13 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         lede={`${entity.name} · ${selected.label}`}
         controls={
           <>
-            <PeriodSelector options={periods.map((p) => ({ value: periodParam(p), label: p.label }))} current={periodParam(selected)} />
-            <a href={csvHref} className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-lg border px-4 text-[14px] font-semibold transition">
-              {t('exportCsv')}
-            </a>
+            <PeriodPicker {...periodPickerProps({ periods, selected, today: todayIn(settings.timezone), locale, presetLabel: (preset) => tOverview(`preset_${preset}`) })} />
+            <ExportMenu
+              formats={[
+                { format: 'csv', href: csvHref },
+                { format: 'pdf', href: null, unavailable: tStatements('exportPdfPending') },
+              ]}
+            />
           </>
         }
       >

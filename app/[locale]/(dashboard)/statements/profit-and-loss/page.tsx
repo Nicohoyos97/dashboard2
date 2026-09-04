@@ -9,7 +9,9 @@ import { NickProvider } from '@/components/chat/NickContext';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { TrendBars } from '@/components/charts/TrendBars';
 import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
-import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
+import { periodPickerProps } from '@/lib/portal/period-picker';
+import { todayIn } from '@/lib/utils/timezone';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
 import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
@@ -19,7 +21,7 @@ import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
-import { leafItems, reportPeriodOptions, selectReport } from '@/lib/portal/statement-page';
+import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
 import { availablePeriods } from '@/lib/reports/periods';
 import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
@@ -31,7 +33,7 @@ import { formatPeriod } from '@/lib/utils/dates';
 const TREND_LIMIT = 8;
 
 export default async function ProfitAndLossPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  const [entity, t, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getLocale(), searchParams]);
+  const [entity, t, tOverview, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getTranslations('Overview'), getLocale(), searchParams]);
   const typeLabel = t('pnlTitle');
   if (!entity) return <Page title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></Page>;
 
@@ -76,7 +78,15 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
       controls={
         <>
           <GranularityTabs choices={granularityChoices(availablePeriods(reports, [], { locale }), { start: report.periodStart, end: report.periodEnd })} />
-          <PeriodSelector options={reportPeriodOptions(reports, locale)} current={periodParam({ start: report.periodStart, end: report.periodEnd })} />
+          <PeriodPicker
+            {...periodPickerProps({
+              periods: statementPeriods(reports, locale),
+              selected: { start: report.periodStart, end: report.periodEnd, label: '', kind: 'custom', sources: [] },
+              today: todayIn(settings.timezone),
+              locale,
+              presetLabel: (preset) => tOverview(`preset_${preset}`),
+            })}
+          />
           <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} />
         </>
       }

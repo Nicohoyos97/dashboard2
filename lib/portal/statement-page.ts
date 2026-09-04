@@ -4,6 +4,7 @@
 import 'server-only';
 
 import type { PeriodOption } from '@/components/dashboard/PeriodSelector';
+import { type Period as ReportPeriod, periodKind } from '@/lib/reports/periods';
 import type { ReportRow } from '@/lib/reports/types';
 import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
 
@@ -44,4 +45,30 @@ export function leafItems(node: { children: { accountName: string; currentCents:
   };
   for (const c of node.children) visit(c);
   return items;
+}
+
+/**
+ * The published periods of a statement list, as Periods rather than select
+ * options — what the period picker needs to say which of its presets actually
+ * have a report behind them.
+ */
+export function statementPeriods(reports: ReportRow[], locale: string): ReportPeriod[] {
+  const seen = new Set<string>();
+  const out: ReportPeriod[] = [];
+  for (const r of reports) {
+    const value = periodParam({ start: r.periodStart, end: r.periodEnd });
+    if (seen.has(value)) continue;
+    seen.add(value);
+    out.push({
+      start: r.periodStart,
+      end: r.periodEnd,
+      label:
+        r.periodStart === r.periodEnd
+          ? formatIsoDate(r.periodEnd, locale)
+          : formatPeriod(r.periodStart, r.periodEnd, locale),
+      kind: periodKind(r.periodStart, r.periodEnd),
+      sources: [],
+    });
+  }
+  return out;
 }

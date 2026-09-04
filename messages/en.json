@@ -255,7 +255,19 @@
     "granularity_month": "Monthly",
     "granularity_quarter": "Quarterly",
     "granularity_year": "Annual",
-    "granularityUnavailable": "Views unavailable: {kinds}. Your accountant has not published reports for those periods, and nothing is estimated from a longer one."
+    "granularityUnavailable": "Views unavailable: {kinds}. Your accountant has not published reports for those periods, and nothing is estimated from a longer one.",
+    "periodCustom": "Custom range…",
+    "periodFrom": "From",
+    "periodTo": "To",
+    "periodApply": "Apply",
+    "periodPublished": "Published periods",
+    "periodNoReport": "No published report covers this period",
+    "preset_this_month": "This month",
+    "preset_last_month": "Last month",
+    "preset_this_quarter": "This quarter",
+    "preset_last_quarter": "Last quarter",
+    "preset_this_year": "This year",
+    "preset_last_year": "Last year"
   },
   "Nav": {
     "breadcrumbRoot": "Dashboard",
@@ -723,7 +735,11 @@
     "reason_divide_by_zero": "Cannot be computed (division by zero)",
     "noPriorShort": "No prior period",
     "other": "Other",
-    "granularityNoteAsOf": "Monthly and quarterly views are not available: a balance sheet is a snapshot as of {date}. Nothing is estimated."
+    "granularityNoteAsOf": "Monthly and quarterly views are not available: a balance sheet is a snapshot as of {date}. Nothing is estimated.",
+    "export": "Export",
+    "exportCsvOption": "CSV spreadsheet",
+    "exportPdfOption": "PDF report",
+    "exportPdfPending": "Not available yet — the firm’s PDF report template is still being set up."
   },
   "Expenses": {
     "title": "Expenses",
