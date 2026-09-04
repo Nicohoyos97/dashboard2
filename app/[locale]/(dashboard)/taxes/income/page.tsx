@@ -3,6 +3,7 @@
 // unless `firm_confirmed`; a figure the document does not print is left out
 // rather than shown as zero.
 import { getLocale, getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
 import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
@@ -36,6 +37,9 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
     loadTaxObligations(supabase, entity.id, 'income'),
   ]);
   const currency = settings.currency;
+  // The nav hides this page when the firm did not sell the module; the route has
+  // to agree, or the URL is a way around the sale.
+  if (!settings.modules.income_taxes) notFound();
 
   await logAccess({
     action: 'income_tax.view',

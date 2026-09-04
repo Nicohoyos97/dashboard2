@@ -146,16 +146,33 @@ export async function loadPublishedBankStatements(supabase: Db, entityId: string
   }));
 }
 
-export type PortalEntitySettings = { currency: string; salesTaxEnabled: boolean; timezone: string };
+import { type PortalModules, portalModules } from './modules';
+
+export type PortalEntitySettings = {
+  currency: string;
+  /** Kept for the pages that already read it; `modules.sales_taxes` is the same fact. */
+  salesTaxEnabled: boolean;
+  modules: PortalModules;
+  timezone: string;
+  industry: string | null;
+  logoUrl: string | null;
+};
 
 export async function loadPortalEntitySettings(supabase: Db, entityId: string): Promise<PortalEntitySettings> {
   const { data, error } = await supabase
     .from('business_entities')
-    .select('currency, sales_tax_enabled, timezone')
+    .select('currency, sales_tax_enabled, enabled_modules, timezone, industry, logo_url')
     .eq('id', entityId)
     .single();
   if (error || !data) throw readError('portal_entity_read_failed');
-  return { currency: data.currency, salesTaxEnabled: data.sales_tax_enabled, timezone: data.timezone };
+  return {
+    currency: data.currency,
+    salesTaxEnabled: data.sales_tax_enabled,
+    modules: portalModules(data),
+    timezone: data.timezone,
+    industry: data.industry,
+    logoUrl: data.logo_url,
+  };
 }
 
 export type PublishedDocument = {

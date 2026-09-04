@@ -6,6 +6,8 @@
 // which the layout calls; the route 404s for the same reason, so the nav and
 // the URL always agree. The firm portal's list lives in lib/admin-nav.ts and
 // shares these types.
+import type { PortalModule, PortalModules } from './portal/modules';
+
 export type NavChild = {
   href: string;
   labelKey: string;
@@ -38,9 +40,24 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/chat', labelKey: 'nick' },
 ];
 
-/** The nav a given business sees: Sales Taxes only when the firm enabled the module for it. */
-export function clientNavItems(salesTaxEnabled: boolean): NavItem[] {
-  return salesTaxEnabled ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.href !== '/taxes/sales');
+/** Which module each nav entry belongs to; the rest (Overview, Nick) are always shown. */
+const NAV_MODULE: Record<string, PortalModule> = {
+  '/statements': 'statements',
+  '/expenses': 'expenses',
+  '/taxes/income': 'income_taxes',
+  '/taxes/sales': 'sales_taxes',
+};
+
+/**
+ * The nav a given business sees. Overview and Nick come with every package;
+ * everything else is what the firm sold them. The routes 404 on the same
+ * check, so the nav and the URL always agree.
+ */
+export function clientNavItems(modules: PortalModules): NavItem[] {
+  return NAV_ITEMS.filter((item) => {
+    const required = NAV_MODULE[item.href];
+    return required === undefined || modules[required];
+  });
 }
 
 // Utility links under the user block at the bottom of the sidebar (§7:

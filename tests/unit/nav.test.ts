@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { BOTTOM_NAV_ITEMS, NAV_ITEMS, clientNavItems, currentNavLabelKey, isActiveNav } from '@/lib/nav';
+import { PACKAGE_MODULES } from '@/lib/portal/modules';
 
 describe('isActiveNav', () => {
   it('activates on an exact path match (a statement sub-item)', () => {
@@ -45,11 +46,33 @@ describe('NAV_ITEMS', () => {
     ]);
   });
 
-  it('hides Sales Taxes for a business the firm has not enabled the module for', () => {
-    expect(clientNavItems(true).map((i) => i.href)).toEqual(NAV_ITEMS.map((i) => i.href));
-    expect(clientNavItems(false).map((i) => i.href)).not.toContain('/taxes/sales');
-    // Nothing else moves: hiding one module must not reorder the rest.
-    expect(clientNavItems(false).map((i) => i.href)).toEqual(['/dashboard', '/statements', '/expenses', '/taxes/income', '/chat']);
+  it('shows what the firm sold, and Overview and Nick either way', () => {
+    const hrefs = (m: Parameters<typeof clientNavItems>[0]) => clientNavItems(m).map((i) => i.href);
+
+    expect(hrefs(PACKAGE_MODULES.full)).toEqual(NAV_ITEMS.map((i) => i.href));
+
+    // Bookkeeping: everything but sales taxes.
+    expect(hrefs(PACKAGE_MODULES.bookkeeping)).toEqual([
+      '/dashboard',
+      '/statements',
+      '/expenses',
+      '/taxes/income',
+      '/chat',
+    ]);
+
+    // Sales tax only: the filings and Nick, nothing else.
+    expect(hrefs(PACKAGE_MODULES.sales_tax)).toEqual(['/dashboard', '/taxes/sales', '/chat']);
+  });
+
+  it('keeps the order when a module is hidden', () => {
+    const custom = { ...PACKAGE_MODULES.full, expenses: false };
+    expect(clientNavItems(custom).map((i) => i.href)).toEqual([
+      '/dashboard',
+      '/statements',
+      '/taxes/income',
+      '/taxes/sales',
+      '/chat',
+    ]);
   });
 });
 

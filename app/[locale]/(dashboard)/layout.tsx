@@ -15,6 +15,7 @@ import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
 import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
+import { PACKAGE_MODULES } from '@/lib/portal/modules';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadNotifications } from '@/lib/portal/notifications';
 import { createClient } from '@/lib/supabase/server';
@@ -42,7 +43,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     preview ? Promise.resolve([]) : loadNotifications(user.id, currentEntity?.id ?? null).catch(() => []),
     preview ? getTranslations('Overview') : Promise.resolve(null),
   ]);
-  const navItems = clientNavItems(settings?.salesTaxEnabled ?? false);
+  // Everything the firm sold this business, and nothing else. Before this the
+  // nav read one boolean, so the Expenses and Income Taxes switches in /admin
+  // were recorded and then ignored.
+  const navItems = clientNavItems(settings?.modules ?? PACKAGE_MODULES.full);
 
   return (
     <AppShell

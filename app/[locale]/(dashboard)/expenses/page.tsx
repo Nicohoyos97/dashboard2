@@ -3,6 +3,7 @@
 // cover — a missing month is never treated as zero — while the transaction
 // list stays available either way. Filters, sort and paging live in the URL.
 import { getLocale, getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { MonthlySpendChart } from '@/components/charts/MonthlySpendChart';
@@ -52,6 +53,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     loadPublishedBankStatements(supabase, entity.id),
   ]);
   const currency = settings.currency;
+  // The nav hides this page when the firm did not sell the module; the route has
+  // to agree, or the URL is a way around the sale.
+  if (!settings.modules.expenses) notFound();
   const currencyStatements = statements.filter((statement) => statement.currency === currency);
   const periods = availablePeriods(reports, currencyStatements, { locale }).filter((period) => period.sources.includes('bank'));
   const requested = parsePeriodParam(typeof params.period === 'string' ? params.period : undefined);

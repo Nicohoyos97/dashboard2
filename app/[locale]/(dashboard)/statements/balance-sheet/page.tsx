@@ -2,6 +2,7 @@
 // only when the statement prints their inputs, compositions, a trend across
 // published dates, and the interactive statement.
 import { getLocale, getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { NickProvider } from '@/components/chat/NickContext';
@@ -14,7 +15,7 @@ import { StatementActions } from '@/components/statements/StatementActions';
 import { StatementTable } from '@/components/statements/StatementTable';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadPublishedReports, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, reportPeriodOptions, selectReport } from '@/lib/portal/statement-page';
 import { BALANCE_SYNONYMS, balanceSheetMetrics } from '@/lib/reports/balance-sheet';
@@ -32,6 +33,10 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   if (!entity) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></Page>;
 
   const supabase = await createClient();
+  const settings = await loadPortalEntitySettings(supabase, entity.id);
+  // The nav hides this page when the firm did not sell the module; the route has
+  // to agree, or the URL is a way around the sale.
+  if (!settings.modules.statements) notFound();
   const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'balance_sheet');
   const report = selectReport(reports, params.period);
   if (!report) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></Page>;
