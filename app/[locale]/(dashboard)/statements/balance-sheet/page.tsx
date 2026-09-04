@@ -15,6 +15,7 @@ import { EmptyStatement } from '@/components/statements/EmptyStatement';
 import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
 import { StatementTable } from '@/components/statements/StatementTable';
+import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
@@ -29,7 +30,7 @@ import { formatIsoDate } from '@/lib/utils/dates';
 
 const TREND_LIMIT = 8;
 
-export default async function BalanceSheetPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+export default async function BalanceSheetPage({ searchParams }: { searchParams: Promise<{ period?: string; compare?: string }> }) {
   const [entity, t, tOverview, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getTranslations('Overview'), getLocale(), searchParams]);
   const typeLabel = t('bsTitle');
   if (!entity) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></Page>;
@@ -45,10 +46,26 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
 
   const rows = await loadReportLines(supabase, entity.id, report.id);
   const roots = buildTree(rows);
-  const m = balanceSheetMetrics(report, roots);
   const assets = leafItems(findSection(roots, BALANCE_SYNONYMS.totalAssets));
   const liabilities = leafItems(findSection(roots, BALANCE_SYNONYMS.totalLiabilities));
-  const hasPrior = rows.some((r) => r.priorCents !== null);
+  // Which column PRIOR is: the comparative the document prints, or another
+  // published statement the client chose to sit beside this one.
+  const comparison = await resolveComparison({
+    supabase,
+    entityId: entity.id,
+    report,
+    reports,
+    roots,
+    requested: params.compare,
+    locale,
+    labels: {
+      printed: t('comparePrinted'),
+      comparedWith: (period) => t('comparedWithPeriod', { period }),
+    },
+  });
+  // The cards read the same comparison the table does, so the screen never
+  // shows two changes measured against different periods.
+  const m = balanceSheetMetrics(report, comparison.roots);
 
   const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
   const trend =
@@ -126,7 +143,11 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
       </div>
 
       <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:border-0 print:shadow-none">
-        <StatementTable roots={roots} meta={{ reportType: 'balance_sheet', currency: report.currency, hasPrior, source: report.source, versionId: report.documentVersionId }} />
+        <StatementTable
+          roots={comparison.roots}
+          meta={{ reportType: 'balance_sheet', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
+          compare={{ options: comparison.options, current: comparison.current }}
+        />
       </section>
     </Page>
     <NickPanel page="balance_sheet" period={periodParam({ start: report.periodStart, end: report.periodEnd })} businessName={entity.name} />

@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { inputClass } from '@/components/admin/ui';
 import { useNickSelection } from '@/components/chat/NickContext';
 
+import { CompareSelector, type CompareOption } from './CompareSelector';
 import { LineDrawer } from './LineDrawer';
 
 export type StatementNode = {
@@ -69,7 +70,16 @@ function flatten(
 // expand/collapse, hover highlight, click → side drawer, current / prior /
 // $ variance / % variance, hide-zero, account search. Money is formatted with
 // Intl; variance color is contextual and never the only signal (sign shown).
-export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: StatementMeta }) {
+export function StatementTable({
+  roots,
+  meta,
+  compare,
+}: {
+  roots: StatementNode[];
+  meta: StatementMeta;
+  /** Absent when the statement has nothing comparable to offer. */
+  compare?: { options: CompareOption[]; current: string };
+}) {
   const t = useTranslations('Statements');
   const locale = useLocale();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -138,6 +148,7 @@ export function StatementTable({ roots, meta }: { roots: StatementNode[]; meta: 
             className={`${inputClass} h-10 pl-9`}
           />
         </label>
+        {compare && <CompareSelector options={compare.options} current={compare.current} />}
         <label className="text-muted-foreground flex items-center gap-2 text-[13.5px]">
           <input
             type="checkbox"

@@ -738,7 +738,11 @@
     "export": "Export",
     "exportCsvOption": "CSV spreadsheet",
     "exportPdfOption": "PDF report",
-    "exportPdfPending": "Not available yet — the firm’s PDF report template is still being set up."
+    "exportPdfPending": "Not available yet — the firm’s PDF report template is still being set up.",
+    "compareWith": "Compare with",
+    "comparePrinted": "As printed on the statement",
+    "compareNone": "No comparison",
+    "comparedWithPeriod": "Compared with {period} (published statement)"
   },
   "Expenses": {
     "title": "Expenses",

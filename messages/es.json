@@ -738,7 +738,11 @@
     "export": "Exportar",
     "exportCsvOption": "Hoja de cálculo CSV",
     "exportPdfOption": "Informe en PDF",
-    "exportPdfPending": "Aún no disponible — la plantilla del informe en PDF de la firma está en preparación."
+    "exportPdfPending": "Aún no disponible — la plantilla del informe en PDF de la firma está en preparación.",
+    "compareWith": "Comparar con",
+    "comparePrinted": "Como lo imprime el estado",
+    "compareNone": "Sin comparación",
+    "comparedWithPeriod": "Comparado con {period} (estado publicado)"
   },
   "Expenses": {
     "title": "Gastos",

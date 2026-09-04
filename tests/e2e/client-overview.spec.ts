@@ -51,13 +51,14 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     await expect(page.getByText('Schedule the payment.')).toBeVisible();
 
     // §14.13: the fixture publishes monthly bank statements and one half-year
-    // P&L, so Monthly is offered and the other two are disabled with the reason
-    // — never a month sliced out of the six-month statement.
+    // P&L, so Monthly is offered and the other two are disabled — never a month
+    // sliced out of the six-month statement. The sentence that used to sit under
+    // these tabs was removed at the owner's request; the period picker carries
+    // the same information per option now.
     const granularity = page.getByRole('group', { name: /reporting granularity/i });
     await expect(granularity.getByRole('button', { name: 'Monthly' })).not.toHaveAttribute('aria-disabled', 'true');
     await expect(granularity.getByRole('button', { name: 'Quarterly' })).toHaveAttribute('aria-disabled', 'true');
     await expect(granularity.getByRole('button', { name: 'Annual' })).toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByText(/views unavailable: quarterly and annual/i)).toBeVisible();
     await granularity.getByRole('button', { name: 'Monthly' }).click();
     await expect(page).toHaveURL(/\/dashboard\?period=\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/);
 
