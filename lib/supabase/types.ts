@@ -412,7 +412,9 @@ export type Database = {
           enabled_modules: Json
           fiscal_year_start_month: number
           id: string
+          industry: string | null
           legal_name: string | null
+          logo_url: string | null
           name: string
           sales_tax_enabled: boolean
           status: string
@@ -429,7 +431,9 @@ export type Database = {
           enabled_modules?: Json
           fiscal_year_start_month?: number
           id?: string
+          industry?: string | null
           legal_name?: string | null
+          logo_url?: string | null
           name: string
           sales_tax_enabled?: boolean
           status?: string
@@ -446,7 +450,9 @@ export type Database = {
           enabled_modules?: Json
           fiscal_year_start_month?: number
           id?: string
+          industry?: string | null
           legal_name?: string | null
+          logo_url?: string | null
           name?: string
           sales_tax_enabled?: boolean
           status?: string
