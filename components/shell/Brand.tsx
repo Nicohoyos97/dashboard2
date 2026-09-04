@@ -25,8 +25,13 @@ export function Brand({
   compact?: boolean;
 }) {
   const height = compact ? 'h-6 w-auto' : 'h-8 w-auto';
+  // Full variant stacks the badge under the lockup, where the sidebar has the
+  // vertical room and the pair reads as one title block. The compact variant
+  // shares the mobile top bar with a 40 px menu button, so it stays on one line
+  // rather than growing the bar.
+  const layout = compact ? 'flex items-center gap-2.5' : 'flex flex-col items-start gap-1.5';
   return (
-    <Link href={href} className="flex items-center gap-2.5" aria-label="BizGrowth by Hoyos Baker">
+    <Link href={href} className={layout} aria-label="BizGrowth by Hoyos Baker">
       {LOCKUPS.map((lockup) => (
         <Image
           key={lockup.src}
