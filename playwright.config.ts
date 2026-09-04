@@ -28,6 +28,14 @@ const serverEnv = Object.fromEntries(
 const nickE2E = process.env.NICK_E2E === '1';
 const ANTHROPIC_MOCK_URL = 'http://127.0.0.1:4010';
 // PLAYWRIGHT_PORT lets a run boot its own dev server beside one already on 3000.
+// Pinned, and deliberately not UTC: a UTC-assuming render looks correct to both
+// a UTC runner and a developer whose own zone happens to hide it, so nothing in
+// the suite could see it. America/New_York is the firm's zone and has DST.
+// Set on the spec process and on the dev server it starts, or the two disagree
+// and every server-rendered timestamp looks like a hydration mismatch.
+const TEST_TZ = 'America/New_York';
+process.env.TZ = TEST_TZ;
+
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -72,6 +80,7 @@ export default defineConfig({
       // Own build output, so a server started here never shares .next with the developer's.
       env: {
         NEXT_DIST_DIR: '.next-e2e',
+        TZ: TEST_TZ,
         ...serverEnv,
         ...(nickE2E ? { ANTHROPIC_BASE_URL: ANTHROPIC_MOCK_URL } : {}),
       },
