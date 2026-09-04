@@ -18,7 +18,7 @@ import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
 import { loadDerivedHistory } from '@/lib/documents/history';
-import { publishBlockers } from '@/lib/documents/publish';
+import { publishBlockers, reviewVersion } from '@/lib/documents/publish';
 import { parseReconciliation } from '@/lib/documents/reconciliation';
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/types';
 import { createClient } from '@/lib/supabase/server';
@@ -53,7 +53,10 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
     businessEntityId: doc.business_entity_id,
   });
 
-  const versionId = doc.current_version_id;
+  // The newest uploaded version, which is what the firm reviews next — not
+  // necessarily the one the client is seeing. Same helper publishBlockers uses,
+  // so the page and the Publish button can never disagree about the target.
+  const versionId = await reviewVersion(supabase, doc.id, doc.current_version_id);
   const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers] =
     await Promise.all([
       supabase
