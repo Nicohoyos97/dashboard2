@@ -255,7 +255,6 @@
     "granularity_month": "Monthly",
     "granularity_quarter": "Quarterly",
     "granularity_year": "Annual",
-    "granularityUnavailable": "Views unavailable: {kinds}. Your accountant has not published reports for those periods, and nothing is estimated from a longer one.",
     "periodCustom": "Custom range…",
     "periodFrom": "From",
     "periodTo": "To",

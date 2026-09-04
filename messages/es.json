@@ -255,7 +255,6 @@
     "granularity_month": "Mensual",
     "granularity_quarter": "Trimestral",
     "granularity_year": "Anual",
-    "granularityUnavailable": "Vistas no disponibles: {kinds}. Tu contador no ha publicado reportes para esos periodos y nada se estima a partir de uno más largo.",
     "periodCustom": "Rango personalizado…",
     "periodFrom": "Desde",
     "periodTo": "Hasta",
