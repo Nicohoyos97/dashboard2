@@ -162,18 +162,21 @@ test.describe('Firm portal gate + entity switcher', () => {
 
     const page = await freshPage(browser);
     await signIn(page, user.email);
-    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
+    // Scoped to the content region: a reload can leave the outgoing page in the
+    // DOM for a moment, and an unscoped match then sees the subtitle twice.
+    const shown = page.getByRole('main').getByText(/how Mine Co is doing/i);
+    await expect(shown).toBeVisible();
 
     await page.context().addCookies([
       { name: 'hb_entity', value: stranger.entityId, url: page.url() },
     ]);
     await page.reload();
-    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
-    await expect(page.getByText(/fg-b Business/i)).toHaveCount(0);
+    await expect(shown).toBeVisible();
+    await expect(page.getByRole('main').getByText(/fg-b Business/i)).toHaveCount(0);
 
     // A cookie naming nothing at all must not empty the portal either.
     await page.context().addCookies([{ name: 'hb_entity', value: randomUUID(), url: page.url() }]);
     await page.reload();
-    await expect(page.getByText(/how Mine Co is doing/i)).toBeVisible();
+    await expect(shown).toBeVisible();
   });
 });
