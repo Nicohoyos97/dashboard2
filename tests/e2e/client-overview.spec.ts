@@ -1,7 +1,7 @@
 import { type Page, expect, test } from '@playwright/test';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
-import { seedPublishedCashMonths, seedPublishedReminder, seedPublishedStatement } from './helpers/seed-statements';
+import { seedPublishedBankMonths, seedPublishedReminder, seedPublishedStatement } from './helpers/seed-statements';
 
 test.describe('Client portal: Overview, reports and reminders', () => {
   test.skip(!supabaseEnv(), 'Supabase env not available');
@@ -29,7 +29,7 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     const member = await fx.makeUser('overview-member');
     await fx.addMembership(entityId, member.id, 'client_owner');
     const pnl = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded });
-    const cash = await seedPublishedCashMonths(fx, entityId);
+    const bank = await seedPublishedBankMonths(fx, entityId);
     await seedPublishedReminder(fx, entityId, '2026-09-05');
 
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -47,17 +47,26 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     await expect(page.getByText(money(revenue)).first()).toBeVisible();
     await expect(page.getByText(money(netIncome)).first()).toBeVisible();
     await expect(page.getByText(/income minus operating expenses/i)).toBeVisible();
-    // A cash rule still runs over the bank statements, which proves the two
-    // sources are read side by side without being combined.
-    await expect(page.getByText(/more cash went out than came in/i)).toBeVisible();
     await expect(page.getByText('Equipment loan payment')).toBeVisible();
     await expect(page.getByText('Schedule the payment.')).toBeVisible();
 
-    // Cash In / Cash Out are the Expenses page's source now, and it names it.
+    // §14.13: the fixture publishes monthly bank statements and one half-year
+    // P&L, so Monthly is offered and the other two are disabled with the reason
+    // — never a month sliced out of the six-month statement.
+    const granularity = page.getByRole('group', { name: /reporting granularity/i });
+    await expect(granularity.getByRole('button', { name: 'Monthly' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(granularity.getByRole('button', { name: 'Quarterly' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(granularity.getByRole('button', { name: 'Annual' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByText(/views unavailable: quarterly and annual/i)).toBeVisible();
+    await granularity.getByRole('button', { name: 'Monthly' }).click();
+    await expect(page).toHaveURL(/\/dashboard\?period=\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/);
+
+    // Bank activity is the Expenses page's source, and it names it. The portal
+    // does not report cash flow anywhere.
     await page.goto('/expenses');
     await expect(page.getByText(/debits on published bank statements/i)).toBeVisible();
     // The page opens on the newest published month, so it shows that month's debits.
-    await expect(page.getByText(money(cash.monthlyOutCents)).first()).toBeVisible();
+    await expect(page.getByText(money(bank.monthlyDebitCents)).first()).toBeVisible();
     await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
 
     await page.getByRole('link', { name: /view all/i }).click();

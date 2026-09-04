@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { type Page, expect, test } from '@playwright/test';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
-import { seedPublishedCashMonths, seedPublishedReminder, seedPublishedStatement } from './helpers/seed-statements';
+import { seedPublishedBankMonths, seedPublishedReminder, seedPublishedStatement } from './helpers/seed-statements';
 
 // Phase 6 accessibility and mobile pass (§12, §14.20). Every client-portal
 // route is checked against WCAG 2.1 A/AA with axe on a desktop viewport, and
@@ -35,7 +35,7 @@ test.describe('Phase 6: accessibility and mobile', () => {
     const member = await fx.makeUser(`${label}-member`);
     await fx.addMembership(entityId, member.id, 'client_owner');
     const pnl = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded });
-    await seedPublishedCashMonths(fx, entityId);
+    await seedPublishedBankMonths(fx, entityId);
     await seedPublishedReminder(fx, entityId, '2026-12-05');
     return { entityId, member, pnl };
   }

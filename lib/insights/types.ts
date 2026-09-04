@@ -2,17 +2,14 @@
 // A rule decides whether an insight exists; the UI renders the sentence from
 // `ruleKey` + `params`, and Nick may only rephrase it. No prose lives here.
 import type { BalanceSheetMetrics } from '@/lib/reports/balance-sheet';
-import type { CashTotals, MonthCash } from '@/lib/reports/cash';
 import type { PnlMetrics } from '@/lib/reports/pnl';
 import type { LineNode } from '@/lib/reports/types';
 
 export type InsightRuleKey =
-  | 'revenue_up_collections_down'
   | 'payroll_share_up'
   | 'category_up_material'
   | 'liabilities_outpacing_assets'
   | 'sales_tax_due_soon'
-  | 'outflow_exceeded_inflow'
   | 'margin_changed'
   | 'report_needs_review';
 
@@ -45,15 +42,8 @@ export type PnlInput = {
   priorLines?: readonly LineNode[] | undefined;
 };
 
-export type CashInput = {
-  current: CashTotals;
-  prior?: CashTotals | undefined;
-  months?: readonly MonthCash[] | undefined;
-};
-
 export type InsightInput = {
   pnl?: PnlInput | undefined;
-  cash?: CashInput | undefined;
   balance?: BalanceSheetMetrics | undefined;
   reminders: readonly InsightReminder[];
   reportsNeedingReview: number;
@@ -65,8 +55,6 @@ export const MAX_INSIGHTS = 5;
 
 /** Every threshold in one place so the firm can tune them without reading rule code. */
 export const THRESHOLDS = {
-  /** Revenue up at least this % while cash in fell at least this %: sales are not being collected. */
-  collectionsGapMinPct: 1,
   /** Payroll as a share of revenue rose by at least this many percentage points. */
   payrollSharePoints: 3,
   /** An expense line grew by at least this % … */
@@ -79,8 +67,6 @@ export const THRESHOLDS = {
   salesTaxDueDays: 14,
   /** … and within this many days is critical. */
   salesTaxCriticalDays: 3,
-  /** Cash out exceeded cash in by at least this many cents (any shortfall counts). */
-  netOutflowMinCents: 1,
   /** Gross or net margin moved by at least this many percentage points. */
   marginPoints: 5,
 } as const;

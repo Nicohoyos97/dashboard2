@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { type Browser, type Page, expect, test } from '@playwright/test';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
-import { seedPublishedCashMonths } from './helpers/seed-statements';
+import { seedPublishedBankMonths } from './helpers/seed-statements';
 import { totp } from './helpers/totp';
 
 // Firm portal gate (INITIAL_PROMPT.md §3, §8, acceptance §14.21) and the
@@ -72,7 +72,7 @@ test.describe('Firm portal gate + entity switcher', () => {
 
   test('firm admin previews the client portal for a business and exits', async ({ browser }) => {
     const entityId = await fx.makeEntity(await fx.makeClientRow('pv'), 'Preview Co');
-    await seedPublishedCashMonths(fx, entityId);
+    await seedPublishedBankMonths(fx, entityId);
     const { data: draftAccount } = await fx.admin
       .from('bank_accounts')
       .insert({ business_entity_id: entityId, institution: 'Draft Bank', masked_number: '••••9999', account_type: 'checking', currency: 'USD' })

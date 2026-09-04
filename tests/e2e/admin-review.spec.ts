@@ -109,6 +109,52 @@ test.describe('Firm portal: review, corrections, publish', () => {
     };
   }
 
+  // The review dance every publish needs: fix the tampered total, confirm the
+  // low-confidence line, publish.
+  async function correctAndPublish(page: Page, seeded: Awaited<ReturnType<typeof seedExtraction>>): Promise<void> {
+    await page.goto(`/admin/documents/${seeded.documentId}`);
+    const rowOf = (name: string) =>
+      page.getByRole('row').filter({ has: page.getByRole('textbox', { name: `${name} Current` }) });
+    await page.getByRole('textbox', { name: `${seeded.tampered.name} Current` }).fill(seeded.tampered.correct);
+    await rowOf(seeded.tampered.name).getByRole('button', { name: /^save$/i }).click();
+    await expect(rowOf(seeded.tampered.name).getByText(/corrected/i)).toBeVisible();
+    await rowOf(seeded.low.name).getByRole('button', { name: /^confirm$/i }).click();
+    const publish = page.getByRole('button', { name: /publish to client/i });
+    await expect(publish).toBeEnabled({ timeout: 20_000 });
+    await publish.click();
+    await page.getByRole('button', { name: /confirm publish/i }).click();
+    // Publishing is an action, a revalidate and a router refresh in one round
+    // trip; the dev server can take a while over it when the suite is parallel.
+    await expect(page.getByText(/clients can see this document/i)).toBeVisible({ timeout: 30_000 });
+  }
+
+  // §14.19: publishing the same statement twice retires the first report. It
+  // leaves the client's view, never the firm's.
+  test('a superseded report stays in the document history, pointing at what replaced it', async ({ browser }) => {
+    const entityId = await fx.makeEntity(await fx.makeClientRow('sup'), 'Supersede Co');
+    const first = await seedExtraction(entityId);
+    const second = await seedExtraction(entityId);
+
+    const page = await adminPage(browser);
+    await correctAndPublish(page, first);
+    await correctAndPublish(page, second);
+
+    await page.goto(`/admin/documents/${first.documentId}`);
+    await expect(page.getByRole('heading', { name: /report history/i })).toBeVisible();
+    const retired = page.getByRole('row').filter({ hasText: /superseded/i });
+    await expect(retired).toHaveCount(1);
+    await expect(retired.getByRole('link')).toHaveAttribute('href', new RegExp(second.documentId));
+
+    const { data: report } = await fx.admin
+      .from('financial_reports')
+      .select('status, published_at, superseded_by')
+      .eq('document_version_id', first.versionId)
+      .single();
+    expect(report?.status).toBe('superseded');
+    expect(report?.published_at).toBeNull();
+    expect(report?.superseded_by).not.toBeNull();
+  });
+
   test('corrections unlock publish; client visibility follows publication', async ({ browser }) => {
     const entityId = await fx.makeEntity(await fx.makeClientRow('rv'), 'Review Co');
     const member = await fx.makeUser('rv-member');

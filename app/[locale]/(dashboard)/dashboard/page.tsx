@@ -1,5 +1,6 @@
 // Client Overview (INITIAL_PROMPT.md §7): published data only, source-safe
-// KPIs, complete-period cash, deterministic insights, reminders and originals.
+// KPIs read from the published Profit & Loss, deterministic insights,
+// reminders and originals. The portal does not track cash flow.
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import { NickPanel } from '@/components/chat/NickPanel';
@@ -9,6 +10,7 @@ import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu'
 import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
+import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
@@ -22,19 +24,18 @@ import { MAX_INSIGHTS, type PnlInput } from '@/lib/insights/types';
 import {
   loadPortalEntitySettings,
   loadPublishedBankStatements,
-  loadPublishedBankTransactions,
   loadPublishedDocuments,
   loadPublishedReports,
   loadInsightDismissals,
   loadReminders,
   loadReportLines,
 } from '@/lib/portal/load';
+import { granularityChoices } from '@/lib/portal/granularity';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
 import { leafItems } from '@/lib/portal/statement-page';
 import { type Metric, type ReportRow } from '@/lib/reports';
 import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
-import { cashByMonth, cashTotals } from '@/lib/reports/cash';
-import { availablePeriods, bankAccountsCoverPeriod, periodKind, periodLabel, priorPeriod } from '@/lib/reports/periods';
+import { availablePeriods, periodKind, periodLabel, priorPeriod } from '@/lib/reports/periods';
 import { PNL_SYNONYMS, type PnlMetrics, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
@@ -136,10 +137,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const priorPnlReport = priorRange ? exactReport(reports, 'profit_and_loss', priorRange) : null;
   const balanceReport = reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null;
   const currency = currentPnlReport?.currency ?? settings.currency;
-  const currencyStatements = bankStatements.filter((statement) => statement.currency === currency);
-  const accountRanges = currencyStatements.map((statement) => ({ bankAccountId: statement.bankAccountId, start: statement.periodStart, end: statement.periodEnd }));
-  const cashCovered = bankAccountsCoverPeriod(accountRanges, selected);
-  const priorCashCovered = priorRange ? bankAccountsCoverPeriod(accountRanges, priorRange) : false;
 
   // The headline sparklines run over the published P&Ls of the same kind as the
   // selected period, oldest first — a monthly view trends months, an annual one
@@ -155,11 +152,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const lineReportIds = [
     ...new Set([currentPnlReport?.id, priorPnlReport?.id, balanceReport?.id, ...pnlTrendReports.map((report) => report.id)].filter((id): id is string => id !== undefined)),
   ];
-  const [lineSets, currentTransactions, priorTransactions] = await Promise.all([
-    Promise.all(lineReportIds.map((id) => loadReportLines(supabase, entity.id, id))),
-    cashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, selected) : Promise.resolve([]),
-    priorRange && priorCashCovered ? loadPublishedBankTransactions(supabase, entity.id, currency, priorRange) : Promise.resolve([]),
-  ]);
+  const lineSets = await Promise.all(lineReportIds.map((id) => loadReportLines(supabase, entity.id, id)));
   const linesById = new Map(lineReportIds.map((id, index) => [id, lineSets[index] ?? []]));
   const linesOf = (report: ReportRow | null) => (report ? (linesById.get(report.id) ?? []) : []);
   const currentLines = linesOf(currentPnlReport);
@@ -194,9 +187,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   // travels in the "how is this calculated" tooltip (§2 rule 10), and says
   // "entered by your accountant" when there is no document behind the figure.
   const pnlSourceNote = t(currentPnlReport?.source === 'firm_entry' ? 'sourceEntryNote' : 'sourceDocumentNote');
-  const months = cashCovered ? cashByMonth(currentTransactions, selected) : [];
-  const priorMonths = priorRange && priorCashCovered ? cashByMonth(priorTransactions, priorRange) : [];
-  const totals = cashCovered ? cashTotals(months) : null;
   const pnlInput: PnlInput | undefined = currentPnl ? {
     current: currentPnl,
     lines: currentRoots,
@@ -204,8 +194,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   } : undefined;
   const today = todayIn(settings.timezone);
   // Insights run over the last few published periods, not only the selected
-  // one: the earlier periods get the statement rules (their cash and balance
-  // figures are not loaded), and the selected period gets the full set. Rows
+  // one: the earlier periods get the statement rules (their balance figures
+  // are not loaded), and the selected period gets the full set. Rows
   // this user has already checked off are dropped here.
   const earlierPeriods: InsightPeriod[] = pnlTrendReports.flatMap((report, index) => {
     const metrics = pnlTrend[index];
@@ -223,7 +213,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     earlierPeriods,
     {
       ...(pnlInput ? { pnl: pnlInput } : {}),
-      ...(totals ? { cash: { current: totals, ...(priorCashCovered ? { prior: cashTotals(priorMonths) } : {}), months } } : {}),
       ...(balanceReport ? { balance: balanceSheetMetrics(balanceReport, buildTree(balanceLines)) } : {}),
       reminders,
       reportsNeedingReview: 0,
@@ -257,6 +246,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
       actions={
         <>
+          <GranularityTabs choices={granularityChoices(periods, selected)} />
           <PeriodSelector options={periods.map((period) => ({ value: periodParam(period), label: period.label }))} current={periodParam(selected)} />
           <DownloadReportsMenu items={downloadItems} />
         </>

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { Fixtures, adminClient, insertDenied, supabaseEnv } from './helpers/fixtures';
+import { Fixtures, adminClient, elevateToAal2, insertDenied, supabaseEnv } from './helpers/fixtures';
 
 // RLS for the Phase 5 settings tables (migration 0007): notification
 // preferences are private to one user in one business, and an account request
@@ -157,6 +157,57 @@ test.describe('RLS — notification preferences and account requests', () => {
       .select('requested_at');
     expect(backdated.error).toBeNull();
     expect(new Date(backdated.data?.[0]?.requested_at ?? '').getFullYear()).toBeGreaterThan(2020);
+  });
+
+  test('the firm answers a request without rewriting it, and never reopens one', async () => {
+    const a = await fx.makeTenant('fr-a');
+    const created = await a.client
+      .from('account_requests')
+      .insert({ business_entity_id: a.entityId, user_id: a.userId, kind: 'account_deletion', message: 'close it after 2026 taxes' })
+      .select('id');
+    expect(created.error).toBeNull();
+    const requestId = created.data?.[0]?.id as string;
+
+    const firm = await fx.makeFirmUser('fr-admin');
+    await elevateToAal2(firm.client);
+
+    // The firm's own words go in firm_note; the client's do not change.
+    const rewrite = await firm.client
+      .from('account_requests')
+      .update({ message: 'never mind', status: 'in_progress' })
+      .eq('id', requestId)
+      .select();
+    expect(rewrite.data ?? []).toHaveLength(0);
+
+    const started = await firm.client
+      .from('account_requests')
+      .update({ status: 'in_progress', firm_note: 'Preparing the export' })
+      .eq('id', requestId)
+      .select('status, resolved_at');
+    expect(started.error).toBeNull();
+    // Still open, so nothing is resolved yet.
+    expect(started.data?.[0]).toMatchObject({ status: 'in_progress', resolved_at: null });
+
+    // Completing it stamps who and when, without the app having to remember to.
+    const done = await firm.client
+      .from('account_requests')
+      .update({ status: 'completed' })
+      .eq('id', requestId)
+      .select('resolved_at, resolved_by');
+    expect(done.error).toBeNull();
+    expect(done.data?.[0]?.resolved_at).not.toBeNull();
+    expect(done.data?.[0]?.resolved_by).toBe(firm.userId);
+
+    // A resolved request is the firm's evidence that it answered: not reopened.
+    const reopen = await firm.client
+      .from('account_requests')
+      .update({ status: 'in_progress' })
+      .eq('id', requestId)
+      .select();
+    expect(reopen.data ?? []).toHaveLength(0);
+
+    const stored = await adminClient().from('account_requests').select('status, message').eq('id', requestId).maybeSingle();
+    expect(stored.data).toMatchObject({ status: 'completed', message: 'close it after 2026 taxes' });
   });
 
   test('an insight tick is the ticker\'s own and stays inside their business', async () => {

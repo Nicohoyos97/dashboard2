@@ -106,9 +106,9 @@ export function rangeCovered(period: PeriodRange, spans: readonly PeriodRange[])
 }
 
 /**
- * Entity-wide cash can be shown only when every account with published data
+ * An entity-wide bank total can be shown only when every account with published data
  * has continuous coverage for the period. Otherwise a partial total would
- * look like the business's full cash movement.
+ * look like the business's full activity.
  */
 export function bankAccountsCoverPeriod(
   statements: readonly (PeriodRange & { bankAccountId: string })[],

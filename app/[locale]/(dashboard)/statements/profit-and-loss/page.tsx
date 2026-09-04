@@ -7,6 +7,7 @@ import { CompositionBars } from '@/components/charts/CompositionBars';
 import { NickProvider } from '@/components/chat/NickContext';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { TrendBars } from '@/components/charts/TrendBars';
+import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
 import { MetricCards } from '@/components/statements/MetricCards';
@@ -15,8 +16,10 @@ import { StatementTable } from '@/components/statements/StatementTable';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPublishedReports, loadReportLines } from '@/lib/portal/load';
+import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, reportPeriodOptions, selectReport } from '@/lib/portal/statement-page';
+import { availablePeriods } from '@/lib/reports/periods';
 import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
@@ -66,6 +69,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
       lede={`${entity.name} · ${periodLabel}${basis}${comparative}`}
       controls={
         <>
+          <GranularityTabs choices={granularityChoices(availablePeriods(reports, [], { locale }), { start: report.periodStart, end: report.periodEnd })} />
           <PeriodSelector options={reportPeriodOptions(reports, locale)} current={periodParam({ start: report.periodStart, end: report.periodEnd })} />
           <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} />
         </>

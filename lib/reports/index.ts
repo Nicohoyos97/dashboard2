@@ -18,17 +18,6 @@ export { PNL_SYNONYMS, marginPct, pnlMetrics } from './pnl';
 export type { PnlMetricKey, PnlMetrics } from './pnl';
 export { BALANCE_SYNONYMS, balanceSheetMetrics } from './balance-sheet';
 export type { BalanceMetricKey, BalanceSheetMetrics } from './balance-sheet';
-export { cashByMonth, cashComparison, cashTotals, endingBalanceSeries } from './cash';
-export type {
-  BalancePoint,
-  BankTransactionRow,
-  CashComparison,
-  CashMetric,
-  CashMetricKey,
-  CashTotals,
-  DateRange,
-  MonthCash,
-} from './cash';
 export { availablePeriods, bankAccountsCoverPeriod, granularity, periodKind, periodLabel, priorPeriod, rangeCovered } from './periods';
 export type {
   Granularity,

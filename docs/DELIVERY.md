@@ -45,14 +45,16 @@ and the contextual "Ask Nick" panel.
 - **Notifications** — the top-bar bell, plus per-user, per-business preferences
   that `notifyEntityMembers` honours before inserting.
 - **Settings** — profile, business, members, notifications, and Data & privacy
-  (data-export and account-deletion requests queued for the firm).
+  (data-export and account-deletion requests queued for the firm, answered from
+  the firm's own queue at `/admin/requests`).
 - **Help** — nine FAQ entries covering sources, coverage gaps and tax statuses.
 
-**Phase 6 — Hardening (in progress).** `pnpm seed:demo`; an audit pass
-(`/code-review` at high effort plus a security review) that fixed 22 defects and
-added migration `0009`; a business time zone (`0010`); expense aggregation in
-Postgres (`0011`, `0012`); and an accessibility and mobile pass. Remaining:
-the three §14 gaps in §6 below.
+**Phase 6 — Hardening.** `pnpm seed:demo`; an audit pass (`/code-review` at high
+effort plus a security review) that fixed 22 defects and added migration `0009`;
+a business time zone (`0010`); expense aggregation in Postgres (`0011`, `0012`);
+an accessibility and mobile pass; the removal of cash tracking at the owner's
+instruction; the granularity control (§14.13); the superseded-report history
+(§14.19); and the firm's queue for client account requests (`0013`).
 
 ---
 
@@ -60,8 +62,8 @@ the three §14 gaps in §6 below.
 
 | Suite | Result |
 |---|---|
-| `pnpm test` (Vitest, unit + integration) | **334 passed, 1 skipped** (36 files) |
-| `pnpm test:e2e` (Playwright) | **45 passed, 2 skipped** (47) |
+| `pnpm test` (Vitest, unit + integration) | **330 passed, 1 skipped** (36 files) |
+| `pnpm test:e2e` (Playwright) | **48 passed, 2 skipped** (50) |
 | Nick browser spec (`NICK_E2E=1`) | **2 passed** — the two skips above |
 | `pnpm typecheck` | clean |
 | `pnpm lint` | clean (`--max-warnings=0`) |
@@ -106,10 +108,12 @@ Every reuse and design decision is recorded, dated, in `docs/ASSUMPTIONS.md`
 
 1. **The Overview KPIs are the P&L headline figures**, not the bank's cash trio
    (§7 lists both among "available metrics"). The owner asked for Gross Income,
-   Total Expenses, Gross Profit and Net Income on 2026-09-03. The cash figures
-   moved to Expenses and the insight rules.
-2. **The Overview's main chart is Income vs Expense**, not the cash chart §7
-   describes, and the source pill left the KPI cards — both at the owner's
+   Total Expenses, Gross Profit and Net Income on 2026-09-03, and on 2026-09-04
+   that the portal stop tracking cash altogether. Bank statements remain the
+   Expenses page's one source (their debits); nothing sums them into a cash
+   position.
+2. **The Overview's main chart is Income vs Expense**, and there is no cash
+   chart at all where §7 describes one; the source pill also left the KPI cards — both at the owner's
    request. The source still travels in each card's "how is this calculated"
    tooltip, which distinguishes a firm-entered P&L from a published document.
 3. **Card 3 is named Gross Profit.** The owner asked for "operative net income
@@ -167,26 +171,22 @@ figures or PII.
 
 ## 6. Known limitations and next steps
 
-Three §14 criteria are not fully met, all of them scope rather than defects:
+One §14 criterion is deliberately out of scope; the rest are met.
 
 1. **§14.16 — "Cash In and Revenue shown as different metrics with different
-   sources."** The card that did this (Income behavior) was removed in the
-   2026-09-03 redesign. Sources are still never mixed and each page names its
-   own, but the two figures are no longer displayed side by side. Restoring it
-   is a small card; it is the owner's call.
-2. **§14.13 — "Unsupported granularity is disabled with an explanation."** The
-   period selector lists only periods that have data, so nothing is fabricated,
-   but there is no disabled control carrying the reason. `granularity()` exists
-   and is unit-tested; no UI consumes it yet.
-3. **§14.19 — "A superseded report remains in the audit history and version
-   list."** Supersession is enforced in the data (`superseded_by`, no deletes),
-   but no admin view surfaces the superseded chain.
+   sources."** Retired by decision on 2026-09-04: the owner asked that the
+   portal not track cash at all, so there is no Cash In figure to place beside
+   Revenue. Bank statements are still read — they are the Expenses page's one
+   source — but nothing sums them into a cash position, and sources are still
+   never mixed. See `docs/ASSUMPTIONS.md`.
+
+Closed since the first draft of this report: **§14.13** now ships a Monthly ·
+Quarterly · Annual control that leaves an unsupported granularity disabled with
+its reason, and **§14.19** now shows every superseded report in the document's
+Report history, pointing at what replaced it.
 
 Also open, recorded in `docs/ASSUMPTIONS.md`:
 
-- **No firm-side queue for `account_requests`.** A data-export or deletion
-  request sits at `pending` and no one at the firm is notified. This is the
-  next Phase 5 remainder and it carries a response-time obligation.
 - **Four of the five notification channels have no producer.** Only
   `document.published` fires; reminders, tax deadlines, document activity and
   the weekly email digest are switches without a job behind them.

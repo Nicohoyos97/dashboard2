@@ -17,13 +17,6 @@ const pnl = () => {
 const keys = (input: InsightInput) => generateInsights(input).map((i) => i.ruleKey);
 
 describe('deterministic insight rules', () => {
-  it('flags revenue up while cash collections are down past the threshold', () => {
-    expect(keys({ ...empty(), pnl: pnl(), cash: { current: { inCents: 90_00, outCents: 50_00, netCents: 40_00 }, prior: { inCents: 100_00, outCents: 40_00, netCents: 60_00 } } }))
-      .toContain('revenue_up_collections_down');
-    expect(keys({ ...empty(), pnl: pnl(), cash: { current: { inCents: 99_01, outCents: 50_00, netCents: 49_01 }, prior: { inCents: 100_00, outCents: 40_00, netCents: 60_00 } } }))
-      .not.toContain('revenue_up_collections_down');
-  });
-
   it('flags payroll share and a materially growing expense only at their thresholds', () => {
     const both = keys({ ...empty(), pnl: pnl() });
     expect(both).toContain('payroll_share_up');
@@ -49,9 +42,7 @@ describe('deterministic insight rules', () => {
     expect(keys({ ...empty(), reminders: [{ ...due, status: 'paid' }] })).not.toContain('sales_tax_due_soon');
   });
 
-  it('flags any negative net cash and margin movement of at least five points', () => {
-    expect(keys({ ...empty(), cash: { current: { inCents: 99, outCents: 100, netCents: -1 } } })).toContain('outflow_exceeded_inflow');
-    expect(keys({ ...empty(), cash: { current: { inCents: 100, outCents: 100, netCents: 0 } } })).not.toContain('outflow_exceeded_inflow');
+  it('flags margin movement of at least five points', () => {
     expect(keys({ ...empty(), pnl: pnl() })).toContain('margin_changed');
   });
 
@@ -63,12 +54,11 @@ describe('deterministic insight rules', () => {
     const all = generateInsights({
       ...empty(),
       pnl: pnl(),
-      cash: { current: { inCents: 1, outCents: 100_00, netCents: -99_99 }, prior: { inCents: 100_00, outCents: 1, netCents: 99_99 } },
       balance: balanceSheetMetrics(balanceReport(), buildTree(amend(amend(balanceRows(), 'B18', { currentCents: 1_000_000 }), 'B21', { currentCents: 1_000_000 }))),
       reminders: [{ reminderType: 'sales_tax_deadline', status: 'upcoming', dueDate: '2026-06-02', amountCents: null }],
       reportsNeedingReview: 3,
     });
-    expect(all).toHaveLength(MAX_INSIGHTS);
+    expect(all.length).toBeLessThanOrEqual(MAX_INSIGHTS);
     expect(all.map((i) => i.priority)).toEqual([...all.map((i) => i.priority)].sort((a, b) => a - b));
     expect(all[0]?.ruleKey).toBe('sales_tax_due_soon');
   });

@@ -56,9 +56,9 @@ function tag(insights: readonly Insight[], period: { start: string; end: string;
 export type PeriodLabel = { start: string; end: string; label: string };
 
 /**
- * The selected period gets the full rule set (`current`, which carries cash,
- * balance and reminders); `earlier` — oldest → newest, and never including the
- * selected period — gets only the statement rules, because their cash and
+ * The selected period gets the full rule set (`current`, which carries the
+ * balance sheet and reminders); `earlier` — oldest → newest, and never
+ * including the selected period — gets only the statement rules, because their
  * balance figures are not loaded. Results come back newest period first, most
  * urgent within a period, capped at `limit` — after `dismissed` keys are
  * dropped, so a checked-off row never holds a slot an unseen one could use.

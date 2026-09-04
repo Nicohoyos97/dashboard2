@@ -10,13 +10,20 @@ import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
 type Db = Awaited<ReturnType<typeof createClient>>;
-type Table = 'clients' | 'business_entities' | 'entity_memberships' | 'documents' | 'document_processing_jobs' | 'reminders';
-type Filter = { column: string; op: 'eq' | 'gte' | 'lte'; value: string };
+type Table = 'clients' | 'business_entities' | 'entity_memberships' | 'documents' | 'document_processing_jobs' | 'reminders' | 'account_requests';
+type Filter = { column: string; op: 'eq' | 'gte' | 'lte' | 'in'; value: string | string[] };
 
 async function count(supabase: Db, table: Table, filters: Filter[] = []): Promise<number> {
   let query = supabase.from(table).select('*', { count: 'exact', head: true });
   for (const f of filters) {
-    query = f.op === 'eq' ? query.eq(f.column, f.value) : f.op === 'gte' ? query.gte(f.column, f.value) : query.lte(f.column, f.value);
+    query =
+      f.op === 'in'
+        ? query.in(f.column, Array.isArray(f.value) ? f.value : [f.value])
+        : f.op === 'eq'
+          ? query.eq(f.column, f.value)
+          : f.op === 'gte'
+            ? query.gte(f.column, f.value)
+            : query.lte(f.column, f.value);
   }
   const { count: n } = await query;
   return n ?? 0;
@@ -30,7 +37,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   const in30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
   const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
-  const [clients, entities, memberships, needsReview, ready, failed, published30, dueSoon, { data: recent }] =
+  const [clients, entities, memberships, needsReview, ready, failed, published30, dueSoon, openRequests, { data: recent }] =
     await Promise.all([
       count(supabase, 'clients', [{ column: 'status', op: 'eq', value: 'active' }]),
       count(supabase, 'business_entities', [{ column: 'status', op: 'eq', value: 'active' }]),
@@ -40,6 +47,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
       count(supabase, 'document_processing_jobs', [{ column: 'status', op: 'eq', value: 'failed' }]),
       count(supabase, 'documents', [{ column: 'status', op: 'eq', value: 'published' }, { column: 'published_at', op: 'gte', value: since30 }]),
       count(supabase, 'reminders', [{ column: 'due_date', op: 'gte', value: today }, { column: 'due_date', op: 'lte', value: in30 }]),
+      count(supabase, 'account_requests', [{ column: 'status', op: 'in', value: ['pending', 'in_progress'] }]),
       supabase
         .from('documents')
         .select('id, title, status, period_start, period_end, updated_at, business_entities ( name )')
@@ -58,6 +66,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     { label: t('statReadyToPublish'), value: ready, href: '/admin/documents?status=reconciled', tone: ready > 0 ? 'text-blue' : 'text-ink' },
     { label: t('statFailed'), value: failed, href: '/admin/documents?status=failed', tone: failed > 0 ? 'text-danger' : 'text-ink' },
     { label: t('statPublished30'), value: published30, href: '/admin/documents?status=published', tone: 'text-ink' },
+    { label: t('statOpenRequests'), value: openRequests, href: '/admin/requests', tone: openRequests > 0 ? 'text-warning' : 'text-ink' },
   ];
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 

@@ -11,7 +11,8 @@ import { InfoTip } from './InfoTip';
 // comparable period, trend direction, "how is this calculated", link to the
 // detail page — the whole card is that link. Color is contextual (`upIsGood`)
 // and never the only signal — the arrow and the sign carry it too, so rising
-// Cash Out reads red while rising Cash In reads green. A metric that cannot be
+// rising Total Expenses reads red while rising Gross Income reads green. A
+// metric that cannot be
 // derived shows the reason instead of a number; `trend` is only ever real
 // published figures, and with fewer than two of them no sparkline is drawn.
 export async function KpiCard({

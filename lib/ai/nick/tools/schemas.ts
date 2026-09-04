@@ -99,7 +99,7 @@ export function isToolName(value: string): value is ToolName {
 
 export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   get_overview_metrics:
-    'Call this for questions about how the business is doing overall, cash in, cash out, net cash flow, revenue or net income for a period. Cash figures come from published bank statements and are returned only when statements cover the whole period; revenue and net income come from the Profit & Loss.',
+    'Call this for questions about how the business is doing overall — revenue or net income for a period, and which periods have published data. The figures come from the published Profit & Loss.',
   get_profit_and_loss:
     'Call this for revenue, cost of goods sold, gross profit, operating expenses, net income, margins, or to explain a specific account on the Profit & Loss. Use detail "lines" or a query when the user asks about a particular expense or account.',
   get_balance_sheet:

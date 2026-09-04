@@ -18,6 +18,8 @@ export type NavItem = {
   disabled?: boolean;
   exact?: boolean; // active only on the exact path (a root like /admin)
   children?: NavChild[];
+  /** Live count shown beside the label — how the firm learns work is waiting. */
+  badge?: number;
 };
 
 export const NAV_ITEMS: NavItem[] = [

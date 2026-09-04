@@ -10,9 +10,9 @@ import { compactMoney, fullMoney, monthLabel } from './format';
 
 export type SpendMonth = { month: string; cents: number };
 
-// One measure over months: thin columns on a single axis. Amber is the
-// money-out hue used by the Overview cash chart, so "spend" reads the same
-// across the portal. Ships a text summary for screen readers (§1 charts).
+// One measure over months: thin columns on a single axis, in the same amber the
+// Overview uses for expenses so spend reads the same across the portal. Ships a
+// text summary for screen readers (§1 charts).
 export function MonthlySpendChart({
   months,
   currency,
@@ -49,11 +49,11 @@ export function MonthlySpendChart({
                   label={typeof label === 'string' ? label : undefined}
                   currency={currency}
                   locale={locale}
-                  rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.cashOut) }))}
+                  rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.expense) }))}
                 />
               )}
             />
-            <Bar dataKey="spend" name={seriesLabel} fill={SERIES.cashOut} radius={[4, 4, 0, 0]} maxBarSize={28} />
+            <Bar dataKey="spend" name={seriesLabel} fill={SERIES.expense} radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>
         </ResponsiveContainer>
       </div>

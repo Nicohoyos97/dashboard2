@@ -22,7 +22,7 @@ describe('titleFromMessage', () => {
 describe('matchesKeywords', () => {
   it('requires every keyword, ignoring case and order', () => {
     expect(matchesKeywords('Why did net income change?', 'income net')).toBe(true);
-    expect(matchesKeywords('Why did net income change?', 'income cash')).toBe(false);
+    expect(matchesKeywords('Why did net income change?', 'income payroll')).toBe(false);
     expect(matchesKeywords('Download the P&L', '  ')).toBe(true);
   });
 });

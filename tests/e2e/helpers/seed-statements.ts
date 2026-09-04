@@ -84,10 +84,10 @@ export async function seedPublishedStatement(
   };
 }
 
-// Six complete monthly statements for one USD account. The deterministic
-// values make Overview totals verifiable without claiming a PDF contained
-// periods that the fixture PDF does not actually print.
-export async function seedPublishedCashMonths(fx: Fixtures, entityId: string) {
+// Six complete monthly statements for one USD account. The deterministic values
+// make the Expenses totals verifiable without claiming a PDF contained periods
+// the fixture PDF does not actually print.
+export async function seedPublishedBankMonths(fx: Fixtures, entityId: string) {
   const now = new Date().toISOString();
   const { data: account, error: accountError } = await fx.admin
     .from('bank_accounts')
@@ -96,7 +96,6 @@ export async function seedPublishedCashMonths(fx: Fixtures, entityId: string) {
     .single();
   if (accountError || !account) throw new Error(`seed cash account: ${accountError?.code}`);
 
-  let totalInCents = 0;
   let totalOutCents = 0;
   for (let month = 1; month <= 6; month += 1) {
     const mm = String(month).padStart(2, '0');
@@ -119,11 +118,10 @@ export async function seedPublishedCashMonths(fx: Fixtures, entityId: string) {
       })
       .select('id')
       .single();
-    if (statementError || !statement) throw new Error(`seed cash statement: ${statementError?.code}`);
+    if (statementError || !statement) throw new Error(`seed bank statement: ${statementError?.code}`);
 
     const creditCents = 100_000;
     const debitCents = 110_000;
-    totalInCents += creditCents;
     totalOutCents += debitCents;
     const { error: txError } = await fx.admin.from('bank_transactions').insert([
       {
@@ -147,10 +145,10 @@ export async function seedPublishedCashMonths(fx: Fixtures, entityId: string) {
         dedupe_key: randomUUID().replace(/-/g, ''),
       },
     ]);
-    if (txError) throw new Error(`seed cash transactions: ${txError.code}`);
+    if (txError) throw new Error(`seed bank transactions: ${txError.code}`);
   }
   // Per-month figures too: a portal page shows one period, not the run.
-  return { totalInCents, totalOutCents, netCents: totalInCents - totalOutCents, monthlyInCents: 100_000, monthlyOutCents: 110_000 };
+  return { totalDebitCents: totalOutCents, monthlyDebitCents: 110_000 };
 }
 
 export async function seedPublishedReminder(fx: Fixtures, entityId: string, dueDate: string) {

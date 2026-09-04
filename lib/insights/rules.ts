@@ -1,10 +1,9 @@
 // Deterministic insight rules (spec §7). Each rule returns at most one
 // insight; generateInsights keeps the five most urgent. Every number in
 // `params` is computed here from published figures — Nick only phrases them.
-import { variance } from '@/lib/money';
 import { daysBetween } from '@/lib/reports/dates';
 
-import { categoryUpMaterial, marginChanged, metricChange, payrollShareUp } from './pnl-rules';
+import { categoryUpMaterial, marginChanged, payrollShareUp } from './pnl-rules';
 import {
   INSIGHT_LINKS,
   MAX_INSIGHTS,
@@ -17,26 +16,6 @@ import type { Insight, InsightInput, InsightSeverity } from './types';
 
 export type { Insight, InsightInput, InsightReminder, InsightRuleKey, InsightSeverity } from './types';
 export { INSIGHT_LINKS, MAX_INSIGHTS, THRESHOLDS } from './types';
-
-function revenueUpCollectionsDown(input: InsightInput): Insight | null {
-  if (!input.pnl || !input.cash?.prior) return null;
-  const revenue = metricChange(input.pnl.current.revenue, input.pnl.prior?.revenue);
-  const cashIn = variance(input.cash.current.inCents, input.cash.prior.inCents);
-  if (!revenue || revenue.deltaPct === null || cashIn.pct === null) return null;
-  if (revenue.deltaPct < THRESHOLDS.collectionsGapMinPct || cashIn.pct > -THRESHOLDS.collectionsGapMinPct) return null;
-  return {
-    ruleKey: 'revenue_up_collections_down',
-    severity: 'warning',
-    priority: 2,
-    linkPath: INSIGHT_LINKS.overview,
-    params: {
-      revenueDeltaPct: round1(revenue.deltaPct),
-      revenueDeltaCents: revenue.deltaCents,
-      cashInDeltaPct: round1(cashIn.pct),
-      cashInDeltaCents: cashIn.deltaCents,
-    },
-  };
-}
 
 function liabilitiesOutpacingAssets(input: InsightInput): Insight | null {
   const liabilities = input.balance?.totalLiabilities;
@@ -77,18 +56,6 @@ function salesTaxDueSoon(input: InsightInput): Insight | null {
   };
 }
 
-function outflowExceededInflow(input: InsightInput): Insight | null {
-  const cash = input.cash?.current;
-  if (!cash || cash.outCents - cash.inCents < THRESHOLDS.netOutflowMinCents) return null;
-  return {
-    ruleKey: 'outflow_exceeded_inflow',
-    severity: 'warning',
-    priority: 1,
-    linkPath: INSIGHT_LINKS.overview,
-    params: { inCents: cash.inCents, outCents: cash.outCents, netCents: cash.netCents },
-  };
-}
-
 function reportNeedsReview(input: InsightInput): Insight | null {
   if (input.reportsNeedingReview < 1) return null;
   return {
@@ -102,8 +69,6 @@ function reportNeedsReview(input: InsightInput): Insight | null {
 
 const RULES: ((input: InsightInput) => Insight | null)[] = [
   salesTaxDueSoon,
-  outflowExceededInflow,
-  revenueUpCollectionsDown,
   liabilitiesOutpacingAssets,
   marginChangedRule,
   payrollShareUpRule,

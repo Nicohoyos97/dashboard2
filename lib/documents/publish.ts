@@ -103,7 +103,10 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     .select('id, business_entity_id, report_type, period_start, period_end')
     .eq('document_version_id', versionId);
 
-  // Supersede older published reports covering the same statement.
+  // Supersede older published reports covering the same statement. The count
+  // goes into the audit entry (identifiers and counts only) so a replacement is
+  // traceable from the trail, not only from the document's report history.
+  let supersededCount = 0;
   for (const report of reports ?? []) {
     const { data: older } = await supabase
       .from('financial_reports')
@@ -115,10 +118,11 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
       .eq('status', 'published')
       .neq('id', report.id);
     for (const old of older ?? []) {
-      await supabase
+      const { error: supersedeError } = await supabase
         .from('financial_reports')
         .update({ status: 'superseded', published_at: null, superseded_by: report.id })
         .eq('id', old.id);
+      if (!supersedeError) supersededCount += 1;
     }
   }
 
@@ -159,7 +163,7 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     resourceType: 'document',
     resourceId: parsed.data.documentId,
     businessEntityId: entityId,
-    metadata: { version_id: versionId, reports: (reports ?? []).length },
+    metadata: { version_id: versionId, reports: (reports ?? []).length, superseded: supersededCount },
   });
   revalidatePath('/admin/documents');
   revalidatePath(`/admin/documents/${parsed.data.documentId}`);

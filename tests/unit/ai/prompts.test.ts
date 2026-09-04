@@ -43,7 +43,7 @@ describe('Nick prompts', () => {
     expect(NICK_SYSTEM_PROMPT).toContain('[cN]');
     expect(NICK_SYSTEM_PROMPT).toContain('Never invent');
     expect(NICK_SYSTEM_PROMPT).toContain('Sources never mix');
-    expect(NICK_SYSTEM_PROMPT).toContain('Never infer cash flow from a Profit & Loss');
+    expect(NICK_SYSTEM_PROMPT).toContain('Never infer bank movement from a Profit & Loss');
     expect(NICK_SYSTEM_PROMPT).toContain(
       'confirmed: true only when the user has explicitly confirmed',
     );

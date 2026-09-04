@@ -7,5 +7,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: '/admin/clients', labelKey: 'navClients' },
   { href: '/admin/upload', labelKey: 'navUpload' },
   { href: '/admin/documents', labelKey: 'navDocuments' },
+  { href: '/admin/requests', labelKey: 'navRequests' },
   { href: '/admin/audit', labelKey: 'navAudit' },
 ];

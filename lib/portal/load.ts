@@ -119,35 +119,6 @@ export async function loadReportLines(supabase: Db, entityId: string, reportId: 
 }
 
 export type BankTransactionRow = { date: string; debitCents: number | null; creditCents: number | null };
-
-export async function loadPublishedBankTransactions(
-  supabase: Db,
-  entityId: string,
-  currency: string,
-  range?: { start: string; end: string },
-): Promise<BankTransactionRow[]> {
-  const rows: { txn_date: string; debit: number | null; credit: number | null }[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    // The explicit joined status filter matters for a firm preview: the firm's
-    // RLS branch can read drafts, while preview must match the client exactly.
-    let query = supabase
-      .from('bank_transactions')
-      .select('id, txn_date, debit, credit, bank_statements!inner(status), bank_accounts!inner(currency)')
-      .eq('business_entity_id', entityId)
-      .eq('bank_statements.status', 'published')
-      .eq('bank_accounts.currency', currency)
-      .order('txn_date')
-      .order('id')
-      .range(from, from + PAGE_SIZE - 1);
-    if (range) query = query.gte('txn_date', range.start).lte('txn_date', range.end);
-    const { data, error } = await query;
-    if (error) throw readError('portal_bank_transactions_read_failed');
-    rows.push(...(data ?? []));
-    if ((data ?? []).length < PAGE_SIZE) break;
-  }
-  return rows.map((tx) => ({ date: tx.txn_date, debitCents: cents(tx.debit), creditCents: cents(tx.credit) }));
-}
-
 export type BankStatementRow = {
   id: string;
   bankAccountId: string;

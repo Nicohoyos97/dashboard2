@@ -10,11 +10,13 @@ import { BankReview } from '@/components/admin/review/BankReview';
 import { DocumentMetaForm } from '@/components/admin/review/DocumentMetaForm';
 import { PagesTable } from '@/components/admin/review/PagesTable';
 import { PublishBar } from '@/components/admin/review/PublishBar';
+import { ReportHistory } from '@/components/admin/review/ReportHistory';
 import { StatementReview } from '@/components/admin/review/StatementReview';
 import { VersionsJobs } from '@/components/admin/review/VersionsJobs';
 import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
+import { loadDerivedHistory } from '@/lib/documents/history';
 import { publishBlockers } from '@/lib/documents/publish';
 import { parseReconciliation } from '@/lib/documents/reconciliation';
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/types';
@@ -63,7 +65,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   const versionIds = (versions ?? []).map((v) => v.id);
   const reportIds = (reports ?? []).map((r) => r.id);
   const statementIds = (statements ?? []).map((s) => s.id);
-  const [{ data: jobs }, { data: lines }, { data: transactions }] = await Promise.all([
+  const [{ data: jobs }, { data: lines }, { data: transactions }, history] = await Promise.all([
     versionIds.length
       ? supabase.from('document_processing_jobs').select('id, document_version_id, status, step, attempts, max_attempts, error_code, updated_at').in('document_version_id', versionIds).order('updated_at', { ascending: false })
       : Promise.resolve({ data: [] }),
@@ -73,6 +75,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
     statementIds.length
       ? supabase.from('bank_transactions').select('id, bank_statement_id, txn_date, description, debit, credit, running_balance, page_number, confidence').in('bank_statement_id', statementIds).order('txn_date').limit(500)
       : Promise.resolve({ data: [] }),
+    loadDerivedHistory(supabase, (versions ?? []).map((v) => ({ id: v.id, versionNo: v.version_no }))),
   ]);
 
   const canEdit = firm.role === 'master_admin';
@@ -214,6 +217,8 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           />
         </section>
       ))}
+
+      <ReportHistory rows={history} />
 
       <VersionsJobs
         currentVersionId={versionId}

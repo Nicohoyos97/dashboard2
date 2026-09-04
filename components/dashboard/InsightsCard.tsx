@@ -38,8 +38,6 @@ export async function InsightsCard({ insights, currency }: { insights: InsightVi
   const textParams = (insight: InsightView): Record<string, string | number> => {
     const p = insight.params;
     switch (insight.ruleKey) {
-      case 'revenue_up_collections_down':
-        return { revenuePct: value(p, 'revenueDeltaPct'), cashPct: value(p, 'cashInDeltaPct') };
       case 'payroll_share_up':
         return { currentPct: value(p, 'currentSharePct'), priorPct: value(p, 'priorSharePct') };
       case 'category_up_material':
@@ -48,8 +46,6 @@ export async function InsightsCard({ insights, currency }: { insights: InsightVi
         return { liabilitiesPct: value(p, 'liabilitiesDeltaPct'), assetsPct: value(p, 'assetsDeltaPct') };
       case 'sales_tax_due_soon':
         return { title: tR('reminderType_sales_tax_deadline'), dueDate: formatIsoDate(String(p.dueDate ?? ''), locale) };
-      case 'outflow_exceeded_inflow':
-        return { net: money(value(p, 'netCents')) };
       case 'margin_changed':
         return {
           margin: String(p.margin) === 'gross' ? tI('marginGross') : tI('marginNet'),

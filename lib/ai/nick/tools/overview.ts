@@ -1,4 +1,4 @@
-// Overview, obligations and the report inventory. Cash comes from published
+// Overview, obligations and the report inventory. Figures come from published
 // bank statements and only for periods every account covers; revenue and net
 // income come from the Profit & Loss — the same rules as the Overview page.
 import { citationLabel } from '@/lib/ai/nick/citations';
@@ -6,16 +6,14 @@ import { fromCents, variance } from '@/lib/money';
 import {
   loadPortalEntitySettings,
   loadPublishedBankStatements,
-  loadPublishedBankTransactions,
   loadPublishedDocuments,
   loadPublishedReports,
   loadReminders,
   loadReportLines,
 } from '@/lib/portal/load';
 import { effectiveReminderStatus } from '@/lib/reminders/status';
-import { cashByMonth, cashComparison } from '@/lib/reports/cash';
 import { daysBetween } from '@/lib/reports/dates';
-import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/reports/periods';
+import { availablePeriods, priorPeriod } from '@/lib/reports/periods';
 import { pnlMetrics } from '@/lib/reports/pnl';
 import { buildTree } from '@/lib/reports/tree';
 import type { Metric, ReportRow } from '@/lib/reports/types';
@@ -29,7 +27,6 @@ import {
   money,
   parsePeriodInput,
   periodOf,
-  periodText,
   reportOut,
 } from './context';
 import type { ToolInput } from './schemas';
@@ -46,23 +43,6 @@ function exactReport(
       (r) => r.reportType === type && r.periodStart === range.start && r.periodEnd === range.end,
     ) ?? null
   );
-}
-
-function citeBank(ctx: ShapeContext, range: Range): string {
-  return ctx.registry.add({
-    label: citationLabel([
-      label(ctx.locale, 'bank'),
-      periodText(range.start, range.end, ctx.locale),
-    ]),
-    reportId: null,
-    documentVersionId: null,
-    lineId: null,
-    page: null,
-    periodStart: range.start,
-    periodEnd: range.end,
-    source: 'firm_document',
-    href: `/dashboard?period=${range.start}_${range.end}`,
-  });
 }
 
 /** A P&L headline with its change: the statement's own comparative column, else the prior period's published report. */
@@ -142,79 +122,19 @@ export async function getOverviewMetrics(
   const prior = priorPeriod(selected, ctx.locale);
   const priorPnlReport = prior ? exactReport(reports, 'profit_and_loss', prior) : null;
   const currency = pnlReport?.currency ?? settings.currency;
-  const spans = statements
-    .filter((s) => s.currency === currency)
-    .map((s) => ({ bankAccountId: s.bankAccountId, start: s.periodStart, end: s.periodEnd }));
-  const cashCovered = bankAccountsCoverPeriod(spans, selected);
-  const priorCashCovered = prior ? bankAccountsCoverPeriod(spans, prior) : false;
 
-  const [lines, priorLines, transactions, priorTransactions] = await Promise.all([
+  const [lines, priorLines] = await Promise.all([
     pnlReport ? loadReportLines(ctx.supabase, ctx.entityId, pnlReport.id) : Promise.resolve([]),
-    priorPnlReport
-      ? loadReportLines(ctx.supabase, ctx.entityId, priorPnlReport.id)
-      : Promise.resolve([]),
-    cashCovered
-      ? loadPublishedBankTransactions(ctx.supabase, ctx.entityId, currency, selected)
-      : Promise.resolve([]),
-    prior && priorCashCovered
-      ? loadPublishedBankTransactions(ctx.supabase, ctx.entityId, currency, prior)
-      : Promise.resolve([]),
+    priorPnlReport ? loadReportLines(ctx.supabase, ctx.entityId, priorPnlReport.id) : Promise.resolve([]),
   ]);
   const pnl = pnlReport ? pnlMetrics(pnlReport, buildTree(lines)) : null;
   const priorPnl = priorPnlReport ? pnlMetrics(priorPnlReport, buildTree(priorLines)) : null;
-
-  let cash: ToolResult;
-  if (!cashCovered) {
-    cash = {
-      available: false,
-      reason: 'incomplete_bank_coverage',
-      note: 'Published bank statements do not cover every day of the period for every account; cash totals are not shown for a partial period.',
-    };
-  } else {
-    const comparison = cashComparison(
-      cashByMonth(transactions, selected),
-      prior && priorCashCovered ? cashByMonth(priorTransactions, prior) : [],
-    );
-    const cite = citeBank(ctx, selected);
-    const priorCite = prior && priorCashCovered ? citeBank(ctx, prior) : null;
-    const out = (metric: (typeof comparison)['cashIn']) => ({
-      current: {
-        amount: fromCents(metric.currentCents),
-        formatted: money(ctx, metric.currentCents, currency),
-        cite,
-      },
-      prior:
-        metric.priorCents === null || !priorCite
-          ? null
-          : {
-              amount: fromCents(metric.priorCents),
-              formatted: money(ctx, metric.priorCents, currency),
-              cite: priorCite,
-            },
-      change:
-        metric.deltaCents === null
-          ? null
-          : {
-              amount: fromCents(metric.deltaCents),
-              formatted: money(ctx, metric.deltaCents, currency),
-              pct: metric.deltaPct === null ? null : Math.round(metric.deltaPct * 10) / 10,
-            },
-    });
-    cash = {
-      available: true,
-      source: 'bank_statements',
-      cashIn: out(comparison.cashIn),
-      cashOut: out(comparison.cashOut),
-      netCashFlow: out(comparison.netCash),
-    };
-  }
 
   return {
     available: true,
     period: { start: selected.start, end: selected.end, label: selected.label },
     priorPeriod: prior ? { start: prior.start, end: prior.end, label: prior.label } : null,
     currency,
-    cash,
     profitAndLoss: pnlReport ? reportOut(ctx, pnlReport) : null,
     revenue: {
       source: 'profit_and_loss',

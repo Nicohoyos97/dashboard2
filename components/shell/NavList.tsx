@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Inbox,
   Users,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -40,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   navUpload: Upload,
   navDocuments: FolderOpen,
   navAudit: ShieldCheck,
+  navRequests: Inbox,
 };
 
 const ICON_STROKE = 1.75;
@@ -121,10 +123,25 @@ export function NavList({
           >
             {icon}
             <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
+            {item.badge ? <CountTag count={item.badge} active={active} /> : null}
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+// A waiting-work count, announced as part of the link's name rather than as a
+// bare number ("Requests, 3 waiting").
+function CountTag({ count, active }: { count: number; active: boolean }) {
+  const t = useTranslations('Shell');
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-blue-pale text-blue'}`}
+    >
+      {count}
+      <span className="sr-only"> {t('waiting')}</span>
+    </span>
   );
 }
 

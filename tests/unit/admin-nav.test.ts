@@ -6,7 +6,7 @@ import { isActiveNav } from '@/lib/nav';
 describe('ADMIN_NAV_ITEMS', () => {
   it('only links to routes that exist — everything else is disabled, never a dead link', () => {
     const live = ADMIN_NAV_ITEMS.filter((i) => !i.disabled).map((i) => i.href);
-    expect(live).toEqual(['/admin', '/admin/clients', '/admin/upload', '/admin/documents', '/admin/audit']);
+    expect(live).toEqual(['/admin', '/admin/clients', '/admin/upload', '/admin/documents', '/admin/requests', '/admin/audit']);
   });
 
   it('the dashboard item is exact so it does not light up on every admin sub-route', () => {
