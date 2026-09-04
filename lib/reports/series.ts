@@ -15,13 +15,31 @@ type Comparable = {
   periodEnd: string;
 };
 
-export function comparableSeries<T extends Comparable>(reports: readonly T[], reference: Comparable): T[] {
-  const kind = periodKind(reference.periodStart, reference.periodEnd);
-  return reports.filter(
-    (report) =>
-      report.reportType === reference.reportType &&
-      report.currency === reference.currency &&
-      report.periodEnd <= reference.periodEnd &&
-      periodKind(report.periodStart, report.periodEnd) === kind,
+/**
+ * Same statement, same currency, same reporting granularity. This is what makes
+ * two periods worth putting side by side; whether one comes before the other is
+ * a separate question, and only a trend cares about it.
+ */
+export function isComparable(report: Comparable, reference: Comparable): boolean {
+  return (
+    report.reportType === reference.reportType &&
+    report.currency === reference.currency &&
+    periodKind(report.periodStart, report.periodEnd) ===
+      periodKind(reference.periodStart, reference.periodEnd)
   );
+}
+
+/** Comparable, and not after the period on screen — a trend must not draw the future. */
+export function comparableSeries<T extends Comparable>(reports: readonly T[], reference: Comparable): T[] {
+  return reports.filter(
+    (report) => isComparable(report, reference) && report.periodEnd <= reference.periodEnd,
+  );
+}
+
+/**
+ * Comparable, in either direction. A client viewing July may reasonably ask how
+ * it sits against August; the date bound above belongs to trends, not to this.
+ */
+export function comparableTo<T extends Comparable>(reports: readonly T[], reference: Comparable): T[] {
+  return reports.filter((report) => isComparable(report, reference));
 }

@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { inputClass } from '@/components/admin/ui';
 import { useNickSelection } from '@/components/chat/NickContext';
 
-import { CompareSelector, type CompareOption } from './CompareSelector';
+import { CompareSelector, type CompareProps } from './CompareSelector';
 import { LineDrawer } from './LineDrawer';
 
 export type StatementNode = {
@@ -78,7 +78,7 @@ export function StatementTable({
   roots: StatementNode[];
   meta: StatementMeta;
   /** Absent when the statement has nothing comparable to offer. */
-  compare?: { options: CompareOption[]; current: string };
+  compare?: CompareProps;
 }) {
   const t = useTranslations('Statements');
   const locale = useLocale();
@@ -148,7 +148,7 @@ export function StatementTable({
             className={`${inputClass} h-10 pl-9`}
           />
         </label>
-        {compare && <CompareSelector options={compare.options} current={compare.current} />}
+        {compare && <CompareSelector {...compare} />}
         <label className="text-muted-foreground flex items-center gap-2 text-[13.5px]">
           <input
             type="checkbox"

@@ -14,6 +14,7 @@
 // calendar and keyboard handling, which no added dependency would improve on.
 import { CalendarDays, Check, ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { Popover } from 'radix-ui';
 import { useState } from 'react';
 
@@ -35,6 +36,12 @@ export function PeriodPicker({
   currentLabel,
   customFrom,
   customTo,
+  param = 'period',
+  label,
+  leading = [],
+  allowCustom = true,
+  requirePublished = false,
+  icon,
 }: {
   presets: PeriodChoice[];
   published: PeriodChoice[];
@@ -42,10 +49,24 @@ export function PeriodPicker({
   currentLabel: string;
   customFrom: string;
   customTo: string;
+  /** Which search param this picker writes. Others are preserved. */
+  param?: string;
+  label?: string;
+  /** Rows shown above the presets — the comparison picker's printed column. */
+  leading?: PeriodChoice[];
+  allowCustom?: boolean;
+  /**
+   * When true, an option with no published statement behind it is shown but
+   * cannot be chosen. Comparing against a period that has no report is not a
+   * comparison, so offering it and then quietly falling back would mislead.
+   */
+  requirePublished?: boolean;
+  icon?: React.ReactNode;
 }) {
   const t = useTranslations('Overview');
   const router = useRouter();
   const pathname = usePathname();
+  const search = useSearchParams();
   const [open, setOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const [from, setFrom] = useState(customFrom);
@@ -54,14 +75,22 @@ export function PeriodPicker({
   function go(value: string) {
     setOpen(false);
     setShowCustom(false);
-    router.push(`${pathname}?period=${value}`);
+    // Every other param survives: choosing a period used to wipe the
+    // comparison, and choosing a comparison would have wiped the period.
+    const next = new URLSearchParams(search.toString());
+    if (value === '') next.delete(param);
+    else next.set(param, value);
+    const query = next.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   const rangeInvalid = from === '' || to === '' || from > to;
 
   return (
     <label className="flex items-center gap-2 text-[13.5px]">
-      <span className="text-muted-foreground font-medium">{t('periodLabel')}</span>
+      <span className="text-muted-foreground font-medium whitespace-nowrap">
+        {label ?? t('periodLabel')}
+      </span>
       <Popover.Root
         open={open}
         onOpenChange={(next) => {
@@ -72,11 +101,16 @@ export function PeriodPicker({
         <Popover.Trigger asChild>
           <button
             type="button"
-            aria-label={t('periodLabel')}
+            aria-label={label ?? t('periodLabel')}
             className={`${secondaryButton} h-10 min-w-[220px] justify-between`}
           >
             <span className="flex items-center gap-2 truncate">
-              <CalendarDays className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+              {icon ?? (
+                <CalendarDays
+                  className="text-muted-foreground size-4 shrink-0"
+                  aria-hidden="true"
+                />
+              )}
               <span className="truncate">{currentLabel}</span>
             </span>
             <ChevronDown className="size-4 shrink-0 opacity-70" aria-hidden="true" />
@@ -88,68 +122,73 @@ export function PeriodPicker({
             sideOffset={6}
             className="border-line bg-card z-50 max-h-[min(70vh,520px)] w-[300px] overflow-y-auto rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
           >
-            {presets.map((choice) => (
+            {[...leading, ...presets].map((choice) => (
               <Row
                 key={choice.value}
                 choice={choice}
                 selected={choice.value === current}
                 onSelect={go}
                 unavailableNote={t('periodNoReport')}
+                disabled={requirePublished && !choice.published}
               />
             ))}
 
-            <button
-              type="button"
-              onClick={() => setShowCustom((v) => !v)}
-              aria-expanded={showCustom}
-              className="text-ink hover:bg-secondary flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none"
-            >
-              {t('periodCustom')}
-              <ChevronDown
-                className={`size-4 opacity-70 transition ${showCustom ? 'rotate-180' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-
-            {showCustom && (
-              <div className="border-line-soft mt-1 space-y-2 rounded-lg border p-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                  <span>
-                    <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
-                      {t('periodFrom')}
-                    </span>
-                    <input
-                      type="date"
-                      value={from}
-                      max={to || undefined}
-                      onChange={(e) => setFrom(e.target.value)}
-                      aria-label={t('periodFrom')}
-                      className={`${inputClass} h-9 text-[13px]`}
-                    />
-                  </span>
-                  <span>
-                    <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
-                      {t('periodTo')}
-                    </span>
-                    <input
-                      type="date"
-                      value={to}
-                      min={from || undefined}
-                      onChange={(e) => setTo(e.target.value)}
-                      aria-label={t('periodTo')}
-                      className={`${inputClass} h-9 text-[13px]`}
-                    />
-                  </span>
-                </div>
+            {allowCustom && (
+              <>
                 <button
                   type="button"
-                  disabled={rangeInvalid}
-                  onClick={() => go(`${from}_${to}`)}
-                  className={`${primaryButton} h-9 w-full disabled:cursor-not-allowed disabled:opacity-50`}
+                  onClick={() => setShowCustom((v) => !v)}
+                  aria-expanded={showCustom}
+                  className="text-ink hover:bg-secondary flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none"
                 >
-                  {t('periodApply')}
+                  {t('periodCustom')}
+                  <ChevronDown
+                    className={`size-4 opacity-70 transition ${showCustom ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
                 </button>
-              </div>
+
+                {showCustom && (
+                  <div className="border-line-soft mt-1 space-y-2 rounded-lg border p-2.5">
+                    <div className="grid grid-cols-2 gap-2">
+                      <span>
+                        <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
+                          {t('periodFrom')}
+                        </span>
+                        <input
+                          type="date"
+                          value={from}
+                          max={to || undefined}
+                          onChange={(e) => setFrom(e.target.value)}
+                          aria-label={t('periodFrom')}
+                          className={`${inputClass} h-9 text-[13px]`}
+                        />
+                      </span>
+                      <span>
+                        <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
+                          {t('periodTo')}
+                        </span>
+                        <input
+                          type="date"
+                          value={to}
+                          min={from || undefined}
+                          onChange={(e) => setTo(e.target.value)}
+                          aria-label={t('periodTo')}
+                          className={`${inputClass} h-9 text-[13px]`}
+                        />
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={rangeInvalid}
+                      onClick={() => go(`${from}_${to}`)}
+                      className={`${primaryButton} h-9 w-full disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {t('periodApply')}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {published.length > 0 && (
@@ -180,18 +219,23 @@ function Row({
   selected,
   onSelect,
   unavailableNote,
+  disabled = false,
 }: {
   choice: PeriodChoice;
   selected: boolean;
   onSelect: (value: string) => void;
   unavailableNote: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => onSelect(choice.value)}
       aria-current={selected ? 'true' : undefined}
-      className="text-ink hover:bg-secondary flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none"
+      className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none ${
+        disabled ? 'text-muted-foreground cursor-not-allowed' : 'text-ink hover:bg-secondary'
+      }`}
     >
       <Check
         className={`mt-0.5 size-4 shrink-0 ${selected ? 'text-blue' : 'opacity-0'}`}

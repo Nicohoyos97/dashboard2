@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { comparableSeries } from '@/lib/reports/series';
+import { comparableSeries, comparableTo } from '@/lib/reports/series';
 
 type R = {
   id: string;
@@ -49,5 +49,24 @@ describe('comparableSeries', () => {
 
   it('includes the reference itself', () => {
     expect(comparableSeries([jan], jan).map((r) => r.id)).toEqual(['jan']);
+  });
+});
+
+describe('comparableTo', () => {
+  const mar = report({ id: 'mar', periodStart: '2026-03-01', periodEnd: '2026-03-31' });
+  const apr = report({ id: 'apr', periodStart: '2026-04-01', periodEnd: '2026-04-30' });
+  const fy = report({ id: 'fy', periodStart: '2025-01-01', periodEnd: '2025-12-31' });
+
+  it('keeps a later period, which a trend would drop', () => {
+    // Comparing March against April is a fair question; a trend up to March
+    // must not draw April, which is why the two rules are separate.
+    expect(comparableTo([apr, mar], mar).map((r) => r.id)).toEqual(['apr', 'mar']);
+    expect(comparableSeries([apr, mar], mar).map((r) => r.id)).toEqual(['mar']);
+  });
+
+  it('still refuses a different granularity, currency or statement', () => {
+    const cad = report({ id: 'cad', currency: 'CAD' });
+    const bs = report({ id: 'bs', reportType: 'balance_sheet' });
+    expect(comparableTo([fy, cad, bs, apr], mar).map((r) => r.id)).toEqual(['apr']);
   });
 });

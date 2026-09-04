@@ -58,9 +58,11 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
     roots,
     requested: params.compare,
     locale,
+    today: todayIn(settings.timezone),
     labels: {
       printed: t('comparePrinted'),
       comparedWith: (period) => t('comparedWithPeriod', { period }),
+      preset: (preset) => tOverview(`preset_${preset}`),
     },
   });
   // The cards read the same comparison the table does, so the screen never
@@ -146,7 +148,13 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
         <StatementTable
           roots={comparison.roots}
           meta={{ reportType: 'balance_sheet', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
-          compare={{ options: comparison.options, current: comparison.current }}
+          compare={{
+            leading: comparison.leading,
+            presets: comparison.presets,
+            published: comparison.published,
+            current: comparison.current,
+            currentLabel: comparison.currentLabel,
+          }}
         />
       </section>
     </Page>
