@@ -17,7 +17,29 @@ import { type EntityConfigInput, createEntity, updateEntityConfig } from '@/lib/
 
 import { DEFAULT_TIMEZONE, supportedTimeZones } from '@/lib/utils/timezone';
 
+import {
+  PACKAGE_MODULES,
+  SERVICE_PACKAGES,
+  type ServicePackage,
+  packageOf,
+} from '@/lib/portal/modules';
+
+import { LogoField } from './LogoField';
 import { inputClass, labelClass, primaryButton, secondaryButton, selectClass } from './ui';
+
+// Suggestions only — the field is free text.
+const INDUSTRY_SUGGESTIONS = [
+  'Restaurant',
+  'Retail',
+  'Construction',
+  'Professional services',
+  'Healthcare',
+  'Real estate',
+  'Transportation & logistics',
+  'Manufacturing',
+  'Nonprofit',
+  'Technology',
+];
 
 export type EntityFormValues = Omit<EntityConfigInput, 'clientId'>;
 
@@ -33,7 +55,9 @@ const EMPTY: EntityFormValues = {
   currency: 'USD',
   timezone: DEFAULT_TIMEZONE,
   salesTaxEnabled: false,
-  enabledModules: { expenses: true, income_taxes: true },
+  enabledModules: { statements: true, expenses: true, income_taxes: true },
+  industry: '',
+  logoUrl: null,
 };
 
 // Create / edit a business and its firm-controlled configuration (§5 columns).
@@ -62,6 +86,26 @@ export function EntityDialog({
 
   function set<K extends keyof EntityFormValues>(key: K, value: EntityFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  // Sales tax lives in its own column, the rest in enabled_modules, so the form
+  // reassembles both halves to name the package — and a custom mix names none.
+  const selectedPackage = packageOf({
+    ...values.enabledModules,
+    sales_taxes: values.salesTaxEnabled,
+  });
+
+  function applyPackage(name: ServicePackage) {
+    const modules = PACKAGE_MODULES[name];
+    setValues((v) => ({
+      ...v,
+      salesTaxEnabled: modules.sales_taxes,
+      enabledModules: {
+        statements: modules.statements,
+        expenses: modules.expenses,
+        income_taxes: modules.income_taxes,
+      },
+    }));
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -118,6 +162,32 @@ export function EntityDialog({
                 value={values.legalName}
                 onChange={(e) => set('legalName', e.target.value)}
                 className={inputClass}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="entityIndustry" className={labelClass}>
+                {t('industry')}
+              </label>
+              <input
+                id="entityIndustry"
+                list="entityIndustryOptions"
+                value={values.industry}
+                onChange={(e) => set('industry', e.target.value)}
+                className={inputClass}
+              />
+              {/* Suggestions, not a fixed list: a real client roster never fits one. */}
+              <datalist id="entityIndustryOptions">
+                {INDUSTRY_SUGGESTIONS.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
+            </div>
+            <div className="sm:col-span-2">
+              <span className={labelClass}>{t('logo')}</span>
+              <LogoField
+                value={values.logoUrl}
+                onChange={(url) => set('logoUrl', url)}
+                onError={setError}
               />
             </div>
             <div>
@@ -190,7 +260,43 @@ export function EntityDialog({
             <legend className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.12em] uppercase">
               {t('modules')}
             </legend>
+
+            {/* What the client bought. The switches below stay editable, so an
+                unusual engagement is still expressible — picking one of these
+                just sets them all at once. */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {SERVICE_PACKAGES.map((name) => {
+                const active = selectedPackage === name;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => applyPackage(name)}
+                    className={
+                      active
+                        ? 'bg-blue rounded-full px-3 py-1.5 text-[13px] font-semibold text-white'
+                        : 'border-line text-muted-foreground hover:bg-secondary rounded-full border px-3 py-1.5 text-[13px] font-semibold'
+                    }
+                  >
+                    {t(`package_${name}`)}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="flex flex-col gap-2.5 text-[14px]">
+              <label className="flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={values.enabledModules.statements}
+                  onChange={(e) =>
+                    set('enabledModules', { ...values.enabledModules, statements: e.target.checked })
+                  }
+                  className="accent-blue size-4"
+                />
+                {t('moduleStatements')}
+              </label>
               <label className="flex items-center gap-2.5">
                 <input
                   type="checkbox"

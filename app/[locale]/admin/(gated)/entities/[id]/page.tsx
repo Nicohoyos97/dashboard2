@@ -19,7 +19,12 @@ import { formatPeriod } from '@/lib/utils/dates';
 
 function modulesOf(value: unknown): EnabledModules {
   const v = (value ?? {}) as Partial<Record<keyof EnabledModules, unknown>>;
-  return { expenses: v.expenses !== false, income_taxes: v.income_taxes !== false };
+  // Absent means on: a row written before a module existed keeps its pages.
+  return {
+    statements: v.statements !== false,
+    expenses: v.expenses !== false,
+    income_taxes: v.income_taxes !== false,
+  };
 }
 
 function memberRole(role: string): MemberRow['role'] {
@@ -39,7 +44,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
       supabase
         .from('business_entities')
         .select(
-          'id, name, legal_name, fiscal_year_start_month, accounting_basis, currency, timezone, sales_tax_enabled, enabled_modules, status, client_id, clients ( id, name )',
+          'id, name, legal_name, fiscal_year_start_month, accounting_basis, currency, timezone, sales_tax_enabled, enabled_modules, industry, logo_url, status, client_id, clients ( id, name )',
         )
         .eq('id', id)
         .maybeSingle(),
@@ -101,12 +106,14 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
   );
   const config: [string, string][] = [
     [t('legalName'), entity.legal_name ?? '—'],
+    [t('industry'), entity.industry ?? '—'],
     [t('fiscalYearStart'), month],
     [t('accountingBasis'), entity.accounting_basis === 'accrual' ? t('basisAccrual') : t('basisCash')],
     [t('currency'), entity.currency],
     [
       t('modules'),
       [
+        modules.statements ? t('moduleStatements') : null,
         modules.expenses ? t('moduleExpenses') : null,
         modules.income_taxes ? t('moduleIncomeTaxes') : null,
         entity.sales_tax_enabled ? t('moduleSalesTaxes') : null,
@@ -156,6 +163,8 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
                 timezone: entity.timezone,
                 salesTaxEnabled: entity.sales_tax_enabled,
                 enabledModules: modules,
+                industry: entity.industry ?? '',
+                logoUrl: entity.logo_url,
               }}
             />
             <StatusButton kind="entity" id={entity.id} status={status} />

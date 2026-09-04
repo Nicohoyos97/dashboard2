@@ -15,7 +15,10 @@ import type { ActionResult } from './result';
 // Business (entity) provisioning and configuration by the firm
 // (INITIAL_PROMPT.md §5, §8). The firm-controlled columns edited here are the
 // ones guard_entity_firm_columns keeps clients away from.
+// `statements` joined the set in 0018: a sales-tax-only client has to be able
+// to not see Profit & Loss and Balance Sheet. Sales tax keeps its own column.
 const modulesSchema = z.object({
+  statements: z.boolean(),
   expenses: z.boolean(),
   income_taxes: z.boolean(),
 });
@@ -32,6 +35,11 @@ const configFields = {
   timezone: z.string().trim().min(1).max(64).refine(isValidTimeZone, 'invalid_timezone'),
   salesTaxEnabled: z.boolean(),
   enabledModules: modulesSchema,
+  industry: z.string().trim().max(80),
+  // Written by the firm's uploader into the `logos` bucket, so it is checked
+  // against that bucket rather than accepted as any URL — the same reasoning as
+  // profile avatars, and this one is rendered for every member of the business.
+  logoUrl: z.string().trim().url().nullable(),
 };
 
 const createSchema = z.object({ clientId: z.string().uuid(), ...configFields });
@@ -61,6 +69,8 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
       timezone: parsed.data.timezone,
       sales_tax_enabled: parsed.data.salesTaxEnabled,
       enabled_modules: parsed.data.enabledModules,
+      industry: parsed.data.industry || null,
+      logo_url: parsed.data.logoUrl,
       created_by: firm.userId,
     })
     .select('id')
@@ -95,6 +105,8 @@ export async function updateEntityConfig(input: unknown): Promise<ActionResult> 
       timezone: parsed.data.timezone,
       sales_tax_enabled: parsed.data.salesTaxEnabled,
       enabled_modules: parsed.data.enabledModules,
+      industry: parsed.data.industry || null,
+      logo_url: parsed.data.logoUrl,
     })
     .eq('id', parsed.data.id)
     .select('id, client_id');

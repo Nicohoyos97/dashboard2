@@ -137,6 +137,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       <OverviewShell
         greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
         subtitle={t('subtitle', { business: entity.name })}
+        logoUrl={settings.logoUrl}
         actions={<DownloadReportsMenu items={downloadItems} />}
       >
         <EmptyState title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
@@ -267,6 +268,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     <OverviewShell
       greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
       subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
+      logoUrl={settings.logoUrl}
       actions={
         <>
           <GranularityTabs choices={granularityChoices(periods, selected)} />
@@ -324,8 +326,27 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function OverviewShell({ greeting, subtitle, actions, children }: { greeting: string; subtitle: string; actions?: React.ReactNode; children: React.ReactNode }) {
-  return <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{greeting}</h1><p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p></div>{actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}</div>{children}</main>;
+function OverviewShell({ greeting, subtitle, logoUrl, actions, children }: { greeting: string; subtitle: string; logoUrl?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {/* The client's own logo when the firm set one. Decorative: the
+              business name is already the accessible text beside it. */}
+          {logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- client-supplied host
+            <img src={logoUrl} alt="" className="border-line bg-card size-12 shrink-0 rounded-xl border object-contain p-1" />
+          )}
+          <div>
+            <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{greeting}</h1>
+            <p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p>
+          </div>
+        </div>
+        {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
+      </div>
+      {children}
+    </main>
+  );
 }
 
 function Swatch({ color, label }: { color: string; label: string }) {
