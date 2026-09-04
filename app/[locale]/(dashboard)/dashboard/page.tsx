@@ -14,7 +14,7 @@ import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
 import { logAccess } from '@/lib/audit/logAccess';
 import { formatCents } from '@/lib/money';
-import { isoToday } from '@/lib/reminders/status';
+import { todayIn } from '@/lib/utils/timezone';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
@@ -124,7 +124,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         actions={<DownloadReportsMenu items={downloadItems} />}
       >
         <EmptyState title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
-        <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={settings.currency} /></div>
+        <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={settings.currency} today={todayIn(settings.timezone)} /></div>
         <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
         <NickPanel page="overview" businessName={entity.name} />
       </OverviewShell>
@@ -202,7 +202,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     lines: currentRoots,
     ...(priorPnl ? { prior: priorPnl, priorLines: priorRoots } : {}),
   } : undefined;
-  const today = isoToday();
+  const today = todayIn(settings.timezone);
   // Insights run over the last few published periods, not only the selected
   // one: the earlier periods get the statement rules (their cash and balance
   // figures are not loaded), and the selected period gets the full set. Rows
@@ -304,7 +304,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />
       </div>
 
-      <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} /></div>
+      <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} today={today} /></div>
       <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
       <NickPanel page="overview" period={periodParam(selected)} businessName={entity.name} />
     </OverviewShell>

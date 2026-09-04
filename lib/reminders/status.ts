@@ -27,6 +27,11 @@ export function effectiveReminderStatus(
   return 'upcoming';
 }
 
+/**
+ * The server's own calendar date. Only for contexts with no business in hand
+ * (the firm dashboard, which spans clients in several zones). Anything scoped
+ * to one business must use `todayIn(settings.timezone)` — see lib/utils/timezone.ts.
+ */
 export function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }

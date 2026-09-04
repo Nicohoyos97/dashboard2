@@ -145,6 +145,9 @@ async function main(): Promise<void> {
       legal_name: 'Sabor a Cafe Demo LLC',
       client_id: client.id,
       currency: CURRENCY,
+      // A real zone, not UTC: the demo should show due dates rolling over on the
+      // business's own calendar (migration 0010).
+      timezone: 'America/New_York',
       accounting_basis: 'accrual',
       sales_tax_enabled: true,
       address: { line1: '1200 Brickell Ave', line2: 'Suite 400', city: 'Miami', state: 'FL', postal_code: '33131', country: 'US' },

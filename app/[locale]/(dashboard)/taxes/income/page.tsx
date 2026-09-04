@@ -16,7 +16,7 @@ import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { nextDueDate, remainingOwed, sumField, taxAlerts } from '@/lib/reports/taxes';
-import { isoToday } from '@/lib/reminders/status';
+import { todayIn } from '@/lib/utils/timezone';
 import { createClient } from '@/lib/supabase/server';
 import { formatIsoDate } from '@/lib/utils/dates';
 
@@ -63,7 +63,7 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
   // it stays visible whichever year is selected rather than vanishing.
   const obligations = year === null ? all : all.filter((o) => o.taxYear === year || o.taxYear === null);
 
-  const today = isoToday();
+  const today = todayIn(settings.timezone);
   const money = (cents: number) => formatCents(cents, currency, locale);
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const remaining = remainingOwed(obligations);

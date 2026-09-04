@@ -416,6 +416,7 @@ export type Database = {
           name: string
           sales_tax_enabled: boolean
           status: string
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -432,6 +433,7 @@ export type Database = {
           name: string
           sales_tax_enabled?: boolean
           status?: string
+          timezone?: string
           updated_at?: string
         }
         Update: {
@@ -448,6 +450,7 @@ export type Database = {
           name?: string
           sales_tax_enabled?: boolean
           status?: string
+          timezone?: string
           updated_at?: string
         }
         Relationships: [
@@ -2068,6 +2071,34 @@ export type Database = {
       is_firm_admin: { Args: never; Returns: boolean }
       is_firm_member: { Args: never; Returns: boolean }
       object_entity_id: { Args: { object_name: string }; Returns: string }
+      portal_expense_summary: {
+        Args: {
+          p_account?: string
+          p_category?: string
+          p_currency: string
+          p_end: string
+          p_entity: string
+          p_max?: number
+          p_min?: number
+          p_recurring?: boolean
+          p_search?: string
+          p_start: string
+          p_top?: number
+          p_vendor?: string
+        }
+        Returns: Json
+      }
+      portal_expense_vendors: {
+        Args: {
+          p_currency: string
+          p_end: string
+          p_entity: string
+          p_start: string
+        }
+        Returns: {
+          vendor: string
+        }[]
+      }
       report_is_published: { Args: { report: string }; Returns: boolean }
       shares_entity_with: { Args: { target: string }; Returns: boolean }
     }

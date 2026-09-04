@@ -15,9 +15,15 @@ import {
 import { useRouter } from '@/i18n/navigation';
 import { type EntityConfigInput, createEntity, updateEntityConfig } from '@/lib/firm/entities';
 
+import { DEFAULT_TIMEZONE, supportedTimeZones } from '@/lib/utils/timezone';
+
 import { inputClass, labelClass, primaryButton, secondaryButton, selectClass } from './ui';
 
 export type EntityFormValues = Omit<EntityConfigInput, 'clientId'>;
+
+// Resolved once at module load: the full IANA list is long and never changes
+// during a session.
+const ZONES = supportedTimeZones();
 
 const EMPTY: EntityFormValues = {
   name: '',
@@ -25,6 +31,7 @@ const EMPTY: EntityFormValues = {
   fiscalYearStartMonth: 1,
   accountingBasis: 'cash',
   currency: 'USD',
+  timezone: DEFAULT_TIMEZONE,
   salesTaxEnabled: false,
   enabledModules: { expenses: true, income_taxes: true },
 };
@@ -156,6 +163,27 @@ export function EntityDialog({
                 className={inputClass}
               />
             </div>
+          </div>
+
+          {/* The calendar this business keeps: every due date and "today" in the
+              client portal is resolved in it, so it is firm-set, not guessed. */}
+          <div>
+            <label htmlFor="timezone" className={labelClass}>
+              {t('timezone')}
+            </label>
+            <select
+              id="timezone"
+              value={values.timezone}
+              onChange={(e) => set('timezone', e.target.value)}
+              className={selectClass}
+            >
+              {ZONES.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('timezoneHelp')}</p>
           </div>
 
           <fieldset className="border-line mt-1 rounded-xl border p-4">

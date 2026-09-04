@@ -14,7 +14,7 @@ import {
   loadPublishedReports,
 } from '@/lib/portal/load';
 import { RATE_LIMITS, consumeRateLimit } from '@/lib/rate-limit';
-import { isoToday } from '@/lib/reminders/status';
+import { todayIn } from '@/lib/utils/timezone';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -69,8 +69,11 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
   const supabase = await createClient();
   const admin = createAdminClient();
   const entityId = input.entity.id;
-  const today = isoToday();
-  if ((await usedTokensToday(admin, entityId, today)) >= dailyTokenBudget())
+  // The budget is a system quota and rolls on the server's UTC day; what Nick
+  // is *told* the date is must be the business's own calendar (migration 0010),
+  // or it will call a reminder due today overdue for anyone west of UTC.
+  const budgetDay = new Date().toISOString().slice(0, 10);
+  if ((await usedTokensToday(admin, entityId, budgetDay)) >= dailyTokenBudget())
     throw new NickError('budget_exhausted');
 
   const sessionId = input.sessionId
@@ -99,6 +102,7 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
   ]);
 
   const registry = new CitationRegistry();
+  const today = todayIn(settings.timezone);
   const shape = { locale: input.locale, currency: settings.currency, registry };
   const line = context.line;
   const selectedLineCite = line
@@ -212,7 +216,7 @@ export async function runNickTurn(input: TurnInput): Promise<void> {
     recordUsage(admin, {
       entityId,
       sessionId,
-      day: today,
+      day: budgetDay,
       usage: outcome.usage,
       firstUserText: thread.length === 0 ? input.message : null,
     }),

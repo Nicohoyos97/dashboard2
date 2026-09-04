@@ -330,6 +330,8 @@
     "basisCash": "Efectivo",
     "basisAccrual": "Devengo",
     "currency": "Moneda",
+    "timezone": "Zona horaria",
+    "timezoneHelp": "El calendario que lleva este negocio. Los vencimientos y el «hoy» del portal del cliente se resuelven en ella.",
     "salesTaxEnabled": "Módulo de Impuestos sobre ventas (muestra la sección al cliente)",
     "modules": "Módulos del panel",
     "moduleExpenses": "Gastos",

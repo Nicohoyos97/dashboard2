@@ -20,17 +20,17 @@ import {
   type ExpenseSearchParams,
   expenseHref,
   parseExpenseQuery,
-  sortTransactions,
 } from '@/lib/portal/expense-filters';
 import {
   loadBankAccounts,
   loadExpenseCategories,
-  loadExpenseTransactions,
+  loadExpensePage,
+  loadExpenseSummary,
   loadExpenseVendors,
 } from '@/lib/portal/expenses';
 import { loadPortalEntitySettings, loadPublishedBankStatements, loadPublishedReports } from '@/lib/portal/load';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
-import { byCategory, byVendor, expenseDelta, expenseTotals, expensesByMonth } from '@/lib/reports/expenses';
+import { expenseDelta } from '@/lib/reports/expenses';
 import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/reports/periods';
 import { createClient } from '@/lib/supabase/server';
 
@@ -73,21 +73,23 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const priorCovered = prior ? bankAccountsCoverPeriod(accountRanges, prior) : false;
   const { filters, sort, page } = parseExpenseQuery(params);
 
-  const [current, priorTxns, categories, vendors, accounts] = await Promise.all([
-    loadExpenseTransactions(supabase, entity.id, currency, selected, filters),
-    prior && priorCovered ? loadExpenseTransactions(supabase, entity.id, currency, prior, filters) : Promise.resolve([]),
+  // Postgres groups the figures and pages the table (migration 0011): the page
+  // never holds the period's rows, only the 25 it shows.
+  const [totals, priorTotals, table, categories, vendors, accounts] = await Promise.all([
+    loadExpenseSummary(supabase, entity.id, currency, selected, filters),
+    prior && priorCovered ? loadExpenseSummary(supabase, entity.id, currency, prior, filters) : Promise.resolve(null),
+    loadExpensePage(supabase, entity.id, currency, selected, filters, sort, page, EXPENSE_PAGE_SIZE),
     loadExpenseCategories(supabase, entity.id),
     loadExpenseVendors(supabase, entity.id, currency, selected),
     loadBankAccounts(supabase, entity.id),
   ]);
 
-  const totals = expenseTotals(current);
-  const priorTotals = prior && priorCovered ? expenseTotals(priorTxns) : null;
-  const months = expensesByMonth(current, selected);
-  const categoryGroups = byCategory(current, t('uncategorized'));
-  const vendorGroups = byVendor(current, t('noVendor'));
-  const topCategory = categoryGroups[0] ?? null;
-  const topVendor = vendorGroups.find((group) => group.key !== '') ?? null;
+  const months = totals.byMonth;
+  const label = (group: { key: string; label: string | null }, fallback: string) => group.label ?? fallback;
+  const categoryGroups = totals.byCategory.map((group) => ({ label: label(group, t('uncategorized')), cents: group.cents }));
+  const vendorGroups = totals.byVendor.map((group) => ({ key: group.key, label: label(group, t('noVendor')), cents: group.cents }));
+  const topCategory = totals.byCategory[0] ?? null;
+  const topVendor = totals.byVendor.find((group) => group.key !== '') ?? null;
 
   const money = (cents: number) => formatCents(cents, currency, locale);
   const unavailable = covered ? undefined : t('incompletePeriod');
@@ -142,13 +144,13 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     },
     {
       label: t('cardTopCategory'),
-      value: topCategory ? topCategory.label : null,
+      value: topCategory ? label(topCategory, t('uncategorized')) : null,
       unavailable: t('noCategories'),
       ...(topCategory ? { detail: money(topCategory.cents) } : {}),
     },
     {
       label: t('cardTopVendor'),
-      value: topVendor ? topVendor.label : null,
+      value: topVendor ? label(topVendor, t('noVendor')) : null,
       unavailable: t('noVendors'),
       ...(topVendor ? { detail: money(topVendor.cents) } : {}),
     },
@@ -159,12 +161,15 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     },
   ];
 
-  const ordered = sortTransactions(current, sort);
-  // A stale link can name a page past the end; clamp rather than render an
-  // empty table that says "Showing 276–30 of 30".
-  const pages = Math.max(1, Math.ceil(ordered.length / EXPENSE_PAGE_SIZE));
+  // A stale link can name a page past the end. Postgres returns the count with
+  // the page, so the clamped page is re-read — only in that case — rather than
+  // rendering an empty table that says "Showing 276–30 of 30".
+  const pages = Math.max(1, Math.ceil(table.total / EXPENSE_PAGE_SIZE));
   const currentPage = Math.min(page, pages);
-  const pageRows = ordered.slice((currentPage - 1) * EXPENSE_PAGE_SIZE, currentPage * EXPENSE_PAGE_SIZE);
+  const rows =
+    currentPage === page
+      ? table.rows
+      : (await loadExpensePage(supabase, entity.id, currency, selected, filters, sort, currentPage, EXPENSE_PAGE_SIZE)).rows;
   const accountLabels = new Map(accounts.map((account) => [account.id, account.label]));
   const activeFilters = Object.values(filters).filter((value) => value !== null).length;
   // The export link is built by the same helper as every table link, so the
@@ -275,8 +280,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
         <Section title={t('tableTitle')} className="mt-6">
           <ExpenseTable
-            rows={pageRows}
-            total={ordered.length}
+            rows={rows}
+            total={table.total}
             page={currentPage}
             pageSize={EXPENSE_PAGE_SIZE}
             sort={sort}

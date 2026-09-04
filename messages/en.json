@@ -330,6 +330,8 @@
     "basisCash": "Cash",
     "basisAccrual": "Accrual",
     "currency": "Currency",
+    "timezone": "Time zone",
+    "timezoneHelp": "The calendar this business keeps. Due dates and “today” in the client portal are resolved in it.",
     "salesTaxEnabled": "Sales Taxes module (shows the Sales Taxes section to the client)",
     "modules": "Dashboard modules",
     "moduleExpenses": "Expenses",

@@ -2,7 +2,7 @@ import { CalendarClock } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
 import type { ReminderRow } from '@/lib/portal/load';
-import { effectiveReminderStatus, isoToday } from '@/lib/reminders/status';
+import { effectiveReminderStatus } from '@/lib/reminders/status';
 import { formatIsoDate } from '@/lib/utils/dates';
 
 const TONE: Record<string, string> = {
@@ -17,9 +17,12 @@ const TONE: Record<string, string> = {
 
 // Reminders and obligations with status (INITIAL_PROMPT.md §7): the time-based
 // states are derived at read time; status is never conveyed by color alone.
-export async function RemindersCard({ reminders, currency, limit = 6 }: { reminders: ReminderRow[]; currency: string; limit?: number }) {
+// `today` comes from the page in the business's own time zone (migration
+// 0010): read from the server clock, a reminder due today read "Due today"
+// hours early for anyone west of UTC.
+export async function RemindersCard({ reminders, currency, today, limit = 6 }: { reminders: ReminderRow[]; currency: string; today: string; limit?: number }) {
   const [t, locale] = await Promise.all([getTranslations('Reminders'), getLocale()]);
-  const today = isoToday();
+
   const money = (c: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(c / 100);
   const open = reminders
     .map((r) => ({ ...r, effective: effectiveReminderStatus(r.status, r.dueDate, today) }))

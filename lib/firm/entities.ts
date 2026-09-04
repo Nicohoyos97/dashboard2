@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
+import { isValidTimeZone } from '@/lib/utils/timezone';
+
 import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
@@ -24,6 +26,10 @@ const configFields = {
   fiscalYearStartMonth: z.number().int().min(1).max(12),
   accountingBasis: z.enum(['cash', 'accrual']),
   currency: z.string().trim().length(3).toUpperCase(),
+  // The calendar the business keeps: every "today" in the portal resolves in
+  // it, so a name this runtime cannot format is refused here as well as by the
+  // trigger in 0010.
+  timezone: z.string().trim().min(1).max(64).refine(isValidTimeZone, 'invalid_timezone'),
   salesTaxEnabled: z.boolean(),
   enabledModules: modulesSchema,
 };
@@ -52,6 +58,7 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
       fiscal_year_start_month: parsed.data.fiscalYearStartMonth,
       accounting_basis: parsed.data.accountingBasis,
       currency: parsed.data.currency,
+      timezone: parsed.data.timezone,
       sales_tax_enabled: parsed.data.salesTaxEnabled,
       enabled_modules: parsed.data.enabledModules,
       created_by: firm.userId,
@@ -85,6 +92,7 @@ export async function updateEntityConfig(input: unknown): Promise<ActionResult> 
       fiscal_year_start_month: parsed.data.fiscalYearStartMonth,
       accounting_basis: parsed.data.accountingBasis,
       currency: parsed.data.currency,
+      timezone: parsed.data.timezone,
       sales_tax_enabled: parsed.data.salesTaxEnabled,
       enabled_modules: parsed.data.enabledModules,
     })

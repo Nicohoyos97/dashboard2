@@ -34,6 +34,7 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0007 | `notification_preferences` | Per user, per business: which alerts they want | C | self SELECT/INSERT/UPDATE **and** member of the business; no firm read (delivery settings, not tenant data) |
 | 0007 / 0009 | `account_requests` | Data-export / account-deletion requests queued for the firm | B | owner + firm SELECT; owner INSERT (`pending` only — `account_requests_guard()` refuses `firm_note`/`resolved_*` and stamps `requested_at` itself); owner UPDATE limited to `pending → cancelled` by the same guard, which stamps `resolved_at`; firm admin UPDATE; **no DELETE** |
 | 0008 | `insight_dismissals` | Which insights a user has checked off, keyed by rule + period | C | self SELECT/INSERT/DELETE **and** member of the business; no UPDATE (un-ticking is a delete) |
+| 0010 | `business_entities.timezone` | The calendar the business keeps (IANA name), firm-set | — | `assert_valid_timezone()` rejects a name Postgres cannot resolve; every "today" in the portal is resolved in it |
 
 ## Storage buckets
 
@@ -59,6 +60,9 @@ Downloads never expose a bucket URL: a route handler checks membership + publica
 | `claim_processing_jobs(int)` | claims runnable jobs (`FOR UPDATE SKIP LOCKED`) | **service_role only** | the worker |
 | `consume_rate_limit(text, int, interval)` | under the limit? | **service_role only** | `lib/rate-limit.ts` |
 | `account_requests_guard()` (trigger, before insert or update) | client INSERT: refuses firm-owned columns, sets `requested_at = now()`; client UPDATE: freezes every column but `status`, sets `resolved_at` on withdrawal | trigger | `account_requests_self_insert`, `account_requests_self_cancel` |
+| `assert_valid_timezone()` (trigger) | rejects a `business_entities.timezone` Postgres cannot resolve | trigger | 0010 |
+| `portal_expense_summary(...)` | every figure above the Expenses table in one grouped call; escapes its own LIKE pattern (0012) | authenticated, service_role | `lib/portal/expenses.ts` |
+| `portal_expense_vendors(...)` | DISTINCT vendors for the filter facet | authenticated, service_role | `lib/portal/expenses.ts` |
 
 EXECUTE is revoked from `public`/`anon` on every helper. Trigger functions (`handle_new_user`, `set_updated_at`, `guard_entity_firm_columns`) are executable by nobody. The `aal` claim comes from `auth.jwt() ->> 'aal'`: a firm admin who has not completed TOTP in this session is not a firm admin for RLS.
 

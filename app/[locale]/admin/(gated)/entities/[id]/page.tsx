@@ -38,7 +38,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
       supabase
         .from('business_entities')
         .select(
-          'id, name, legal_name, fiscal_year_start_month, accounting_basis, currency, sales_tax_enabled, enabled_modules, status, client_id, clients ( id, name )',
+          'id, name, legal_name, fiscal_year_start_month, accounting_basis, currency, timezone, sales_tax_enabled, enabled_modules, status, client_id, clients ( id, name )',
         )
         .eq('id', id)
         .maybeSingle(),
@@ -145,6 +145,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
                 fiscalYearStartMonth: entity.fiscal_year_start_month,
                 accountingBasis: entity.accounting_basis === 'accrual' ? 'accrual' : 'cash',
                 currency: entity.currency,
+                timezone: entity.timezone,
                 salesTaxEnabled: entity.sales_tax_enabled,
                 enabledModules: modules,
               }}
