@@ -27,6 +27,22 @@ let jwksCache: Jwks | null = null;
 let jwksFetchedAt = 0;
 const JWKS_TTL_MS = 10 * 60_000;
 
+/**
+ * Whether this request carries a Supabase session at all.
+ *
+ * A visitor with no session needs no signing keys: getClaims() asks
+ * getSession() first and returns before it looks at one. Checking the cookie
+ * keeps anonymous traffic — the sign-in page, the marketing routes, every
+ * crawler — from paying for the key set on a cold isolate. `@supabase/ssr`
+ * names the cookie `sb-<ref>-auth-token`, and chunks it as `.0`, `.1` when the
+ * token is long.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith('sb-') && cookie.name.includes('auth-token'));
+}
+
 async function signingKeys(url: string, anonKey: string): Promise<Jwks | undefined> {
   if (jwksCache && jwksFetchedAt + JWKS_TTL_MS > Date.now()) return jwksCache;
   try {
@@ -72,8 +88,9 @@ export async function updateSession(
 ): Promise<NextResponse> {
   const { url, anonKey } = supabaseEnv();
   // Resolved before the client exists, so nothing runs between building it and
-  // the call below that refreshes the session.
-  const jwks = await signingKeys(url, anonKey);
+  // the call below that refreshes the session. Skipped entirely when there is
+  // no session to verify.
+  const jwks = hasSessionCookie(request) ? await signingKeys(url, anonKey) : undefined;
   const sessionOnly = request.cookies.get(REMEMBER_SESSION_COOKIE)?.value === '0';
   const supabase = createServerClient<Database>(url, anonKey, {
     cookieOptions: COOKIE_OPTIONS,
