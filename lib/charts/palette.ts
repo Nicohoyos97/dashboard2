@@ -30,3 +30,12 @@ export const CHART_CHROME = {
 } as const;
 
 export const MAX_CATEGORIES = CATEGORICAL.length;
+
+/**
+ * The outstanding-liability line on the tax chart: a third hue from the
+ * categorical set, kept away from the status colours, which are reserved for
+ * status. It lives here rather than beside the chart so the chart's legend can
+ * name the colour without importing the Recharts module that draws it — a value
+ * import across that boundary would pull the whole library back into the page.
+ */
+export const LIABILITY = CATEGORICAL[3];

@@ -1,25 +1,29 @@
 'use client';
 
-import { useLocale } from 'next-intl';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
 
-import { CHART_CHROME, SERIES } from '@/lib/charts/palette';
+import { SERIES } from '@/lib/charts/palette';
 
-import { ChartTooltip } from './ChartTooltip';
-import { compactMoney } from './format';
+import { ChartSkeleton } from './ChartSkeleton';
+import type { TrendPoint } from './plot/TrendBarsPlot';
 
-export type TrendPoint = { label: string; a: number | null; b: number | null };
+export type { TrendPoint };
 
 // Two measures across periods (revenue vs expenses, assets vs liabilities):
 // grouped thin columns on one axis, fixed colors (a = blue, b = teal).
 // `seriesB` is optional: a caller whose source never prints the second figure
 // omits it, and neither a swatch nor a column is drawn for it.
+//
+// Only the plot is loaded on demand — the legend and the caption are rendered
+// on the server, so the reading a screen reader gets never waits on Recharts,
+// and the fixed-height box below is unchanged whether the skeleton or the chart
+// is inside it.
+const TrendBarsPlot = dynamic(() => import('./plot/TrendBarsPlot').then((m) => m.TrendBarsPlot), {
+  ssr: false,
+  loading: () => <ChartSkeleton />,
+});
+
 export function TrendBars({ points, currency, seriesA, seriesB, summary }: { points: TrendPoint[]; currency: string; seriesA: string; seriesB?: string; summary: string }) {
-  const locale = useLocale();
-  // Null stays null: a figure the statement does not print must not become a
-  // zero bar, which would read as "nothing" rather than "not stated". Recharts
-  // simply draws no bar for it.
-  const data = points.map((p) => ({ label: p.label, a: p.a, b: p.b }));
   return (
     <figure>
       {/* Our own legend rather than Recharts': its order follows whichever
@@ -38,27 +42,7 @@ export function TrendBars({ points, currency, seriesA, seriesB, summary }: { poi
         )}
       </ul>
       <div className="h-[240px] w-full">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} accessibilityLayer>
-            <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} strokeWidth={1} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: CHART_CHROME.axis, fontSize: 12 }} />
-            <YAxis tickLine={false} axisLine={false} width={64} tick={{ fill: CHART_CHROME.axis, fontSize: 12 }} tickFormatter={(v: number) => compactMoney(v, currency, locale)} />
-            <Tooltip
-              cursor={{ fill: 'var(--chart-cursor)' }}
-              content={({ active, label, payload }) => (
-                <ChartTooltip
-                  active={active}
-                  label={typeof label === 'string' ? label : undefined}
-                  currency={currency}
-                  locale={locale}
-                  rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.primary) }))}
-                />
-              )}
-            />
-            <Bar dataKey="a" name={seriesA} fill={SERIES.primary} radius={[4, 4, 0, 0]} maxBarSize={24} />
-            {seriesB && <Bar dataKey="b" name={seriesB} fill={SERIES.secondary} radius={[4, 4, 0, 0]} maxBarSize={24} />}
-          </BarChart>
-        </ResponsiveContainer>
+        <TrendBarsPlot points={points} currency={currency} seriesA={seriesA} {...(seriesB ? { seriesB } : {})} />
       </div>
       <figcaption className="text-muted-foreground mt-2 text-[12.5px]">{summary}</figcaption>
     </figure>

@@ -1,18 +1,23 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
 
-import { CHART_CHROME, SERIES } from '@/lib/charts/palette';
+import { ChartSkeleton } from './ChartSkeleton';
+import { fullMoney, monthLabel } from './format';
+import type { SpendMonth } from './plot/MonthlySpendPlot';
 
-import { ChartTooltip } from './ChartTooltip';
-import { compactMoney, fullMoney, monthLabel } from './format';
-
-export type SpendMonth = { month: string; cents: number };
+export type { SpendMonth };
 
 // One measure over months: thin columns on a single axis, in the same amber the
 // Overview uses for expenses so spend reads the same across the portal. Ships a
-// text summary for screen readers (§1 charts).
+// text summary for screen readers (§1 charts) — rendered here, on the server,
+// rather than inside the lazily loaded plot.
+const MonthlySpendPlot = dynamic(() => import('./plot/MonthlySpendPlot').then((m) => m.MonthlySpendPlot), {
+  ssr: false,
+  loading: () => <ChartSkeleton />,
+});
+
 export function MonthlySpendChart({
   months,
   currency,
@@ -25,37 +30,11 @@ export function MonthlySpendChart({
   summary: string;
 }) {
   const locale = useLocale();
-  const data = months.map((m) => ({ label: monthLabel(m.month, locale), spend: m.cents }));
 
   return (
     <figure>
       <div className="h-[240px] w-full">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} accessibilityLayer>
-            <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} strokeWidth={1} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: CHART_CHROME.axis, fontSize: 12 }} />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              width={64}
-              tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
-              tickFormatter={(v: number) => compactMoney(v, currency, locale)}
-            />
-            <Tooltip
-              cursor={{ fill: 'var(--chart-cursor)' }}
-              content={({ active, label, payload }) => (
-                <ChartTooltip
-                  active={active}
-                  label={typeof label === 'string' ? label : undefined}
-                  currency={currency}
-                  locale={locale}
-                  rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.expense) }))}
-                />
-              )}
-            />
-            <Bar dataKey="spend" name={seriesLabel} fill={SERIES.expense} radius={[4, 4, 0, 0]} maxBarSize={28} />
-          </BarChart>
-        </ResponsiveContainer>
+        <MonthlySpendPlot months={months} currency={currency} seriesLabel={seriesLabel} />
       </div>
       <figcaption className="text-muted-foreground mt-2 text-[12.5px]">
         {summary}
