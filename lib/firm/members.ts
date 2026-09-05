@@ -1,8 +1,7 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
 import { logAccess } from '@/lib/audit/logAccess';
@@ -10,7 +9,9 @@ import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
+import { localePrefix, requestOrigin } from './origin';
 import type { ActionResult } from './result';
+import { localeSchema } from './schemas';
 
 // Linking people to a business (INITIAL_PROMPT.md §8 "invite users"; bootstrap
 // note 3). Two paths:
@@ -26,16 +27,14 @@ const linkSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(160),
   role: roleSchema,
 });
-const inviteSchema = linkSchema.extend({ fullName: z.string().trim().max(120) });
+// `locale` is the *invitee's* language, not the admin's: the email link and the
+// portal behind it open in the language the client reads (0019).
+const inviteSchema = linkSchema.extend({
+  fullName: z.string().trim().max(120),
+  locale: localeSchema,
+});
 const memberSchema = z.object({ entityId: z.string().uuid(), userId: z.string().uuid() });
 const roleChangeSchema = memberSchema.extend({ role: roleSchema });
-
-async function origin(): Promise<string> {
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  return host ? `${proto}://${host}` : (process.env.APP_URL ?? 'http://localhost:3000');
-}
 
 async function addMembership(entityId: string, userId: string, role: 'client_owner' | 'client_viewer') {
   const firm = await requireFirmAdmin();
@@ -82,13 +81,11 @@ export async function inviteUser(input: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: t('errorInvalid') };
 
   await requireFirmAdmin();
-  const locale = await getLocale();
-  const prefix = locale === 'en' ? '' : `/${locale}`;
-  const redirectTo = `${await origin()}${prefix}/invite`;
+  const redirectTo = `${await requestOrigin()}${localePrefix(parsed.data.locale)}/invite`;
 
   const { data, error: inviteError } = await createAdminClient().auth.admin.inviteUserByEmail(
     parsed.data.email,
-    { redirectTo, data: { full_name: parsed.data.fullName } },
+    { redirectTo, data: { full_name: parsed.data.fullName, locale: parsed.data.locale } },
   );
   if (inviteError || !data.user) {
     // An existing account cannot be invited again — link it instead.
@@ -106,7 +103,7 @@ export async function inviteUser(input: unknown): Promise<ActionResult> {
     resourceType: 'entity_membership',
     resourceId: data.user.id,
     businessEntityId: parsed.data.entityId,
-    metadata: { role: parsed.data.role },
+    metadata: { role: parsed.data.role, locale: parsed.data.locale },
   });
   revalidatePath(`/admin/entities/${parsed.data.entityId}`);
   return { ok: true, value: undefined };

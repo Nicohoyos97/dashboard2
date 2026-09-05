@@ -42,7 +42,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   const settings = await loadPortalEntitySettings(supabase, entity.id);
   // The nav hides this page when the firm did not sell the module; the route has
   // to agree, or the URL is a way around the sale.
-  if (!settings.modules.statements) notFound();
+  if (!settings.modules.bookkeeping) notFound();
   const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'profit_and_loss');
   const report = selectReport(reports, params.period);
   if (!report) return <Page title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></Page>;

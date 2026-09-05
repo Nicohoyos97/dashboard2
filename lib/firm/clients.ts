@@ -8,18 +8,13 @@ import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
 
+import { clientFields } from './schemas';
 import type { ActionResult } from './result';
 
 // Firm client management (INITIAL_PROMPT.md §8). Every action: Zod at the
 // boundary → requireFirmAdmin() (role + aal2) → RLS-scoped client (the
-// clients_admin_* policies are the enforcement) → audit row.
-const clientFields = {
-  name: z.string().trim().min(1).max(120),
-  contactName: z.string().trim().max(120),
-  contactEmail: z.union([z.literal(''), z.string().trim().email().max(160)]),
-  notes: z.string().trim().max(4000),
-};
-
+// clients_admin_* policies are the enforcement) → audit row. Creating a client
+// together with its first business and first user lives in ./onboarding.
 const createSchema = z.object(clientFields);
 const updateSchema = z.object({ id: z.string().uuid(), ...clientFields });
 const statusSchema = z.object({ id: z.string().uuid(), status: z.enum(['active', 'archived']) });

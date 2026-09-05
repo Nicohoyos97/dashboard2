@@ -1,18 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import {
-  PACKAGE_MODULES,
-  hasAnyModule,
-  packageOf,
-  portalModules,
-} from '@/lib/portal/modules';
+import { PACKAGE_MODULES, hasAnyModule, packageOf, portalModules } from '@/lib/portal/modules';
 
 describe('service packages', () => {
   it('bookkeeping is everything except sales taxes', () => {
     expect(PACKAGE_MODULES.bookkeeping).toEqual({
-      statements: true,
-      expenses: true,
+      bookkeeping: true,
       income_taxes: true,
       sales_taxes: false,
     });
@@ -20,8 +14,7 @@ describe('service packages', () => {
 
   it('sales tax is only sales taxes', () => {
     expect(PACKAGE_MODULES.sales_tax).toEqual({
-      statements: false,
-      expenses: false,
+      bookkeeping: false,
       income_taxes: false,
       sales_taxes: true,
     });
@@ -29,8 +22,7 @@ describe('service packages', () => {
 
   it('full is both', () => {
     expect(PACKAGE_MODULES.full).toEqual({
-      statements: true,
-      expenses: true,
+      bookkeeping: true,
       income_taxes: true,
       sales_taxes: true,
     });
@@ -40,7 +32,7 @@ describe('service packages', () => {
     expect(packageOf(PACKAGE_MODULES.bookkeeping)).toBe('bookkeeping');
     expect(packageOf(PACKAGE_MODULES.sales_tax)).toBe('sales_tax');
     expect(packageOf(PACKAGE_MODULES.full)).toBe('full');
-    expect(packageOf({ ...PACKAGE_MODULES.bookkeeping, expenses: false })).toBeNull();
+    expect(packageOf({ ...PACKAGE_MODULES.bookkeeping, income_taxes: false })).toBeNull();
   });
 });
 
@@ -53,19 +45,38 @@ describe('portalModules', () => {
     expect(portalModules(row).sales_taxes).toBe(true);
   });
 
+  it('reads a pre-0019 row through its old `statements` key', () => {
+    // The 0019 backfill renames it, but a row written by an older deploy — or
+    // restored from a backup — must still resolve to what the firm sold rather
+    // than silently defaulting the books back on.
+    const off = { sales_tax_enabled: true, enabled_modules: { statements: false, expenses: false } };
+    expect(portalModules(off).bookkeeping).toBe(false);
+    const on = { sales_tax_enabled: false, enabled_modules: { statements: true, expenses: false } };
+    expect(portalModules(on).bookkeeping).toBe(true);
+  });
+
+  it('prefers the new key when a row carries both', () => {
+    const row = {
+      sales_tax_enabled: false,
+      enabled_modules: { bookkeeping: false, statements: true },
+    };
+    expect(portalModules(row).bookkeeping).toBe(false);
+  });
+
   it('keeps a page a business was already seeing when the key is missing', () => {
-    // Rows written before `statements` existed must not lose the statements.
-    const legacy = { sales_tax_enabled: false, enabled_modules: { expenses: true, income_taxes: true } };
+    const legacy = { sales_tax_enabled: false, enabled_modules: { income_taxes: true } };
     expect(portalModules(legacy)).toEqual({
-      statements: true,
-      expenses: true,
+      bookkeeping: true,
       income_taxes: true,
       sales_taxes: false,
     });
   });
 
   it('turns a module off only when it is explicitly false', () => {
-    const row = { sales_tax_enabled: true, enabled_modules: { statements: false, expenses: false, income_taxes: false } };
+    const row = {
+      sales_tax_enabled: true,
+      enabled_modules: { bookkeeping: false, income_taxes: false },
+    };
     expect(portalModules(row)).toEqual(PACKAGE_MODULES.sales_tax);
   });
 
@@ -80,6 +91,6 @@ describe('portalModules', () => {
 
   it('knows when a business has nothing enabled', () => {
     expect(hasAnyModule(PACKAGE_MODULES.sales_tax)).toBe(true);
-    expect(hasAnyModule({ statements: false, expenses: false, income_taxes: false, sales_taxes: false })).toBe(false);
+    expect(hasAnyModule({ bookkeeping: false, income_taxes: false, sales_taxes: false })).toBe(false);
   });
 });

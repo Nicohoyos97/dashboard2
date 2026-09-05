@@ -3,6 +3,7 @@
 import { getTranslations } from 'next-intl/server';
 
 import { ProfileForm } from '@/components/settings/ProfileForm';
+import { isSupportedLocale } from '@/i18n/preference';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { createClient } from '@/lib/supabase/server';
 
@@ -12,7 +13,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, avatar_url')
+    .select('full_name, avatar_url, locale')
     .eq('id', user!.id)
     .maybeSingle();
 
@@ -30,6 +31,7 @@ export default async function ProfilePage() {
         userId={user!.id}
         initialName={profile?.full_name ?? ''}
         initialAvatarUrl={profile?.avatar_url ?? null}
+        initialLocale={isSupportedLocale(profile?.locale) ? profile.locale : null}
       />
     </section>
   );

@@ -4,51 +4,23 @@ import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
-import { isValidTimeZone } from '@/lib/utils/timezone';
-
 import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
 
+import { entityConfigFields } from './schemas';
 import type { ActionResult } from './result';
 
 // Business (entity) provisioning and configuration by the firm
 // (INITIAL_PROMPT.md §5, §8). The firm-controlled columns edited here are the
-// ones guard_entity_firm_columns keeps clients away from.
-// `statements` joined the set in 0018: a sales-tax-only client has to be able
-// to not see Profit & Loss and Balance Sheet. Sales tax keeps its own column.
-const modulesSchema = z.object({
-  statements: z.boolean(),
-  expenses: z.boolean(),
-  income_taxes: z.boolean(),
-});
-
-const configFields = {
-  name: z.string().trim().min(1).max(120),
-  legalName: z.string().trim().max(160),
-  fiscalYearStartMonth: z.number().int().min(1).max(12),
-  accountingBasis: z.enum(['cash', 'accrual']),
-  currency: z.string().trim().length(3).toUpperCase(),
-  // The calendar the business keeps: every "today" in the portal resolves in
-  // it, so a name this runtime cannot format is refused here as well as by the
-  // trigger in 0010.
-  timezone: z.string().trim().min(1).max(64).refine(isValidTimeZone, 'invalid_timezone'),
-  salesTaxEnabled: z.boolean(),
-  enabledModules: modulesSchema,
-  industry: z.string().trim().max(80),
-  // Written by the firm's uploader into the `logos` bucket, so it is checked
-  // against that bucket rather than accepted as any URL — the same reasoning as
-  // profile avatars, and this one is rendered for every member of the business.
-  logoUrl: z.string().trim().url().nullable(),
-};
-
-const createSchema = z.object({ clientId: z.string().uuid(), ...configFields });
-const updateSchema = z.object({ id: z.string().uuid(), ...configFields });
+// ones guard_entity_firm_columns keeps clients away from. The field shapes are
+// shared with the one-step client onboarding in ./onboarding.
+const createSchema = z.object({ clientId: z.string().uuid(), ...entityConfigFields });
+const updateSchema = z.object({ id: z.string().uuid(), ...entityConfigFields });
 const statusSchema = z.object({ id: z.string().uuid(), status: z.enum(['active', 'archived']) });
 const notesSchema = z.object({ entityId: z.string().uuid(), notes: z.string().trim().max(8000) });
 
 export type EntityConfigInput = z.infer<typeof createSchema>;
-export type EnabledModules = z.infer<typeof modulesSchema>;
 
 export async function createEntity(input: unknown): Promise<ActionResult<{ id: string }>> {
   const t = await getTranslations('Admin');

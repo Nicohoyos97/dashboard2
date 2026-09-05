@@ -272,7 +272,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       logoUrl={settings.logoUrl}
       actions={
         <>
-          {modules.statements && (
+          {modules.bookkeeping && (
             <>
               <GranularityTabs choices={granularityChoices(periods, selected)} />
               <PeriodPicker {...periodPickerProps({ periods, selected, today, locale, presetLabel: (preset) => t(`preset_${preset}`) })} />
@@ -285,7 +285,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       {/* Everything below the greeting is module-scoped. The Overview is the
           home of every package, so it shows what the client bought and nothing
           else — a sales-tax-only client has no Profit & Loss for these to read. */}
-      {modules.statements && (
+      {modules.bookkeeping && (
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={periodLabelFor(revenue)} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
@@ -294,7 +294,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       </div>
       )}
 
-      {modules.statements && (
+      {modules.bookkeeping && (
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <section id="income-expense" className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -326,9 +326,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       </div>
       )}
 
-      {(modules.statements || modules.income_taxes) && (
+      {(modules.bookkeeping || modules.income_taxes) && (
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        {modules.statements && <InsightsCard insights={insights} currency={currency} />}
+        {modules.bookkeeping && <InsightsCard insights={insights} currency={currency} />}
         {modules.income_taxes && <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />}
       </div>
       )}

@@ -63,26 +63,54 @@ test.describe('Firm portal: clients, businesses, people', () => {
     const stamp = Date.now().toString(36);
     const page = await adminPage(browser);
 
-    // ── Client ────────────────────────────────────────────────────────────
+    // ── Client + first business + invitation, in one submit ───────────────
+    const ownerEmail = `acme-${stamp}@example.com`;
     await page.goto('/admin/clients');
     await page.getByRole('button', { name: /new client/i }).click();
     await page.fill('#clientName', `Acme Holdings ${stamp}`);
-    await page.fill('#contactEmail', `acme-${stamp}@example.com`);
+    await page.fill('#contactEmail', ownerEmail);
+    // The invitation follows the contact until it is edited on its own.
+    await expect(page.locator('#inviteEmail')).toHaveValue(ownerEmail);
+    await page.fill('#inviteName', 'Ana Owner');
+    await page.selectOption('#inviteLocale', 'es');
+    await page.fill('#onboarding-entityName', `Acme Bakery ${stamp}`);
+    await page.selectOption('#onboarding-basis', 'accrual');
+    await page.getByLabel(/^Sales Taxes/).check();
     await page.getByRole('button', { name: /^create$/i }).click();
-    await expect(page).toHaveURL(/\/admin\/clients\/[0-9a-f-]{36}$/);
-    await expect(page.getByRole('heading', { name: `Acme Holdings ${stamp}` })).toBeVisible();
 
-    // ── Business ──────────────────────────────────────────────────────────
-    await page.getByRole('button', { name: /new business/i }).click();
-    await page.fill('#entityName', `Acme Bakery ${stamp}`);
-    await page.selectOption('#basis', 'accrual');
-    await page.getByLabel(/sales taxes module/i).check();
-    await page.getByRole('button', { name: /^create$/i }).click();
+    // One submit lands on the business, ready to receive documents.
     await expect(page).toHaveURL(/\/admin\/entities\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('heading', { name: `Acme Bakery ${stamp}` })).toBeVisible();
     await expect(page.getByText('Accrual')).toBeVisible();
     await expect(page.getByText(/Sales Taxes/)).toBeVisible();
     const entityUrl = page.url();
+
+    // ── The owner is invited in the language the firm chose ───────────────
+    const { data: ownerProfile } = await fx.admin
+      .from('profiles')
+      .select('id, locale')
+      .eq('email', ownerEmail)
+      .maybeSingle();
+    expect(ownerProfile?.locale).toBe('es');
+    fx.track(ownerProfile!.id);
+
+    const ownerLink = await inviteLink(request, ownerEmail);
+    const invitedOwner = await (await browser.newContext()).newPage();
+    await invitedOwner.goto(ownerLink);
+    await expect(invitedOwner).toHaveURL(/\/es\/invite/);
+    await invitedOwner.fill('#password', PASSWORD);
+    await invitedOwner.getByRole('button', { name: /activar cuenta/i }).click();
+    // Not merely the page they were sent to: the language is theirs from here
+    // on, so the portal itself is Spanish.
+    await expect(invitedOwner).toHaveURL(/\/es\/dashboard/);
+    const ownerNav = invitedOwner.getByRole('complementary', { name: /navigation|navegación/i });
+    await expect(ownerNav.getByRole('link', { name: 'Resumen', exact: true })).toBeVisible();
+    await expect(ownerNav.getByRole('link', { name: /pregúntale a nick/i })).toBeVisible();
+
+    // And it survives arriving on an English URL — the middleware sends them
+    // back to their own language rather than serving one page in the wrong one.
+    await invitedOwner.goto('/dashboard');
+    await expect(invitedOwner).toHaveURL(/\/es\/dashboard/);
 
     // ── Link an existing account (self-signed-up user) ────────────────────
     const existing = await fx.makeUser('crud-existing');

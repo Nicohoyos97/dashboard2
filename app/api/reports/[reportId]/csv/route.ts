@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { loadPublishedReport, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReport, loadReportLines } from '@/lib/portal/load';
 import { RATE_LIMITS, consumeRateLimit } from '@/lib/rate-limit';
 import { statementCsv, statementCsvFilename } from '@/lib/reports/csv';
 import { buildTree } from '@/lib/reports/tree';
@@ -28,7 +28,15 @@ export async function GET(request: Request, context: { params: Promise<{ reportI
   const supabase = await createClient();
   const report = await loadPublishedReport(supabase, entity.id, parsed.data.reportId);
   if (!report) return new Response(null, { status: 404 });
-  const lines = await loadReportLines(supabase, entity.id, report.id);
+  // The nav and the page hide statements the firm did not sell; the export has
+  // to agree, or the URL is a way around the sale. The PDF route has always
+  // checked this; this one did not, which left the same statement one query
+  // string away for a client who never bought bookkeeping.
+  const [lines, settings] = await Promise.all([
+    loadReportLines(supabase, entity.id, report.id),
+    loadPortalEntitySettings(supabase, entity.id),
+  ]);
+  if (!settings.modules.bookkeeping) return new Response(null, { status: 404 });
   const locale = request.headers.get('accept-language')?.toLowerCase().startsWith('es') ? 'es' : 'en';
   const csv = statementCsv(buildTree(lines), { locale });
 

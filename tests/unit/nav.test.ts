@@ -65,10 +65,22 @@ describe('NAV_ITEMS', () => {
   });
 
   it('keeps the order when a module is hidden', () => {
-    const custom = { ...PACKAGE_MODULES.full, expenses: false };
+    const custom = { ...PACKAGE_MODULES.full, income_taxes: false };
     expect(clientNavItems(custom).map((i) => i.href)).toEqual([
       '/dashboard',
       '/statements',
+      '/expenses',
+      '/taxes/sales',
+      '/chat',
+    ]);
+  });
+
+  it('takes the statements and the expense breakdown together', () => {
+    // They are one engagement (0019): a client with the Profit & Loss gets the
+    // breakdown that explains it, and a client without it gets neither.
+    const noBooks = { ...PACKAGE_MODULES.full, bookkeeping: false };
+    expect(clientNavItems(noBooks).map((i) => i.href)).toEqual([
+      '/dashboard',
       '/taxes/income',
       '/taxes/sales',
       '/chat',

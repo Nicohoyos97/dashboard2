@@ -42,8 +42,8 @@ export const NAV_ITEMS: NavItem[] = [
 
 /** Which module each nav entry belongs to; the rest (Overview, Nick) are always shown. */
 const NAV_MODULE: Record<string, PortalModule> = {
-  '/statements': 'statements',
-  '/expenses': 'expenses',
+  '/statements': 'bookkeeping',
+  '/expenses': 'bookkeeping',
   '/taxes/income': 'income_taxes',
   '/taxes/sales': 'sales_taxes',
 };

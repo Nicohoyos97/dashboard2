@@ -1,13 +1,19 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRef, useState, useTransition } from 'react';
 
+import { usePathname, useRouter } from '@/i18n/navigation';
+import { type Locale, routing } from '@/i18n/routing';
 import { updateProfile } from '@/lib/settings/actions';
 import { createClient } from '@/lib/supabase/client';
 
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB — mirrors the bucket limit
+
+// Native names, not translated ones: a language picker that reads "Spanish" to
+// someone who only speaks Spanish is the one label that must never be i18n'd.
+const LANGUAGE_NAMES: Record<string, string> = { en: 'English', es: 'Español' };
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -19,14 +25,21 @@ export function ProfileForm({
   userId,
   initialName,
   initialAvatarUrl,
+  initialLocale,
 }: {
   userId: string;
   initialName: string;
   initialAvatarUrl: string | null;
+  /** Null when the account has never chosen one; the URL's locale is shown. */
+  initialLocale: Locale | null;
 }) {
   const t = useTranslations('Settings');
+  const activeLocale = useLocale() as Locale;
+  const router = useRouter();
+  const pathname = usePathname();
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const [locale, setLocale] = useState<Locale>(initialLocale ?? activeLocale);
   const [name, setName] = useState(initialName);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [file, setFile] = useState<File | null>(null);
@@ -64,15 +77,21 @@ export function ProfileForm({
         newAvatarUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
       }
 
-      const res = await updateProfile(
-        newAvatarUrl ? { fullName: name, avatarUrl: newAvatarUrl } : { fullName: name },
-      );
+      const res = await updateProfile({
+        fullName: name,
+        locale,
+        ...(newAvatarUrl ? { avatarUrl: newAvatarUrl } : {}),
+      });
       if (!res.ok) return setError(res.error);
 
       if (newAvatarUrl) setAvatarUrl(newAvatarUrl);
       setFile(null);
       setPreview(null);
       setSaved(true);
+      // The whole portal is now in another language, so this page has to be
+      // too — and under the prefix that language lives at, or the middleware
+      // would bounce the next navigation.
+      if (locale !== activeLocale) router.replace(pathname, { locale });
     });
   }
 
@@ -129,6 +148,29 @@ export function ProfileForm({
           autoComplete="name"
           className="border-line bg-card text-foreground placeholder:text-muted-foreground/60 focus:border-blue h-11 w-full rounded-lg border px-4 text-[15px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
         />
+      </div>
+
+      {/* Language */}
+      <div className="mt-6">
+        <label htmlFor="locale" className="text-ink mb-1.5 block text-[14px] font-semibold">
+          {t('languageLabel')}
+        </label>
+        <select
+          id="locale"
+          value={locale}
+          onChange={(e) => {
+            setLocale(e.target.value as Locale);
+            setSaved(false);
+          }}
+          className="border-line bg-card text-foreground focus:border-blue h-11 w-full rounded-lg border px-4 text-[15px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+        >
+          {routing.locales.map((option) => (
+            <option key={option} value={option}>
+              {LANGUAGE_NAMES[option] ?? option}
+            </option>
+          ))}
+        </select>
+        <p className="text-muted-foreground mt-2 text-[12.5px]">{t('languageHelp')}</p>
       </div>
 
       {error && (

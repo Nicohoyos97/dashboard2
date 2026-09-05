@@ -60,7 +60,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const currency = settings.currency;
   // The nav hides this page when the firm did not sell the module; the route has
   // to agree, or the URL is a way around the sale.
-  if (!settings.modules.expenses) notFound();
+  if (!settings.modules.bookkeeping) notFound();
   const currencyStatements = statements.filter((statement) => statement.currency === currency);
   const periods = availablePeriods(reports, currencyStatements, { locale }).filter((period) => period.sources.includes('bank'));
   const requested = parsePeriodParam(typeof params.period === 'string' ? params.period : undefined);

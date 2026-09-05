@@ -5,12 +5,25 @@
 
 export const DEFAULT_TIMEZONE = 'UTC';
 
-/** IANA names this runtime knows, for validating what the firm picks. */
+/**
+ * IANA names this runtime knows, for validating what the firm picks — with
+ * DEFAULT_TIMEZONE guaranteed present.
+ *
+ * Chrome's Intl.supportedValuesOf('timeZone') returns 418 canonical zones and
+ * *not* 'UTC'. A <select> whose value is missing from its options falls back to
+ * showing the first one, so the new-business form displayed "Africa/Abidjan"
+ * while its state still held 'UTC' — the admin read one calendar and the
+ * database got another, and every due date in that client's portal resolved in
+ * the zone nobody chose.
+ */
 export function supportedTimeZones(): string[] {
   // Node 18+/modern browsers expose the full IANA list; fall back to the few
   // zones the firm's clients are actually in rather than to nothing.
   const supported = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
-  return supported ? supported('timeZone') : ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Bogota'];
+  const zones = supported
+    ? supported('timeZone')
+    : ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Bogota'];
+  return zones.includes(DEFAULT_TIMEZONE) ? zones : [DEFAULT_TIMEZONE, ...zones];
 }
 
 export function isValidTimeZone(value: string): boolean {

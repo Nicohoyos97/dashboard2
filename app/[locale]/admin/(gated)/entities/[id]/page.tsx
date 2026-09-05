@@ -13,16 +13,17 @@ import { Link } from '@/i18n/navigation';
 import { previewEntity } from '@/lib/entities/actions';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
-import type { EnabledModules } from '@/lib/firm/entities';
+import type { EnabledModules } from '@/lib/firm/schemas';
 import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
 function modulesOf(value: unknown): EnabledModules {
-  const v = (value ?? {}) as Partial<Record<keyof EnabledModules, unknown>>;
+  const v = (value ?? {}) as Record<string, unknown>;
   // Absent means on: a row written before a module existed keeps its pages.
+  // `statements` is the pre-0019 name for `bookkeeping`, read as a fallback so
+  // a row the backfill has not reached still says what the firm sold.
   return {
-    statements: v.statements !== false,
-    expenses: v.expenses !== false,
+    bookkeeping: 'bookkeeping' in v ? v.bookkeeping !== false : v.statements !== false,
     income_taxes: v.income_taxes !== false,
   };
 }
@@ -113,10 +114,10 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     [
       t('modules'),
       [
-        modules.statements ? t('moduleStatements') : null,
-        modules.expenses ? t('moduleExpenses') : null,
+        modules.bookkeeping ? t('moduleBookkeeping') : null,
         modules.income_taxes ? t('moduleIncomeTaxes') : null,
         entity.sales_tax_enabled ? t('moduleSalesTaxes') : null,
+        t('moduleNick'),
       ]
         .filter(Boolean)
         .join(' · ') || '—',

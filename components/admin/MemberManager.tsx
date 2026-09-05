@@ -1,9 +1,10 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { useRouter } from '@/i18n/navigation';
+import { type Locale, routing } from '@/i18n/routing';
 import { inviteUser, linkUserByEmail, removeMember, updateMemberRole } from '@/lib/firm/members';
 
 import { dangerButton, inputClass, labelClass, primaryButton, secondaryButton, selectClass } from './ui';
@@ -16,6 +17,10 @@ export type MemberRow = {
 };
 
 type Role = MemberRow['role'];
+
+// Native names, not translated ones: a language picker that reads "Spanish" to
+// someone who only speaks Spanish is the one label that must never be i18n'd.
+const LANGUAGE_NAMES: Record<string, string> = { en: 'English', es: 'Español' };
 
 function initials(nameOrEmail: string): string {
   const parts = nameOrEmail.trim().split(/\s+/).filter(Boolean);
@@ -39,6 +44,7 @@ export function MemberManager({
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<Role>('client_viewer');
+  const [locale, setLocale] = useState<Locale>(useLocale() as Locale);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -49,7 +55,7 @@ export function MemberManager({
       const res =
         kind === 'link'
           ? await linkUserByEmail({ entityId, email, role })
-          : await inviteUser({ entityId, email, role, fullName });
+          : await inviteUser({ entityId, email, role, fullName, locale });
       if (!res.ok) return setNotice({ kind: 'error', text: res.error });
       setNotice({ kind: 'ok', text: kind === 'link' ? t('memberLinked') : t('memberInvited') });
       setEmail('');
@@ -131,7 +137,7 @@ export function MemberManager({
       {canEdit && (
         <form
           onSubmit={(e) => e.preventDefault()}
-          className="border-line bg-paper grid gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_1fr_auto]"
+          className="border-line bg-paper grid gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_1fr_auto_auto]"
         >
           <div>
             <label htmlFor="memberEmail" className={labelClass}>
@@ -168,6 +174,25 @@ export function MemberManager({
             >
               <option value="client_viewer">{t('roleViewer')}</option>
               <option value="client_owner">{t('roleOwner')}</option>
+            </select>
+          </div>
+          {/* Only reaches an invitation — linking an existing account leaves
+              whatever language that person already chose for themselves. */}
+          <div>
+            <label htmlFor="memberLocale" className={labelClass}>
+              {t('clientLanguage')}
+            </label>
+            <select
+              id="memberLocale"
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as Locale)}
+              className={selectClass}
+            >
+              {routing.locales.map((option) => (
+                <option key={option} value={option}>
+                  {LANGUAGE_NAMES[option] ?? option}
+                </option>
+              ))}
             </select>
           </div>
           {notice && (

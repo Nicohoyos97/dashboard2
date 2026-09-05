@@ -9,6 +9,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { localeRedirectPath, preferredLocale } from '@/i18n/preference';
+
 import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE, supabaseEnv } from './env';
 import type { Database } from './types';
 
@@ -136,6 +138,20 @@ export async function updateSession(
   const { pathname } = request.nextUrl;
   const isEs = pathname === '/es' || pathname.startsWith('/es/');
   const bare = isEs ? pathname.replace(/^\/es/, '') || '/' : pathname;
+
+  // The reader's own language wins over the URL they arrived on. Read from the
+  // token we have already verified, so a Spanish client who types the bare
+  // domain — or follows a link from anywhere — gets a Spanish portal instead
+  // of one English page and a settings hunt. Anonymous visitors name no
+  // preference, so nothing here touches them.
+  if (signedIn) {
+    const destination = localeRedirectPath(pathname, preferredLocale(claims.claims));
+    if (destination !== null) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = destination;
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
 
   if (!signedIn && isProtected(bare)) {
     const redirectUrl = request.nextUrl.clone();

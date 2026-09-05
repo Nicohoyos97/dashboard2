@@ -48,7 +48,7 @@ export async function GET(request: Request, context: { params: Promise<{ reportI
   ]);
   // The nav and the page hide statements the firm did not sell; the export has
   // to agree, or the URL is a way around the sale.
-  if (!settings.modules.statements) return new Response(null, { status: 404 });
+  if (!settings.modules.bookkeeping) return new Response(null, { status: 404 });
 
   const locale = request.headers.get('accept-language')?.toLowerCase().startsWith('es')
     ? 'es'

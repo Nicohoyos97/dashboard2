@@ -175,11 +175,11 @@ export type ToolDefinition = {
  * Profit & Loss to be told about, and the page is 404 for them.
  */
 const TOOL_MODULE: Partial<Record<ToolName, PortalModule>> = {
-  get_profit_and_loss: 'statements',
-  get_balance_sheet: 'statements',
-  compare_financial_periods: 'statements',
-  get_overview_metrics: 'statements',
-  get_expense_breakdown: 'expenses',
+  get_profit_and_loss: 'bookkeeping',
+  get_balance_sheet: 'bookkeeping',
+  compare_financial_periods: 'bookkeeping',
+  get_overview_metrics: 'bookkeeping',
+  get_expense_breakdown: 'bookkeeping',
   get_income_tax_status: 'income_taxes',
   get_sales_tax_status: 'sales_taxes',
 };

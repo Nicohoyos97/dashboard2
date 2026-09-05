@@ -3,18 +3,21 @@
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
+import { routing } from '@/i18n/routing';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { isOwnAvatarUrl } from '@/lib/settings/avatar';
 import { supabaseEnv } from '@/lib/supabase/env';
 import { createClient } from '@/lib/supabase/server';
 
-// Profile update — name + (optional) avatar URL. The avatar file is uploaded
-// client-side to the RLS-scoped Storage bucket; this only persists the resulting
-// public URL + the name. Per multi-tenant-data-access: RLS-scoped server client,
-// user derived from the session, never the client.
+// Profile update — name, (optional) avatar URL and (optional) portal language.
+// The avatar file is uploaded client-side to the RLS-scoped Storage bucket;
+// this only persists the resulting public URL + the name. Per
+// multi-tenant-data-access: RLS-scoped server client, user derived from the
+// session, never the client.
 const profileSchema = z.object({
   fullName: z.string().trim().min(1).max(80),
   avatarUrl: z.string().url().nullable().optional(),
+  locale: z.enum(routing.locales).optional(),
 });
 
 export type UpdateProfileResult = { ok: true } | { ok: false; error: string };
@@ -22,6 +25,7 @@ export type UpdateProfileResult = { ok: true } | { ok: false; error: string };
 export async function updateProfile(input: {
   fullName: string;
   avatarUrl?: string | null;
+  locale?: string;
 }): Promise<UpdateProfileResult> {
   const t = await getTranslations('Settings');
   const parsed = profileSchema.safeParse(input);
@@ -33,9 +37,10 @@ export async function updateProfile(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: t('saveError') };
 
-  const update: { full_name: string; avatar_url?: string | null } = {
+  const update: { full_name: string; avatar_url?: string | null; locale?: string } = {
     full_name: parsed.data.fullName,
   };
+  if (parsed.data.locale !== undefined) update.locale = parsed.data.locale;
   // Only touch avatar_url when the caller actually changed the photo. The URL
   // comes from the browser after a direct-to-Storage upload, so it is checked
   // against what the uploader should have produced for this user's own folder —
@@ -53,6 +58,23 @@ export async function updateProfile(input: {
   // RLS (profiles_self_update) + the id filter both scope this to the caller.
   const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
   if (error) return { ok: false, error: t('saveError') };
+
+  // The language also rides in the auth metadata, which is where the middleware
+  // reads it from (i18n/preference.ts) — it verifies the token locally and must
+  // not query for a preference on every navigation.
+  //
+  // updateUser writes the metadata but does NOT re-sign the access token, so
+  // without the refresh below the middleware would keep reading the old
+  // language until the token happened to expire — up to an hour of a portal
+  // that ignores the choice the client just made. refreshSession mints a token
+  // from the updated user, and @supabase/ssr writes it to the cookie here.
+  if (parsed.data.locale !== undefined) {
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: { locale: parsed.data.locale },
+    });
+    if (metadataError) return { ok: false, error: t('saveError') };
+    await supabase.auth.refreshSession();
+  }
 
   return { ok: true };
 }

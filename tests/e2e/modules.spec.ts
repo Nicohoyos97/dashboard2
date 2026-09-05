@@ -8,6 +8,7 @@ import { seedPublishedStatement } from './helpers/seed-statements';
 // /admin were recorded and then ignored — the nav showed every page whatever
 // the firm had configured. These drive it through the browser, because a route
 // that still answers is a way around the sale even when the link is gone.
+// 0019 collapsed `statements` + `expenses` into one `bookkeeping` key.
 test.describe('the portal shows the modules the firm sold', () => {
   test.skip(!supabaseEnv(), 'Supabase env not available');
 
@@ -16,7 +17,7 @@ test.describe('the portal shows the modules the firm sold', () => {
 
   async function clientOn(
     label: string,
-    modules: { statements: boolean; expenses: boolean; income_taxes: boolean },
+    modules: { bookkeeping: boolean; income_taxes: boolean },
     salesTax: boolean,
   ) {
     const user = await fx.makeUser(label);
@@ -27,10 +28,11 @@ test.describe('the portal shows the modules the firm sold', () => {
       .eq('id', entityId);
     if (error) throw new Error(`configure: ${error.message}`);
     await fx.addMembership(entityId, user.id, 'client_owner');
-    // Both clients get a published P&L, so "the Overview shows no statement
-    // cards" means the module hid them — not that there was nothing to show.
-    await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded: [] });
-    return user;
+    // Every client here gets a published P&L, so "the Overview shows no
+    // statement cards" means the module hid them — not that there was nothing
+    // to show. The report id is what the export specs need.
+    const { reportId } = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded: [] });
+    return { user, entityId, reportId };
   }
 
   async function signIn(page: import('@playwright/test').Page, email: string) {
@@ -45,11 +47,7 @@ test.describe('the portal shows the modules the firm sold', () => {
     // Visits four routes this run has not compiled yet; each first request
     // costs seconds on the dev server, which is real work rather than waiting.
     test.slow();
-    const user = await clientOn(
-      'salesonly',
-      { statements: false, expenses: false, income_taxes: false },
-      true,
-    );
+    const { user } = await clientOn('salesonly', { bookkeeping: false, income_taxes: false }, true);
     await signIn(page, user.email);
 
     const nav = page.getByRole('complementary', { name: /navigation/i });
@@ -81,11 +79,7 @@ test.describe('the portal shows the modules the firm sold', () => {
 
   test('a bookkeeping client gets everything except Sales Taxes', async ({ page }) => {
     test.slow();
-    const user = await clientOn(
-      'bookkeeping',
-      { statements: true, expenses: true, income_taxes: true },
-      false,
-    );
+    const { user } = await clientOn('bookkeeping', { bookkeeping: true, income_taxes: true }, false);
     await signIn(page, user.email);
 
     const nav = page.getByRole('complementary', { name: /navigation/i });
@@ -102,5 +96,20 @@ test.describe('the portal shows the modules the firm sold', () => {
     // And the Overview keeps the statement cards this client did buy.
     await page.goto('/dashboard');
     await expect(page.getByRole('main').getByText('Gross Income')).toBeVisible();
+  });
+
+  test('a client without bookkeeping cannot export the statement either', async ({ page }) => {
+    test.slow();
+    // The pages 404, but the export routes are the way around them: they
+    // answer on a report id alone, and a firm that stops selling bookkeeping
+    // would otherwise leave every published statement one URL away. Asserted
+    // on the status code, which route handlers report honestly.
+    const { user, reportId } = await clientOn('noexport', { bookkeeping: false, income_taxes: true }, false);
+    await signIn(page, user.email);
+
+    for (const format of ['csv', 'pdf']) {
+      const response = await page.request.get(`/api/reports/${reportId}/${format}`);
+      expect(response.status(), format).toBe(404);
+    }
   });
 });

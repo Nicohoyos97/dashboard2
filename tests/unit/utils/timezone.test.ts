@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_TIMEZONE, isValidTimeZone, todayIn } from '@/lib/utils/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, supportedTimeZones, todayIn } from '@/lib/utils/timezone';
 
 describe('business time zone', () => {
   it('resolves the calendar date in the business zone, not the server clock', () => {
@@ -28,5 +28,18 @@ describe('business time zone', () => {
     expect(isValidTimeZone('America/Bogota')).toBe(true);
     expect(isValidTimeZone('')).toBe(false);
     expect(isValidTimeZone(DEFAULT_TIMEZONE)).toBe(true);
+  });
+});
+
+describe('supportedTimeZones', () => {
+  it('always offers the default, whatever the runtime lists', () => {
+    // Chrome omits 'UTC' from supportedValuesOf. A <select> whose value is not
+    // among its options silently displays a different zone than the one being
+    // saved, which is how a business would get a calendar nobody picked.
+    expect(supportedTimeZones()).toContain(DEFAULT_TIMEZONE);
+  });
+
+  it('offers only zones it would accept', () => {
+    for (const zone of supportedTimeZones()) expect(isValidTimeZone(zone)).toBe(true);
   });
 });

@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { localeFromMetadata, localePrefix } from '@/i18n/preference';
 import { safeRedirectPath } from '@/lib/auth/redirect';
 import { createClient } from '@/lib/supabase/server';
 import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE } from '@/lib/supabase/env';
@@ -47,7 +48,7 @@ export async function signInWithPassword(
   if (!parsed.success) return { ok: false, error: t('checkDetails') };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
@@ -71,8 +72,17 @@ export async function signInWithPassword(
     }
   }
 
-  // redirectTo (from the guard's redirectedFrom) is already locale-prefixed.
-  redirect(safeRedirectPath(redirectTo) ?? (await localePath('/dashboard')));
+  // Land them in their own language, not the one the sign-in page happened to
+  // be in: a Spanish client who follows an English link would otherwise be
+  // redirected a second time by the middleware, and Next leaves the address bar
+  // on the old path when that happens mid-Server-Action — Spanish content at an
+  // English URL. `redirectTo` (from the guard's redirectedFrom) is already
+  // locale-prefixed and names where they were actually going, so it wins.
+  const preferred = localeFromMetadata(data.user?.user_metadata);
+  redirect(
+    safeRedirectPath(redirectTo) ??
+      (preferred ? `${localePrefix(preferred)}/dashboard` : await localePath('/dashboard')),
+  );
 }
 
 export async function signUpWithPassword(values: SignUpValues): Promise<AuthResult> {

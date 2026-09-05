@@ -37,6 +37,9 @@ Postgres on Supabase. Every tenant table carries `business_entity_id`, has RLS e
 | 0014 | `notifications.payload` | Facts a notification is worded from (due date, tax type) — the bell renders the sentence in the reader's locale | — | unchanged: `notifications_self_select` |
 | 0014 | `notification_dispatches` | One row per (kind, resource, milestone): a deadline is announced once however often the job runs | server-only | RLS on, **no policies** — service role only, like `rate_limits` |
 | 0010 | `business_entities.timezone` | The calendar the business keeps (IANA name), firm-set | — | `assert_valid_timezone()` rejects a name Postgres cannot resolve; every "today" in the portal is resolved in it |
+| 0018 | `business_entities.industry`, `.logo_url` | What the client does, and their logo in the portal chrome | — | firm-controlled: `guard_entity_firm_columns()` covers both. `logo_url` points at the public-read `logos` bucket, which only a firm admin may write |
+| 0019 | `business_entities.enabled_modules` | Collapsed `statements` + `expenses` into one `bookkeeping` key — the firm sells the books as one engagement. Read only through `portalModules()` (`lib/portal/modules.ts`), which still falls back to `statements` for a row the backfill has not reached | — | unchanged: firm-controlled by the same trigger. Sales tax stays in its own `sales_tax_enabled` column |
+| 0019 | `profiles.locale` | The client's portal language (`en`/`es`, null = never chosen) | C | `profiles_self_update` — the client owns it. The firm sets it when it invites them, through `raw_user_meta_data` and `handle_new_user()`; the middleware reads the same value from the JWT, never from this column |
 
 ## Storage buckets
 
