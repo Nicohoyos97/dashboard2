@@ -118,6 +118,57 @@ export async function loadReportLines(supabase: Db, entityId: string, reportId: 
   }));
 }
 
+/**
+ * The lines of several reports in one round trip, keyed by report.
+ *
+ * The trend series on the Overview and both statement pages used to call
+ * `loadReportLines` once per period — eight identical queries, eight RLS
+ * evaluations, eight round trips to answer one screen. Same columns, same
+ * `position` order within a report and the same paging as the single-report
+ * loader; only the filter widens. Every requested id is present in the result,
+ * with an empty array when the report has no lines.
+ */
+export async function loadReportLinesFor(
+  supabase: Db,
+  entityId: string,
+  reportIds: readonly string[],
+): Promise<Map<string, LineRow[]>> {
+  const byReport = new Map<string, LineRow[]>(reportIds.map((id) => [id, []]));
+  if (reportIds.length === 0) return byReport;
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('financial_statement_lines')
+      .select('report_id, id, parent_line_id, position, depth, section, account_name, account_number, current, prior, is_section, is_total, page_number, confidence')
+      .eq('business_entity_id', entityId)
+      .in('report_id', reportIds)
+      // report_id first so paging never interleaves two reports mid-page.
+      .order('report_id')
+      .order('position')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw readError('portal_report_lines_read_failed');
+    for (const l of data ?? []) {
+      byReport.get(l.report_id)?.push({
+        id: l.id,
+        parentLineId: l.parent_line_id,
+        position: l.position,
+        depth: l.depth,
+        section: l.section,
+        accountName: l.account_name,
+        accountNumber: l.account_number,
+        currentCents: cents(l.current),
+        priorCents: cents(l.prior),
+        isSection: l.is_section,
+        isTotal: l.is_total,
+        pageNumber: l.page_number,
+        confidence: l.confidence,
+      });
+    }
+    if ((data ?? []).length < PAGE_SIZE) break;
+  }
+  return byReport;
+}
+
 export type BankTransactionRow = { date: string; debitCents: number | null; creditCents: number | null };
 export type BankStatementRow = {
   id: string;

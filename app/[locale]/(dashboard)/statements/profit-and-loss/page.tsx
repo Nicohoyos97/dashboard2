@@ -19,7 +19,7 @@ import { StatementTable } from '@/components/statements/StatementTable';
 import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLines, loadReportLinesFor } from '@/lib/portal/load';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
@@ -71,15 +71,15 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
 
   // Trend across published periods (oldest → newest), only when there are ≥ 2.
   const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
-  const trend =
-    trendReports.length >= 2
-      ? await Promise.all(
-          trendReports.map(async (r) => {
-            const m = pnlMetrics(r, buildTree(await loadReportLines(supabase, entity.id, r.id)));
-            return { label: formatPeriod(r.periodStart, r.periodEnd, locale), a: m.revenue.current?.cents ?? null, b: m.operatingExpenses.current?.cents ?? null };
-          }),
-        )
-      : null;
+  // Every period's lines in one query rather than one query per period.
+  const trendLines =
+    trendReports.length >= 2 ? await loadReportLinesFor(supabase, entity.id, trendReports.map((r) => r.id)) : null;
+  const trend = trendLines
+    ? trendReports.map((r) => {
+        const m = pnlMetrics(r, buildTree(trendLines.get(r.id) ?? []));
+        return { label: formatPeriod(r.periodStart, r.periodEnd, locale), a: m.revenue.current?.cents ?? null, b: m.operatingExpenses.current?.cents ?? null };
+      })
+    : null;
 
   const periodLabel = formatPeriod(report.periodStart, report.periodEnd, locale);
   const basis = report.basis ? ` · ${t('basis')}: ${report.basis === 'accrual' ? t('basisAccrual') : t('basisCash')}` : '';

@@ -29,7 +29,7 @@ import {
   loadPublishedReports,
   loadInsightDismissals,
   loadReminders,
-  loadReportLines,
+  loadReportLinesFor,
 } from '@/lib/portal/load';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
@@ -170,8 +170,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const lineReportIds = [
     ...new Set([currentPnlReport?.id, priorPnlReport?.id, balanceReport?.id, ...pnlTrendReports.map((report) => report.id)].filter((id): id is string => id !== undefined)),
   ];
-  const lineSets = await Promise.all(lineReportIds.map((id) => loadReportLines(supabase, entity.id, id)));
-  const linesById = new Map(lineReportIds.map((id, index) => [id, lineSets[index] ?? []]));
+  const linesById = await loadReportLinesFor(supabase, entity.id, lineReportIds);
   const linesOf = (report: ReportRow | null) => (report ? (linesById.get(report.id) ?? []) : []);
   const currentLines = linesOf(currentPnlReport);
   const priorLines = linesOf(priorPnlReport);

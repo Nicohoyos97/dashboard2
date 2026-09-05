@@ -18,7 +18,7 @@ import { StatementTable } from '@/components/statements/StatementTable';
 import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLines, loadReportLinesFor } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
 import { BALANCE_SYNONYMS, balanceSheetMetrics } from '@/lib/reports/balance-sheet';
@@ -70,15 +70,15 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   const m = balanceSheetMetrics(report, comparison.roots);
 
   const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
-  const trend =
-    trendReports.length >= 2
-      ? await Promise.all(
-          trendReports.map(async (r) => {
-            const bm = balanceSheetMetrics(r, buildTree(await loadReportLines(supabase, entity.id, r.id)));
-            return { label: formatIsoDate(r.periodEnd, locale), a: bm.totalAssets.current?.cents ?? null, b: bm.totalLiabilities.current?.cents ?? null };
-          }),
-        )
-      : null;
+  // Every period's lines in one query rather than one query per period.
+  const trendLines =
+    trendReports.length >= 2 ? await loadReportLinesFor(supabase, entity.id, trendReports.map((r) => r.id)) : null;
+  const trend = trendLines
+    ? trendReports.map((r) => {
+        const bm = balanceSheetMetrics(r, buildTree(trendLines.get(r.id) ?? []));
+        return { label: formatIsoDate(r.periodEnd, locale), a: bm.totalAssets.current?.cents ?? null, b: bm.totalLiabilities.current?.cents ?? null };
+      })
+    : null;
 
   const asOf = `${t('asOf')} ${formatIsoDate(report.periodEnd, locale)}`;
   const comparative = report.comparativeEnd ? ` · ${t('comparative')} ${formatIsoDate(report.comparativeEnd, locale)}` : '';
