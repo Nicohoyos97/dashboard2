@@ -1,5 +1,6 @@
 {
   "regions": ["pdx1"],
+  "buildCommand": "pnpm build && pnpm check:bundles",
   "crons": [
     { "path": "/api/jobs/process-documents", "schedule": "* * * * *" },
     { "path": "/api/jobs/notify-deadlines", "schedule": "0 12 * * *" }
