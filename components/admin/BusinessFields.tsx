@@ -99,6 +99,45 @@ export function BusinessFields({
             className={inputClass}
           />
         </div>
+        {/* Does this business trade under a DBA? Asked outright rather than
+            left to an empty field: "no DBA" and "nobody asked" are different
+            answers, and only one of them means the file is complete. Saying
+            yes makes the name required — here, in the Server Action, and in
+            the database (0021), which is also what stops a `no` from keeping
+            a trade name somebody typed earlier. */}
+        <fieldset className="sm:col-span-2">
+          <legend className={labelClass}>{t('dbaQuestion')}</legend>
+          <div className="mt-1.5 flex items-center gap-5 text-[14px]">
+            {[false, true].map((answer) => (
+              <label key={String(answer)} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={id('hasDba')}
+                  checked={values.hasDba === answer}
+                  onChange={() =>
+                    onChange({ ...values, hasDba: answer, dbaName: answer ? values.dbaName : '' })
+                  }
+                  className="accent-blue size-4"
+                />
+                {answer ? t('yes') : t('no')}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {values.hasDba && (
+          <div className="sm:col-span-2">
+            <label htmlFor={id('dbaName')} className={labelClass}>
+              {t('dbaName')}
+            </label>
+            <input
+              id={id('dbaName')}
+              required
+              value={values.dbaName}
+              onChange={(e) => set('dbaName', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
         <div className="sm:col-span-2">
           <label htmlFor={id('entityIndustry')} className={labelClass}>
             {t('industry')}

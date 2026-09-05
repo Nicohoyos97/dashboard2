@@ -102,8 +102,13 @@ export function ClientDialog({
   }
 
   const creating = mode === 'create';
+  // A DBA answered "yes" needs its name before this can be submitted; the
+  // Server Action and the database refuse it too, this only saves the trip.
   const incomplete =
-    client.name.trim().length === 0 || (creating && business.name.trim().length === 0);
+    client.name.trim().length === 0 ||
+    (creating &&
+      (business.name.trim().length === 0 ||
+        (business.hasDba && business.dbaName.trim().length === 0)));
 
   return (
     <Dialog

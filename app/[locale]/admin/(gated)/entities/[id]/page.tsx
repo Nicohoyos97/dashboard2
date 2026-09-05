@@ -45,7 +45,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
       supabase
         .from('business_entities')
         .select(
-          'id, name, legal_name, fiscal_year_start_month, accounting_basis, currency, timezone, sales_tax_enabled, enabled_modules, industry, logo_url, status, client_id, clients ( id, name )',
+          'id, name, legal_name, has_dba, dba_name, fiscal_year_start_month, accounting_basis, currency, timezone, sales_tax_enabled, enabled_modules, industry, logo_url, status, client_id, clients ( id, name )',
         )
         .eq('id', id)
         .maybeSingle(),
@@ -107,6 +107,8 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
   );
   const config: [string, string][] = [
     [t('legalName'), entity.legal_name ?? '—'],
+    // Shows the recorded answer, not a blank: "No" is a fact the firm asked for.
+    [t('dbaName'), entity.has_dba ? (entity.dba_name ?? '—') : t('no')],
     [t('industry'), entity.industry ?? '—'],
     [t('fiscalYearStart'), month],
     [t('accountingBasis'), entity.accounting_basis === 'accrual' ? t('basisAccrual') : t('basisCash')],
@@ -158,6 +160,8 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
               initial={{
                 name: entity.name,
                 legalName: entity.legal_name ?? '',
+                hasDba: entity.has_dba,
+                dbaName: entity.dba_name ?? '',
                 fiscalYearStartMonth: entity.fiscal_year_start_month,
                 accountingBasis: entity.accounting_basis === 'accrual' ? 'accrual' : 'cash',
                 currency: entity.currency,

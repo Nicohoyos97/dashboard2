@@ -26,6 +26,12 @@ export const modulesSchema = z.object({
 export const entityConfigFields = {
   name: z.string().trim().min(1).max(120),
   legalName: z.string().trim().max(160),
+  // Whether the business trades under a DBA, and which one. Recorded rather
+  // than inferred from an empty field: "no DBA" and "not asked yet" are
+  // different answers, and the pair is checked below so a `no` cannot carry a
+  // leftover name — the same constraint the database enforces in 0021.
+  hasDba: z.boolean(),
+  dbaName: z.string().trim().max(160),
   fiscalYearStartMonth: z.number().int().min(1).max(12),
   accountingBasis: z.enum(['cash', 'accrual']),
   currency: z.string().trim().length(3).toUpperCase(),
@@ -41,6 +47,25 @@ export const entityConfigFields = {
   // profile avatars, and this one is rendered for every member of the business.
   logoUrl: z.string().trim().url().nullable(),
 };
+
+/**
+ * A DBA answer that agrees with itself. Applied by every schema built from
+ * `entityConfigFields`, so the form, the one-step onboarding and the edit
+ * dialog cannot drift on it.
+ */
+export function refineDba<T extends { hasDba: boolean; dbaName: string }>(
+  values: T,
+  ctx: z.RefinementCtx,
+): void {
+  if (values.hasDba && values.dbaName.trim() === '') {
+    ctx.addIssue({ code: 'custom', path: ['dbaName'], message: 'dba_required' });
+  }
+}
+
+/** Whether a failed parse failed *because* of the DBA pair, so the form can say so. */
+export function isDbaIssue(error: z.ZodError): boolean {
+  return error.issues.some((issue) => issue.message === 'dba_required');
+}
 
 /** The portal language the firm sets for a client they invite (0019). */
 export const localeSchema = z.enum(routing.locales);

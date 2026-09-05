@@ -8,15 +8,19 @@ import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
 
-import { entityConfigFields } from './schemas';
+import { entityConfigFields, isDbaIssue, refineDba } from './schemas';
 import type { ActionResult } from './result';
 
 // Business (entity) provisioning and configuration by the firm
 // (INITIAL_PROMPT.md §5, §8). The firm-controlled columns edited here are the
 // ones guard_entity_firm_columns keeps clients away from. The field shapes are
 // shared with the one-step client onboarding in ./onboarding.
-const createSchema = z.object({ clientId: z.string().uuid(), ...entityConfigFields });
-const updateSchema = z.object({ id: z.string().uuid(), ...entityConfigFields });
+const createSchema = z
+  .object({ clientId: z.string().uuid(), ...entityConfigFields })
+  .superRefine(refineDba);
+const updateSchema = z
+  .object({ id: z.string().uuid(), ...entityConfigFields })
+  .superRefine(refineDba);
 const statusSchema = z.object({ id: z.string().uuid(), status: z.enum(['active', 'archived']) });
 const notesSchema = z.object({ entityId: z.string().uuid(), notes: z.string().trim().max(8000) });
 
@@ -25,7 +29,10 @@ export type EntityConfigInput = z.infer<typeof createSchema>;
 export async function createEntity(input: unknown): Promise<ActionResult<{ id: string }>> {
   const t = await getTranslations('Admin');
   const parsed = createSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: t('errorInvalid') };
+  if (!parsed.success) {
+    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
+    return { ok: false, error: t('errorInvalid') };
+  }
 
   const firm = await requireFirmAdmin();
   const supabase = await createClient();
@@ -35,6 +42,8 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
       client_id: parsed.data.clientId,
       name: parsed.data.name,
       legal_name: parsed.data.legalName || null,
+      has_dba: parsed.data.hasDba,
+      dba_name: parsed.data.hasDba ? parsed.data.dbaName : null,
       fiscal_year_start_month: parsed.data.fiscalYearStartMonth,
       accounting_basis: parsed.data.accountingBasis,
       currency: parsed.data.currency,
@@ -62,7 +71,10 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
 export async function updateEntityConfig(input: unknown): Promise<ActionResult> {
   const t = await getTranslations('Admin');
   const parsed = updateSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: t('errorInvalid') };
+  if (!parsed.success) {
+    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
+    return { ok: false, error: t('errorInvalid') };
+  }
 
   await requireFirmAdmin();
   const supabase = await createClient();
@@ -71,6 +83,8 @@ export async function updateEntityConfig(input: unknown): Promise<ActionResult> 
     .update({
       name: parsed.data.name,
       legal_name: parsed.data.legalName || null,
+      has_dba: parsed.data.hasDba,
+      dba_name: parsed.data.hasDba ? parsed.data.dbaName : null,
       fiscal_year_start_month: parsed.data.fiscalYearStartMonth,
       accounting_basis: parsed.data.accountingBasis,
       currency: parsed.data.currency,

@@ -409,8 +409,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          dba_name: string | null
           enabled_modules: Json
           fiscal_year_start_month: number
+          has_dba: boolean
           id: string
           industry: string | null
           legal_name: string | null
@@ -428,8 +430,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          dba_name?: string | null
           enabled_modules?: Json
           fiscal_year_start_month?: number
+          has_dba?: boolean
           id?: string
           industry?: string | null
           legal_name?: string | null
@@ -447,8 +451,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          dba_name?: string | null
           enabled_modules?: Json
           fiscal_year_start_month?: number
+          has_dba?: boolean
           id?: string
           industry?: string | null
           legal_name?: string | null

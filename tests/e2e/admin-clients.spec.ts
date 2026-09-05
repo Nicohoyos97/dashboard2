@@ -74,6 +74,16 @@ test.describe('Firm portal: clients, businesses, people', () => {
     await page.fill('#inviteName', 'Ana Owner');
     await page.selectOption('#inviteLocale', 'es');
     await page.fill('#onboarding-entityName', `Acme Bakery ${stamp}`);
+
+    // "Does this business have a DBA?" — saying yes holds the submit until the
+    // name is there; saying no puts the question away and lets it through.
+    const create = page.getByRole('button', { name: /^create$/i });
+    await page.getByRole('radio', { name: /^yes$/i }).check();
+    await expect(page.locator('#onboarding-dbaName')).toBeVisible();
+    await expect(create).toBeDisabled();
+    await page.fill('#onboarding-dbaName', `Acme Bakery Co ${stamp}`);
+    await expect(create).toBeEnabled();
+
     await page.selectOption('#onboarding-basis', 'accrual');
     await page.getByLabel(/^Sales Taxes/).check();
     await page.getByRole('button', { name: /^create$/i }).click();
@@ -83,7 +93,16 @@ test.describe('Firm portal: clients, businesses, people', () => {
     await expect(page.getByRole('heading', { name: `Acme Bakery ${stamp}` })).toBeVisible();
     await expect(page.getByText('Accrual')).toBeVisible();
     await expect(page.getByText(/Sales Taxes/)).toBeVisible();
+    await expect(page.getByText(`Acme Bakery Co ${stamp}`)).toBeVisible();
     const entityUrl = page.url();
+
+    const { data: entityRow } = await fx.admin
+      .from('business_entities')
+      .select('has_dba, dba_name')
+      .eq('name', `Acme Bakery ${stamp}`)
+      .single();
+    expect(entityRow?.has_dba).toBe(true);
+    expect(entityRow?.dba_name).toBe(`Acme Bakery Co ${stamp}`);
 
     // ── The owner is invited in the language the firm chose ───────────────
     const { data: ownerProfile } = await fx.admin

@@ -653,7 +653,12 @@
     "deleteFailed": "No se pudo eliminar el documento.",
     "deleteBlockedPublished": "Este documento está publicado. Retíralo primero — el cliente lo está viendo.",
     "deleteBlockedDerived": "{count, plural, one {# cifra publicada sale} other {# cifras publicadas salen}} de este documento. Retíralo primero, o esos números quedarían sin fuente.",
-    "deleteBlockedMissing": "Este documento ya no existe."
+    "deleteBlockedMissing": "Este documento ya no existe.",
+    "dbaQuestion": "¿Este negocio tiene DBA?",
+    "dbaName": "DBA (nombre comercial)",
+    "yes": "Sí",
+    "no": "No",
+    "dbaRequired": "Escribe el DBA, o responde No."
   },
   "Mfa": {
     "eyebrow": "Portal de la firma",

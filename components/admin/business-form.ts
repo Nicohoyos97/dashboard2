@@ -11,6 +11,8 @@ export type EntityFormValues = Omit<EntityConfigInput, 'clientId'>;
 export const EMPTY_BUSINESS: EntityFormValues = {
   name: '',
   legalName: '',
+  hasDba: false,
+  dbaName: '',
   fiscalYearStartMonth: 1,
   accountingBasis: 'cash',
   currency: 'USD',

@@ -88,7 +88,7 @@ export function EntityDialog({
             </button>
             <button
               type="submit"
-              disabled={isPending || values.name.trim().length === 0}
+              disabled={isPending || values.name.trim().length === 0 || (values.hasDba && values.dbaName.trim().length === 0)}
               className={primaryButton}
             >
               {isPending

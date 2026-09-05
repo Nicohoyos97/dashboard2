@@ -653,7 +653,12 @@
     "deleteFailed": "The document could not be deleted.",
     "deleteBlockedPublished": "This document is published. Withdraw it first — the client can see it.",
     "deleteBlockedDerived": "{count, plural, one {# published figure comes} other {# published figures come}} from this document. Withdraw it first, or those numbers would be left with no source.",
-    "deleteBlockedMissing": "This document no longer exists."
+    "deleteBlockedMissing": "This document no longer exists.",
+    "dbaQuestion": "Does this business have a DBA?",
+    "dbaName": "DBA (doing business as)",
+    "yes": "Yes",
+    "no": "No",
+    "dbaRequired": "Enter the DBA, or answer No."
   },
   "Mfa": {
     "eyebrow": "Firm portal",

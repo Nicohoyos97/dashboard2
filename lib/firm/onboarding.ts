@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 
 import { localePrefix, requestOrigin } from './origin';
 import type { ActionResult } from './result';
-import { clientFields, entityConfigFields, localeSchema, memberRoleSchema } from './schemas';
+import { clientFields, entityConfigFields, isDbaIssue, localeSchema, memberRoleSchema, refineDba } from './schemas';
 
 // Setting a client up in one step (§8): the client record, its first business
 // with its branding and modules, and — optionally — the invitation that lets
@@ -32,7 +32,7 @@ const inviteSchema = z.object({
 
 const schema = z.object({
   client: z.object(clientFields),
-  business: z.object(entityConfigFields),
+  business: z.object(entityConfigFields).superRefine(refineDba),
   invite: inviteSchema,
 });
 
@@ -51,7 +51,10 @@ export async function createClientWithBusiness(
 ): Promise<ActionResult<ClientOnboardingResult>> {
   const t = await getTranslations('Admin');
   const parsed = schema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: t('errorInvalid') };
+  if (!parsed.success) {
+    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
+    return { ok: false, error: t('errorInvalid') };
+  }
   const { client, business, invite } = parsed.data;
 
   const firm = await requireFirmAdmin();
@@ -78,6 +81,8 @@ export async function createClientWithBusiness(
       client_id: clientRow.id,
       name: business.name,
       legal_name: business.legalName || null,
+      has_dba: business.hasDba,
+      dba_name: business.hasDba ? business.dbaName : null,
       fiscal_year_start_month: business.fiscalYearStartMonth,
       accounting_basis: business.accountingBasis,
       currency: business.currency,
