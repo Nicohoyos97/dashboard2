@@ -67,7 +67,13 @@ export default async function ChatPage({
   });
 
   return (
-    <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-[1200px] flex-col px-4 py-4 md:px-8 md:py-6">
+    // A definite height, not a minimum: the thread below scrolls inside itself
+    // and the composer stays put. With only `min-h` the flex chain had no size
+    // to distribute, so `overflow-y-auto` never engaged, the document grew with
+    // the conversation and the composer was pushed off the bottom of the
+    // screen. The offset is the sticky chrome above: the mobile header (3.5rem)
+    // or, from `md` up, the top bar (4rem).
+    <main className="mx-auto flex h-[calc(100svh-3.5rem)] w-full max-w-[1200px] flex-col overflow-hidden px-4 py-4 md:h-[calc(100svh-4rem)] md:px-8 md:py-6">
       <h1 className="sr-only">{t('title')}</h1>
       <NickWorkspace
         key={active?.id ?? 'new'}
