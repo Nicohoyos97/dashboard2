@@ -45,6 +45,8 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
   await admin.from('document_pages').delete().eq('document_version_id', versionId);
   await admin.from('financial_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
   await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published');
+  // Tenders cascade with their report.
+  await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
   await admin.from('tax_obligations').delete().eq('document_version_id', versionId).is('published_at', null);
 }
 
@@ -272,26 +274,153 @@ async function persistBank(
   );
 }
 
-async function persistTax(admin: Admin, ctx: PersistContext, r: Extract<PipelineResult, { kind: 'tax_record' }>): Promise<void> {
-  const { data } = r;
-  const { data: obligation, error } = await admin
+/**
+ * The one sales-tax obligation for a business and period, created if it is not
+ * there yet.
+ *
+ * Two documents describe the same period from different sides — the
+ * point-of-sale report says what was sold, the state filing says what is owed
+ * — and each writes only its own columns onto this row. Finding the row rather
+ * than inserting one is what makes that possible, and what stops the same
+ * document processed twice from producing two obligations: a client's Sales
+ * Taxes page showed July twice for exactly that reason, before
+ * `tax_obligations_period_idx` (0022) existed to make it impossible.
+ */
+async function upsertObligation(
+  admin: Admin,
+  ctx: PersistContext,
+  key: { taxType: string; periodStart: string | null; periodEnd: string | null },
+  patch: Database['public']['Tables']['tax_obligations']['Update'],
+): Promise<string> {
+  const existing = key.periodStart
+    ? await admin
+        .from('tax_obligations')
+        .select('id')
+        .eq('business_entity_id', ctx.entityId)
+        .eq('tax_type', key.taxType)
+        .eq('period_start', key.periodStart)
+        .eq('period_end', key.periodEnd ?? key.periodStart)
+        .is('jurisdiction_id', null)
+        .maybeSingle()
+    : { data: null };
+
+  if (existing.data) {
+    const { error } = await admin.from('tax_obligations').update(patch).eq('id', existing.data.id);
+    if (error) throw new WorkerError('persist_tax');
+    return existing.data.id;
+  }
+
+  const { data, error } = await admin
     .from('tax_obligations')
     .insert({
       business_entity_id: ctx.entityId,
-      tax_type: data.tax_type,
+      tax_type: key.taxType,
+      period_start: key.periodStart,
+      period_end: key.periodEnd,
+      source: 'firm_document',
+      ...patch,
+    })
+    .select('id')
+    .single();
+  if (error || !data) throw new WorkerError('persist_tax');
+  return data.id;
+}
+
+/**
+ * A point-of-sale sales report: what was sold, and how the money arrived.
+ *
+ * It also fills the *sales* half of the sales-tax obligation for the same
+ * period — `taxable_sales` and `tax_collected` — which the filing no longer
+ * supplies. Neither document overwrites the other's columns.
+ */
+async function persistSalesReport(
+  admin: Admin,
+  ctx: PersistContext,
+  r: Extract<PipelineResult, { kind: 'sales_report' }>,
+): Promise<void> {
+  const { data } = r;
+  const { data: report, error } = await admin
+    .from('sales_reports')
+    .insert({
+      business_entity_id: ctx.entityId,
+      source_system: data.source_system,
+      period_start: data.period_start,
+      period_end: data.period_end,
+      currency: data.currency,
+      gross_sales: money(centsOf(data.gross_sales)),
+      net_sales: money(centsOf(data.net_sales)),
+      refunds: money(centsOf(data.refunds)),
+      discounts: money(centsOf(data.discounts)),
+      tips: money(centsOf(data.tips)),
+      tax_collected: money(centsOf(data.tax_collected)),
+      tax_expected: money(centsOf(data.tax_expected)),
+      amount_collected: money(centsOf(data.amount_collected)),
+      order_count: data.order_count ?? null,
+      source: 'firm_document',
+      document_version_id: ctx.versionId,
+      page_number: data.page,
+      confidence: data.confidence,
+      reconciliation: asJson(r.reconciliation),
+    })
+    .select('id')
+    .single();
+  if (error || !report) throw new WorkerError('persist_sales_report');
+
+  const tenders = data.tenders ?? [];
+  if (tenders.length > 0) {
+    const { error: tenderError } = await admin.from('sales_report_tenders').insert(
+      tenders.map((tender, index) => ({
+        sales_report_id: report.id,
+        business_entity_id: ctx.entityId,
+        label: tender.label,
+        amount: toCents(tender.amount) / 100,
+        position: index,
+      })),
+    );
+    if (tenderError) throw new WorkerError('persist_sales_report');
+  }
+
+  // The sales half of the obligation. Written only when the report actually
+  // printed the figure — a null here means "not reported", and must not land
+  // as a zero the firm would read as "no taxable sales".
+  const taxableSales = money(centsOf(data.net_sales ?? data.gross_sales));
+  const taxCollected = money(centsOf(data.tax_collected));
+  if (taxableSales !== null || taxCollected !== null) {
+    await upsertObligation(
+      admin,
+      ctx,
+      { taxType: 'sales', periodStart: data.period_start, periodEnd: data.period_end },
+      {
+        taxable_sales: taxableSales,
+        tax_collected: taxCollected,
+        status: 'pending_review',
+        document_version_id: ctx.versionId,
+        confidence: data.confidence,
+      },
+    );
+  }
+}
+
+async function persistTax(admin: Admin, ctx: PersistContext, r: Extract<PipelineResult, { kind: 'tax_record' }>): Promise<void> {
+  const { data } = r;
+  // A filing says what is OWED and nothing believable about what was sold.
+  // `taxable_sales`, `non_taxable_sales` and `tax_collected` are deliberately
+  // absent here: they belong to the point-of-sale report for the same period
+  // (0022). Reading them off a return once put a client's July sales at
+  // $12,955 when their POS said $14,119 — the return had been prepared from
+  // the card tender line alone.
+  const obligationId = await upsertObligation(
+    admin,
+    ctx,
+    { taxType: data.tax_type, periodStart: data.filing_period_start ?? null, periodEnd: data.filing_period_end ?? null },
+    {
       tax_year: data.filing_period_end ? Number(data.filing_period_end.slice(0, 4)) : null,
-      period_start: data.filing_period_start ?? null,
-      period_end: data.filing_period_end ?? null,
       due_date: data.due_date ?? null,
       amount_paid: money(centsOf(data.amount_paid)),
       amount_payable: money(centsOf(data.amount_payable)),
-      taxable_sales: money(centsOf(data.taxable_sales)),
-      non_taxable_sales: money(centsOf(data.non_taxable_sales)),
-      tax_collected: money(centsOf(data.tax_collected)),
       status: data.status,
       confirmation_number: data.confirmation_number ?? null,
       notes: `Jurisdiction: ${data.jurisdiction}`,
-      source: 'firm_document',
       document_version_id: ctx.versionId,
       page_number: data.page,
       confidence: data.confidence,
@@ -299,10 +428,9 @@ async function persistTax(admin: Admin, ctx: PersistContext, r: Extract<Pipeline
       // publishBlockers has nothing to gate on and the row can never be
       // published (0016).
       reconciliation: asJson(r.reconciliation),
-    })
-    .select('id')
-    .single();
-  if (error || !obligation) throw new WorkerError('persist_tax');
+    },
+  );
+  const obligation = { id: obligationId };
 
   const paid = centsOf(data.amount_paid);
   if (paid !== null && data.payment_date) {
@@ -327,6 +455,7 @@ export async function persistPipelineOutput(admin: Admin, ctx: PersistContext, o
   for (const result of output.results) {
     if (result.kind === 'financial_statement') await persistStatement(admin, ctx, result, warnings);
     else if (result.kind === 'bank_activity') await persistBank(admin, ctx, result);
+    else if (result.kind === 'sales_report') await persistSalesReport(admin, ctx, result);
     else await persistTax(admin, ctx, result);
   }
   return {

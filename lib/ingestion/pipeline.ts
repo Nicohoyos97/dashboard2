@@ -7,11 +7,11 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { classifyPages } from './classify';
 import type { PdfPage } from './classify';
 import { IngestionError } from './errors';
-import { extractBankActivity, extractFinancialStatement, extractTaxRecord } from './extract';
+import { extractBankActivity, extractFinancialStatement, extractSalesReport, extractTaxRecord } from './extract';
 import { buildHierarchy } from './hierarchy';
 import type { Hierarchy } from './hierarchy';
 import { getPageCount, splitPages } from './pdf';
-import { reconcileBankStatement, reconcileSalesTax, reconcileStatement } from './reconcile';
+import { reconcileBankStatement, reconcileSalesReport, reconcileSalesTax, reconcileStatement } from './reconcile';
 import { CONFIDENCE_THRESHOLD } from './reconciliation';
 import type { Reconciliation } from './reconciliation';
 import { ZERO_USAGE, addUsage } from './request';
@@ -19,6 +19,7 @@ import type { TokenUsage } from './request';
 import type { BankActivity } from './schemas/bank-activity';
 import type { ClassifiedPage, ReportType } from './schemas/classification';
 import type { FinancialStatement } from './schemas/financial-statement';
+import type { SalesReport } from './schemas/sales-report';
 import type { TaxRecord, TaxType } from './schemas/tax-record';
 
 export type ExtractableType = Exclude<ReportType, 'other'>;
@@ -33,6 +34,7 @@ export type PipelineInput = {
 export type PipelineResult =
   | { kind: 'financial_statement'; data: FinancialStatement; hierarchy: Hierarchy; reconciliation: Reconciliation; pages: number[] }
   | { kind: 'bank_activity'; data: BankActivity; reconciliation: Reconciliation; pages: number[] }
+  | { kind: 'sales_report'; data: SalesReport; reconciliation: Reconciliation; pages: number[] }
   | { kind: 'tax_record'; data: TaxRecord; reconciliation: Reconciliation; pages: number[] };
 
 export type PipelineOutput = {
@@ -116,6 +118,15 @@ export async function runPdfPipeline(input: PipelineInput): Promise<PipelineOutp
       const { data, usage: used } = await extractBankActivity(extractInput);
       usage = addUsage(usage, used);
       results.push({ kind: 'bank_activity', data, reconciliation: reconcileBankStatement(data), pages: pageNumbers });
+    } else if (type === 'sales_report') {
+      const { data, usage: used } = await extractSalesReport(extractInput);
+      usage = addUsage(usage, used);
+      results.push({
+        kind: 'sales_report',
+        data,
+        reconciliation: reconcileSalesReport(data, data.tenders ?? []),
+        pages: pageNumbers,
+      });
     } else {
       const { data, usage: used } = await extractTaxRecord(extractInput);
       usage = addUsage(usage, used);

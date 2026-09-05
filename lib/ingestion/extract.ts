@@ -17,6 +17,7 @@ import { IngestionError } from './errors';
 import {
   EXTRACT_BANK_ACTIVITY_SYSTEM_PROMPT,
   EXTRACT_FINANCIAL_STATEMENT_SYSTEM_PROMPT,
+  EXTRACT_SALES_REPORT_SYSTEM_PROMPT,
   EXTRACT_TAX_RECORD_SYSTEM_PROMPT,
   pagesInstruction,
 } from './prompts';
@@ -26,6 +27,8 @@ import { BankActivityApiSchema, BankActivitySchema } from './schemas/bank-activi
 import type { BankActivity } from './schemas/bank-activity';
 import { FinancialStatementApiSchema, FinancialStatementSchema } from './schemas/financial-statement';
 import type { FinancialStatement, FinancialStatementLine } from './schemas/financial-statement';
+import { SalesReportApiSchema, SalesReportSchema } from './schemas/sales-report';
+import type { SalesReport } from './schemas/sales-report';
 import { TaxRecordApiSchema, TaxRecordSchema } from './schemas/tax-record';
 import type { TaxRecord } from './schemas/tax-record';
 
@@ -59,6 +62,13 @@ const BANK: Extractor<typeof BankActivityApiSchema, typeof BankActivitySchema> =
   apiSchema: BankActivityApiSchema,
   strictSchema: BankActivitySchema,
   pagesOf: (data) => data.transactions.map((transaction) => transaction.page),
+};
+
+const SALES_REPORT: Extractor<typeof SalesReportApiSchema, typeof SalesReportSchema> = {
+  system: EXTRACT_SALES_REPORT_SYSTEM_PROMPT,
+  apiSchema: SalesReportApiSchema,
+  strictSchema: SalesReportSchema,
+  pagesOf: (data) => [data.page],
 };
 
 const TAX: Extractor<typeof TaxRecordApiSchema, typeof TaxRecordSchema> = {
@@ -145,6 +155,15 @@ export async function extractBankActivity(input: ExtractInput): Promise<ExtractR
   if (chunks.length === 1) return { data: first, usage };
   const transactions = chunks.flatMap((part) => part.transactions);
   return { data: revalidate(BankActivitySchema, { ...first, transactions }), usage };
+}
+
+/** One record for the whole period, so the page budget matches a tax record. */
+export async function extractSalesReport(input: ExtractInput): Promise<ExtractResult<SalesReport>> {
+  if (input.pages.length === 0) throw new TypeError('extract: no pages');
+  if (input.pages.length > TAX_RECORD_MAX_PAGES) {
+    throw new IngestionError('pdf_too_many_pages', `${input.pages.length} pages for one sales report`);
+  }
+  return requestPages(input, input.pages, SALES_REPORT);
 }
 
 export async function extractTaxRecord(input: ExtractInput): Promise<ExtractResult<TaxRecord>> {

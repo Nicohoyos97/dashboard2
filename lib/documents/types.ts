@@ -5,6 +5,10 @@ export const DOCUMENT_TYPES = [
   'profit_and_loss',
   'balance_sheet',
   'statement_package',
+  // A point-of-sale sales report (Clover, Toast, Square, Stripe): what was
+  // sold. Deliberately distinct from the tax documents below, which say what
+  // is owed — see 0022 for why the two must not feed the same figures.
+  'sales_report',
   'sales_tax_filing',
   'sales_tax_payment',
   'income_tax_document',

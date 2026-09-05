@@ -1839,6 +1839,163 @@ export type Database = {
           },
         ]
       }
+      sales_report_tenders: {
+        Row: {
+          amount: number
+          business_entity_id: string
+          created_at: string
+          id: string
+          label: string
+          position: number
+          sales_report_id: string
+        }
+        Insert: {
+          amount: number
+          business_entity_id: string
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          sales_report_id: string
+        }
+        Update: {
+          amount?: number
+          business_entity_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          sales_report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_report_tenders_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_report_tenders_sales_report_id_fkey"
+            columns: ["sales_report_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_reports: {
+        Row: {
+          amount_collected: number | null
+          business_entity_id: string
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          discounts: number | null
+          document_version_id: string | null
+          gross_sales: number | null
+          id: string
+          net_sales: number | null
+          order_count: number | null
+          page_number: number | null
+          period_end: string
+          period_start: string
+          published_at: string | null
+          published_by: string | null
+          reconciliation: Json | null
+          refunds: number | null
+          source: string
+          source_system: string
+          status: string
+          superseded_by: string | null
+          tax_collected: number | null
+          tax_expected: number | null
+          tips: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount_collected?: number | null
+          business_entity_id: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          discounts?: number | null
+          document_version_id?: string | null
+          gross_sales?: number | null
+          id?: string
+          net_sales?: number | null
+          order_count?: number | null
+          page_number?: number | null
+          period_end: string
+          period_start: string
+          published_at?: string | null
+          published_by?: string | null
+          reconciliation?: Json | null
+          refunds?: number | null
+          source: string
+          source_system: string
+          status?: string
+          superseded_by?: string | null
+          tax_collected?: number | null
+          tax_expected?: number | null
+          tips?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount_collected?: number | null
+          business_entity_id?: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          discounts?: number | null
+          document_version_id?: string | null
+          gross_sales?: number | null
+          id?: string
+          net_sales?: number | null
+          order_count?: number | null
+          page_number?: number | null
+          period_end?: string
+          period_start?: string
+          published_at?: string | null
+          published_by?: string | null
+          reconciliation?: Json | null
+          refunds?: number | null
+          source?: string
+          source_system?: string
+          status?: string
+          superseded_by?: string | null
+          tax_collected?: number | null
+          tax_expected?: number | null
+          tips?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reports_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reports_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_reports_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "sales_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_jurisdictions: {
         Row: {
           business_entity_id: string
@@ -2156,6 +2313,7 @@ export type Database = {
         }[]
       }
       report_is_published: { Args: { report: string }; Returns: boolean }
+      sales_report_is_published: { Args: { report: string }; Returns: boolean }
       shares_entity_with: { Args: { target: string }; Returns: boolean }
     }
     Enums: {

@@ -6,6 +6,7 @@ import { toCents } from '@/lib/money';
 import { finishReconciliation, isLowConfidence, makeCheck } from './reconciliation';
 import type { Reconciliation, ReconciliationCheck } from './reconciliation';
 import type { BankActivity } from './schemas/bank-activity';
+import type { SalesReport } from './schemas/sales-report';
 import type { TaxRecord } from './schemas/tax-record';
 
 export { reconcileStatement } from './reconcile-statement';
@@ -90,6 +91,36 @@ export function reconcileSalesTax(record: TaxRecord): Reconciliation {
     );
   }
   return finishReconciliation(checks, isLowConfidence(record.confidence) ? ['record'] : []);
+}
+
+/**
+ * What a point-of-sale report can be checked against itself.
+ *
+ * Two identities, each only when the report prints all of its terms — a POS
+ * report that omits a figure is normal, and inventing a zero to make an
+ * equation balance would turn a missing number into a passing check.
+ */
+export function reconcileSalesReport(report: SalesReport, tenders: readonly { amount: string }[]): Reconciliation {
+  const checks: ReconciliationCheck[] = [];
+  // Amounts arrive as decimal strings, never floats (schemas/common.ts).
+  const cents = (value: string | null | undefined) => (value === null || value === undefined ? null : toCents(value));
+
+  const gross = cents(report.gross_sales);
+  const refunds = cents(report.refunds);
+  const net = cents(report.net_sales);
+  if (gross !== null && refunds !== null && net !== null) {
+    checks.push(makeCheck('net_sales', 'Gross sales − refunds = net sales', gross - refunds, net));
+  }
+
+  // What the tender lines add up to is what was actually taken in. This is the
+  // check that catches a report read from the wrong column.
+  const collected = cents(report.amount_collected);
+  if (collected !== null && tenders.length > 0) {
+    const sum = tenders.reduce((total, tender) => total + toCents(tender.amount), 0);
+    checks.push(makeCheck('amount_collected', 'Tender types add up to the amount collected', sum, collected));
+  }
+
+  return finishReconciliation(checks, isLowConfidence(report.confidence) ? ['report'] : []);
 }
 
 /**

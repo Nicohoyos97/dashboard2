@@ -9,6 +9,10 @@ export const REPORT_TYPES = [
   'profit_and_loss',
   'balance_sheet',
   'bank_statement',
+  // What was sold, from a point-of-sale system — distinct from `sales_tax`,
+  // which is what is owed. Keeping them apart at classification time is what
+  // stops a filing from being read for sales figures (0022).
+  'sales_report',
   'sales_tax',
   'income_tax',
   'payroll',
@@ -26,7 +30,8 @@ export const ClassificationApiSchema = z.object({
         .enum(PAGE_KINDS)
         .describe(
           'firm_letter: cover letter or memo from the accounting firm; financial_statement: a page of a ' +
-            'financial report, bank statement or tax document; notes: notes to the statements; other: anything else',
+            'financial report, bank statement, point-of-sale sales report or tax document; ' +
+            'notes: notes to the statements; other: anything else',
         ),
       report_type: z
         .enum(REPORT_TYPES)

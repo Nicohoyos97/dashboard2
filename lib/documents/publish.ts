@@ -175,6 +175,7 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
   const stamp = { published_at: now, published_by: firm.userId };
   await supabase.from('financial_reports').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('bank_statements').update(publishRow).eq('document_version_id', versionId);
+  await supabase.from('sales_reports').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('tax_obligations').update(stamp).eq('document_version_id', versionId);
   await supabase.from('tax_payments').update(stamp).eq('document_version_id', versionId);
   await supabase.from('payroll_obligations').update(stamp).eq('document_version_id', versionId);
@@ -255,6 +256,7 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
     const unstamp = { published_at: null, published_by: null };
     await supabase.from('financial_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
     await supabase.from('bank_statements').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
+    await supabase.from('sales_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
     // These three carry publication in `published_at` alone — no status column.
     await supabase.from('tax_obligations').update(unstamp).in('document_version_id', versionIds);
     await supabase.from('tax_payments').update(unstamp).in('document_version_id', versionIds);

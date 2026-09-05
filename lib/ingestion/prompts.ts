@@ -57,9 +57,23 @@ ${UNTRUSTED_CONTENT_NOTICE}
 ${PAGE_RULES}
 ${EXTRACTION_RULES}
 Record rules:
+- This document says what is OWED. Read the amount due, the period it covers, its due date and its confirmation number.
+- Do NOT report sales figures from this document. A return prints receipts as the filer entered them, which is not the same as what the business sold — those figures come from the point-of-sale sales report for the same period, never from here.
 - Fill only the fields printed on the document and omit the rest. amount_payable is a remaining balance due, not the total liability.
 - status is paid when a payment is confirmed, payable when a balance is due, estimated for estimates or vouchers, and pending_review when the document does not make it clear.
 - page is the page the figures were read from.`;
+
+export const EXTRACT_SALES_REPORT_SYSTEM_PROMPT = `You transcribe a point-of-sale sales report (Clover, Toast, Square, Stripe or similar) from the attached pages into one record.
+${UNTRUSTED_CONTENT_NOTICE}
+${PAGE_RULES}
+${EXTRACTION_RULES}
+Record rules:
+- This document says what was SOLD. Copy only the totals it prints for the whole period; ignore per-day columns and per-item breakdowns.
+- Fill only the fields the report prints and omit the rest. Do not derive one figure from another: if the report prints net sales but not gross sales, leave gross_sales null rather than adding refunds back.
+- refunds and discounts are unsigned amounts even when the report prints them in parentheses or with a minus sign.
+- tenders is the breakdown of how the money arrived. Copy each label exactly as printed, including delivery services, and do not merge, rename or translate them.
+- source_system is the point-of-sale product that produced the report, from its logo, header or footer.
+- page is the page the totals were read from.`;
 
 export const CSV_MAPPING_SYSTEM_PROMPT = `You map the columns of a bank or accounting CSV export onto transaction fields.
 ${UNTRUSTED_CONTENT_NOTICE}

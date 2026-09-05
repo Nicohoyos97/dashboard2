@@ -27,6 +27,7 @@ const EXPECTED_TYPE: Record<string, ExtractableType | undefined> = {
   bank_statement: 'bank_statement',
   profit_and_loss: 'profit_and_loss',
   balance_sheet: 'balance_sheet',
+  sales_report: 'sales_report',
   sales_tax_filing: 'sales_tax',
   sales_tax_payment: 'sales_tax',
   income_tax_document: 'income_tax',

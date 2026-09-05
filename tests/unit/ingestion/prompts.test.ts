@@ -6,6 +6,7 @@ import {
   CSV_MAPPING_SYSTEM_PROMPT,
   EXTRACT_BANK_ACTIVITY_SYSTEM_PROMPT,
   EXTRACT_FINANCIAL_STATEMENT_SYSTEM_PROMPT,
+  EXTRACT_SALES_REPORT_SYSTEM_PROMPT,
   EXTRACT_TAX_RECORD_SYSTEM_PROMPT,
   UNTRUSTED_CONTENT_NOTICE,
   csvMappingInstruction,
@@ -16,11 +17,12 @@ const PROMPTS = {
   classify: CLASSIFY_SYSTEM_PROMPT,
   extractFinancialStatement: EXTRACT_FINANCIAL_STATEMENT_SYSTEM_PROMPT,
   extractBankActivity: EXTRACT_BANK_ACTIVITY_SYSTEM_PROMPT,
+  extractSalesReport: EXTRACT_SALES_REPORT_SYSTEM_PROMPT,
   extractTaxRecord: EXTRACT_TAX_RECORD_SYSTEM_PROMPT,
   csvMapping: CSV_MAPPING_SYSTEM_PROMPT,
 };
 
-const PAGE_PROMPTS = [CLASSIFY_SYSTEM_PROMPT, EXTRACT_FINANCIAL_STATEMENT_SYSTEM_PROMPT, EXTRACT_BANK_ACTIVITY_SYSTEM_PROMPT, EXTRACT_TAX_RECORD_SYSTEM_PROMPT];
+const PAGE_PROMPTS = [CLASSIFY_SYSTEM_PROMPT, EXTRACT_FINANCIAL_STATEMENT_SYSTEM_PROMPT, EXTRACT_BANK_ACTIVITY_SYSTEM_PROMPT, EXTRACT_SALES_REPORT_SYSTEM_PROMPT, EXTRACT_TAX_RECORD_SYSTEM_PROMPT];
 const EXTRACTION_PROMPTS = PAGE_PROMPTS.slice(1);
 
 describe('system prompts', () => {
@@ -31,6 +33,15 @@ describe('system prompts', () => {
   it.each(Object.entries(PROMPTS))('%s declares document content untrusted data, never instructions', (_name, prompt) => {
     expect(prompt).toContain(UNTRUSTED_CONTENT_NOTICE);
     expect(prompt).toContain('ignore previous instructions');
+  });
+
+  it('keeps sales figures off the tax filing and onto the POS report', () => {
+    // The rule the whole feature rests on (0022). A snapshot would record a
+    // change here; this says why it must not happen.
+    expect(EXTRACT_TAX_RECORD_SYSTEM_PROMPT).toContain('Do NOT report sales figures');
+    expect(EXTRACT_TAX_RECORD_SYSTEM_PROMPT).toContain('what is OWED');
+    expect(EXTRACT_SALES_REPORT_SYSTEM_PROMPT).toContain('what was SOLD');
+    expect(EXTRACT_SALES_REPORT_SYSTEM_PROMPT).toContain('Do not derive one figure from another');
   });
 
   it('page-bound prompts label pages "Page N" and bind page numbers to the request', () => {
