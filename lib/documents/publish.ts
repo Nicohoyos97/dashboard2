@@ -238,9 +238,27 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
   if (!doc || doc.status !== 'published') return { ok: false, error: t('errorInvalid') };
 
   const hidden = { status: 'reconciled', published_at: null, published_by: null };
-  if (doc.current_version_id) {
-    await supabase.from('financial_reports').update(hidden).eq('document_version_id', doc.current_version_id).eq('status', 'published');
-    await supabase.from('bank_statements').update(hidden).eq('document_version_id', doc.current_version_id).eq('status', 'published');
+  // Withdraw everything publishing stamped, or the client keeps seeing figures
+  // from a document the firm has retracted. Publishing writes to five tables;
+  // this used to reverse two, so a withdrawn sales-tax filing left its
+  // obligations `published_at` and visible — and, because the delete guard in
+  // 0020 reads exactly those rows, the document could then never be deleted
+  // either. Scoped to every version of the document rather than
+  // `current_version_id`: publication stamps the *review* version, which is not
+  // always the one the pointer names (see reviewVersion).
+  const { data: allVersions } = await supabase
+    .from('document_versions')
+    .select('id')
+    .eq('document_id', doc.id);
+  const versionIds = (allVersions ?? []).map((v) => v.id);
+  if (versionIds.length > 0) {
+    const unstamp = { published_at: null, published_by: null };
+    await supabase.from('financial_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
+    await supabase.from('bank_statements').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
+    // These three carry publication in `published_at` alone — no status column.
+    await supabase.from('tax_obligations').update(unstamp).in('document_version_id', versionIds);
+    await supabase.from('tax_payments').update(unstamp).in('document_version_id', versionIds);
+    await supabase.from('payroll_obligations').update(unstamp).in('document_version_id', versionIds);
   }
   const { data: withdrawn, error } = await supabase.from('documents').update(hidden).eq('id', doc.id).select('title');
   if (error) return { ok: false, error: t('errorSave') };
