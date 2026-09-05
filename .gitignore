@@ -34,3 +34,9 @@ playwright-report
 
 /.next-e2e/
 /.next-build/
+/.next-demo/
+/.next-prod/
+
+# Skills live in .claude/skills (committed, so every session and teammate
+# has them). .agents/ is the mirror for other agent tools; unused here.
+/.agents/
