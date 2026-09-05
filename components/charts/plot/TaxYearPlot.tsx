@@ -17,7 +17,7 @@ import {
 import { CHART_CHROME, LIABILITY, SERIES } from '@/lib/charts/palette';
 
 import { ChartTooltip } from '../ChartTooltip';
-import { compactMoney } from '../format';
+import { compactMoney, moneyAxisWidth } from '../format';
 
 export type TaxYearChartPoint = {
   year: number;
@@ -46,10 +46,12 @@ export function TaxYearPlot({ points, currency }: { points: TaxYearChartPoint[];
           axisLine={false}
           tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
         />
+        {/* Sized from the ticks it will actually draw — see moneyAxisWidth:
+            Spanish spells "60 mil US$" where English fits "$60K". */}
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={64}
+          width={moneyAxisWidth(points.flatMap((p) => [p.projectedCents, p.paidCents]), currency, locale)}
           tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
           tickFormatter={(value: number) => compactMoney(value, currency, locale)}
         />

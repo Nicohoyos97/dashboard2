@@ -7,7 +7,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { SERIES } from '@/lib/charts/palette';
 
-import { compactMoney, fullMoney } from '../format';
+import { compactMoney, fullMoney, moneyAxisWidth } from '../format';
 
 export type IncomeExpensePoint = { label: string; incomeCents: number | null; expenseCents: number | null };
 
@@ -35,10 +35,13 @@ export function IncomeExpensePlot({ points, currency }: { points: IncomeExpenseP
         </defs>
         <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+        {/* Sized from the ticks it will actually draw: the label is compact
+            currency in the reader's locale, and Spanish spells out
+            "60 mil US$" where English fits "$60K". See moneyAxisWidth. */}
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={64}
+          width={moneyAxisWidth(points.flatMap((p) => [p.incomeCents, p.expenseCents]), currency, locale)}
           tick={{ fill: 'var(--chart-axis)', fontSize: 12 }}
           tickFormatter={(value: number) => compactMoney(value, currency, locale)}
         />
