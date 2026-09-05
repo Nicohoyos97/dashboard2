@@ -4,6 +4,8 @@
 // sees (the firm can otherwise read drafts). Money leaves here as integer cents.
 import 'server-only';
 
+import { cache } from 'react';
+
 import { insightKey } from '@/lib/insights/periods';
 import type { LineRow, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
@@ -209,7 +211,15 @@ export type PortalEntitySettings = {
   logoUrl: string | null;
 };
 
-export async function loadPortalEntitySettings(supabase: Db, entityId: string): Promise<PortalEntitySettings> {
+/**
+ * Memoized per request: the dashboard layout reads the settings to build the
+ * nav, and then the page reads them again. Both hands are the same client now
+ * that createClient() is itself memoized, so the cache key is stable.
+ */
+export const loadPortalEntitySettings = cache(async function loadPortalEntitySettings(
+  supabase: Db,
+  entityId: string,
+): Promise<PortalEntitySettings> {
   const { data, error } = await supabase
     .from('business_entities')
     .select('currency, sales_tax_enabled, enabled_modules, timezone, industry, logo_url')
@@ -224,7 +234,7 @@ export async function loadPortalEntitySettings(supabase: Db, entityId: string): 
     industry: data.industry,
     logoUrl: data.logo_url,
   };
-}
+});
 
 export type PublishedDocument = {
   id: string;
