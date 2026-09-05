@@ -676,7 +676,8 @@
     "crossCheckSales": "La declaración reporta {filed} de ingresos donde el reporte de ventas muestra {sold} vendidos — una diferencia de {difference}.",
     "crossCheckTax": "El reporte de ventas muestra {collected} de impuesto cobrado; la declaración paga {payable} — una diferencia de {difference}.",
     "crossCheckOk": "La declaración coincide con el reporte de ventas de este periodo.",
-    "crossCheckNoPair": "No hay reporte de ventas publicado para este periodo, así que no hay contra qué comparar la declaración."
+    "crossCheckNoPair": "No hay reporte de ventas publicado para este periodo, así que no hay contra qué comparar la declaración.",
+    "salesSourceOther": "Punto de venta"
   },
   "Mfa": {
     "eyebrow": "Portal de la firma",
@@ -963,7 +964,20 @@
     "topic_homeOffice_title": "Oficina en casa",
     "topic_homeOffice_body": "El espacio usado de forma regular y exclusiva para el negocio puede ser deducible. Pregunta: ¿llevamos registro de los metros y los servicios?",
     "topic_vehicle_title": "Uso del vehículo del negocio",
-    "topic_vehicle_body": "Millaje o costos reales, lo que más te convenga — pero sólo con registros llevados durante el año. Pregunta: ¿anotamos los viajes lo bastante bien para reclamarlo?"
+    "topic_vehicle_body": "Millaje o costos reales, lo que más te convenga — pero sólo con registros llevados durante el año. Pregunta: ¿anotamos los viajes lo bastante bien para reclamarlo?",
+    "posTitle": "Ventas de tu punto de venta",
+    "posLede": "Lo que registró tu sistema de punto de venta en el periodo. Estas son tus ventas; las cifras de la declaración, más abajo, son lo que se debía sobre ellas.",
+    "posSource": "Origen",
+    "posOrders": "{count, plural, one {# orden} other {# órdenes}}",
+    "posGross": "Ventas brutas",
+    "posNet": "Ventas netas",
+    "posRefunds": "Reembolsos",
+    "posTips": "Propinas",
+    "posTaxCollected": "Impuesto cobrado",
+    "posCollected": "Total cobrado",
+    "posTenders": "Cómo se cobró",
+    "salesNoFilingsYet": "Tu contador aún no ha publicado una declaración de impuestos sobre ventas para este periodo.",
+    "posSourceOther": "Punto de venta"
   },
   "Insights": {
     "marginGross": "bruto",

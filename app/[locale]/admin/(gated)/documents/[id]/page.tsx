@@ -11,6 +11,7 @@ import { DocumentMetaForm } from '@/components/admin/review/DocumentMetaForm';
 import { PagesTable } from '@/components/admin/review/PagesTable';
 import { DeleteDocumentBar } from '@/components/admin/review/DeleteDocumentBar';
 import { PublishBar } from '@/components/admin/review/PublishBar';
+import { SalesReportReview } from '@/components/admin/review/SalesReportReview';
 import { ReportHistory } from '@/components/admin/review/ReportHistory';
 import { StatementReview } from '@/components/admin/review/StatementReview';
 import { VersionsJobs } from '@/components/admin/review/VersionsJobs';
@@ -19,6 +20,7 @@ import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
 import { loadDerivedHistory } from '@/lib/documents/history';
+import { crossCheckSalesTax } from '@/lib/documents/cross-check';
 import { deleteBlockers } from '@/lib/documents/delete';
 import { publishBlockers, reviewVersion } from '@/lib/documents/publish';
 import { parseReconciliation } from '@/lib/documents/reconciliation';
@@ -59,7 +61,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   // necessarily the one the client is seeing. Same helper publishBlockers uses,
   // so the page and the Publish button can never disagree about the target.
   const versionId = await reviewVersion(supabase, doc.id, doc.current_version_id);
-  const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers, removal] =
+  const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers, removal, { data: salesReports }] =
     await Promise.all([
       supabase
         .from('document_versions')
@@ -77,6 +79,13 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
         : Promise.resolve({ data: [] }),
       publishBlockers(supabase, id),
       deleteBlockers(supabase, id),
+      versionId
+        ? supabase
+            .from('sales_reports')
+            .select('id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, discounts, tips, tax_collected, tax_expected, amount_collected, order_count, reconciliation, sales_report_tenders ( id, label, amount, position )')
+            .eq('document_version_id', versionId)
+            .order('period_end')
+        : Promise.resolve({ data: [] }),
     ]);
 
   const versionIds = (versions ?? []).map((v) => v.id);
@@ -202,6 +211,62 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           />
         </section>
       ))}
+
+      {/* The point-of-sale report, and — when a filing for the same period has
+          been extracted — how the two compare. The comparison is only possible
+          because each document fills its own columns (0022). */}
+      {await Promise.all(
+        (salesReports ?? []).map(async (report) => {
+          const { data: filing } = await supabase
+            .from('tax_obligations')
+            .select('taxable_sales, amount_payable')
+            .eq('business_entity_id', doc.business_entity_id)
+            .eq('tax_type', 'sales')
+            .eq('period_start', report.period_start)
+            .eq('period_end', report.period_end)
+            .maybeSingle();
+
+          return (
+            <section key={report.id} className={`${card} mt-6`}>
+              <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('salesReportTitle')}</h2>
+              <SalesReportReview
+                report={{
+                  id: report.id,
+                  sourceSystem: report.source_system,
+                  periodStart: report.period_start,
+                  periodEnd: report.period_end,
+                  currency: report.currency,
+                  grossSales: report.gross_sales,
+                  netSales: report.net_sales,
+                  refunds: report.refunds,
+                  discounts: report.discounts,
+                  tips: report.tips,
+                  taxCollected: report.tax_collected,
+                  taxExpected: report.tax_expected,
+                  amountCollected: report.amount_collected,
+                  orderCount: report.order_count,
+                  reconciliation: parseReconciliation(report.reconciliation),
+                }}
+                tenders={[...report.sales_report_tenders]
+                  .sort((a, b) => a.position - b.position)
+                  .map((tender) => ({ id: tender.id, label: tender.label, amount: tender.amount }))}
+                crossCheck={
+                  filing
+                    ? crossCheckSalesTax(
+                        {
+                          grossSales: report.gross_sales,
+                          netSales: report.net_sales,
+                          taxCollected: report.tax_collected,
+                        },
+                        { taxableSales: filing.taxable_sales, amountPayable: filing.amount_payable },
+                      )
+                    : null
+                }
+              />
+            </section>
+          );
+        }),
+      )}
 
       {(statements ?? []).map((s) => (
         <section key={s.id} className={`${card} mt-6`}>

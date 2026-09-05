@@ -327,3 +327,62 @@ export async function loadInsightDismissals(supabase: Db, entityId: string): Pro
   if (error) throw readError('portal_insight_dismissals_read_failed');
   return new Set((data ?? []).map((row) => insightKey(row.rule_key, row.period_start, row.period_end)));
 }
+
+export type PortalSalesReport = {
+  id: string;
+  sourceSystem: string;
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  grossSalesCents: number | null;
+  netSalesCents: number | null;
+  refundsCents: number | null;
+  tipsCents: number | null;
+  taxCollectedCents: number | null;
+  amountCollectedCents: number | null;
+  orderCount: number | null;
+  tenders: { id: string; label: string; amountCents: number }[];
+};
+
+/**
+ * Published point-of-sale reports, newest period first.
+ *
+ * These are what the client's own register rang up (0022), and they are the
+ * only source of sales figures in the portal — a tax filing states receipts as
+ * the filer entered them, which is a different fact and is never read as sales.
+ * RLS returns published rows only, so an unreviewed month cannot appear here.
+ */
+export async function loadPublishedSalesReports(
+  supabase: Db,
+  entityId: string,
+  limit = 12,
+): Promise<PortalSalesReport[]> {
+  const { data, error } = await supabase
+    .from('sales_reports')
+    .select(
+      'id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, tips, tax_collected, amount_collected, order_count, sales_report_tenders ( id, label, amount, position )',
+    )
+    .eq('business_entity_id', entityId)
+    .eq('status', 'published')
+    .order('period_end', { ascending: false })
+    .limit(limit);
+  if (error) throw readError('portal_sales_reports_read_failed');
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    sourceSystem: row.source_system,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    currency: row.currency,
+    grossSalesCents: cents(row.gross_sales),
+    netSalesCents: cents(row.net_sales),
+    refundsCents: cents(row.refunds),
+    tipsCents: cents(row.tips),
+    taxCollectedCents: cents(row.tax_collected),
+    amountCollectedCents: cents(row.amount_collected),
+    orderCount: row.order_count,
+    tenders: [...row.sales_report_tenders]
+      .sort((a, b) => a.position - b.position)
+      .map((tender) => ({ id: tender.id, label: tender.label, amountCents: cents(tender.amount) ?? 0 })),
+  }));
+}

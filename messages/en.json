@@ -676,7 +676,8 @@
     "crossCheckSales": "The filing reports {filed} of receipts where the sales report shows {sold} sold — a difference of {difference}.",
     "crossCheckTax": "The sales report shows {collected} of tax collected; the filing pays {payable} — a difference of {difference}.",
     "crossCheckOk": "The filing agrees with the sales report for this period.",
-    "crossCheckNoPair": "No sales report published for this period, so there is nothing to compare the filing against."
+    "crossCheckNoPair": "No sales report published for this period, so there is nothing to compare the filing against.",
+    "salesSourceOther": "Point of sale"
   },
   "Mfa": {
     "eyebrow": "Firm portal",
@@ -963,7 +964,20 @@
     "topic_homeOffice_title": "Home office",
     "topic_homeOffice_body": "Space used regularly and exclusively for the business may be deductible. Ask: do we track the square footage and the utilities?",
     "topic_vehicle_title": "Business vehicle use",
-    "topic_vehicle_body": "Mileage or actual costs, whichever serves you better — but only with records kept through the year. Ask: are we logging trips well enough to claim it?"
+    "topic_vehicle_body": "Mileage or actual costs, whichever serves you better — but only with records kept through the year. Ask: are we logging trips well enough to claim it?",
+    "posTitle": "Sales from your register",
+    "posLede": "What your point-of-sale system recorded for the period. These are your sales; the filing figures below are what was owed on them.",
+    "posSource": "Source",
+    "posOrders": "{count, plural, one {# order} other {# orders}}",
+    "posGross": "Gross sales",
+    "posNet": "Net sales",
+    "posRefunds": "Refunds",
+    "posTips": "Tips",
+    "posTaxCollected": "Tax collected",
+    "posCollected": "Amount collected",
+    "posTenders": "How it was paid",
+    "salesNoFilingsYet": "Your accountant hasn't published a sales tax filing for this period yet.",
+    "posSourceOther": "Point of sale"
   },
   "Insights": {
     "marginGross": "gross",

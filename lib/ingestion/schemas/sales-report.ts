@@ -81,3 +81,16 @@ export const SalesReportSchema = z
 
 export type SalesReport = z.infer<typeof SalesReportSchema>;
 export type SalesReportTender = z.infer<typeof TenderSchema>;
+
+// The vendor's own name, not our enum value. `other` is the only one that
+// needs translating — the rest are product names and stay as they are printed
+// on the report the figures came from.
+export function posSystemLabel(system: string, fallback: string): string {
+  const names: Record<string, string> = {
+    clover: 'Clover',
+    toast: 'Toast',
+    square: 'Square',
+    stripe: 'Stripe',
+  };
+  return names[system] ?? fallback;
+}

@@ -11,11 +11,13 @@ import { QuerySelector } from '@/components/dashboard/QuerySelector';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { ObligationList } from '@/components/taxes/ObligationList';
+import { SalesFromRegister } from '@/components/taxes/SalesFromRegister';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
 import { logAccess } from '@/lib/audit/logAccess';
 import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
+import { loadPublishedSalesReports } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { nextDueDate, salesTaxCardFigures, salesTaxSeries, taxAlerts } from '@/lib/reports/taxes';
 import { todayIn } from '@/lib/utils/timezone';
@@ -38,7 +40,13 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const settings = await loadPortalEntitySettings(supabase, entity.id);
   if (!settings.salesTaxEnabled) notFound();
 
-  const all = await loadTaxObligations(supabase, entity.id, 'sales');
+  const [all, salesReports] = await Promise.all([
+    loadTaxObligations(supabase, entity.id, 'sales'),
+    // The client's own register. Read even when there are no filings yet: a
+    // business that has sent us a month of sales should see it.
+    loadPublishedSalesReports(supabase, entity.id, 1).catch(() => []),
+  ]);
+  const latestSales = salesReports[0] ?? null;
   const currency = settings.currency;
 
   await logAccess({
@@ -49,7 +57,10 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     metadata: { obligation_count: all.length },
   });
 
-  if (all.length === 0) {
+  // The empty state is for a business with nothing at all. A published sales
+  // report with no filing yet is not nothing: those are the client's own sales,
+  // and they arrive first — the filing follows weeks later.
+  if (all.length === 0 && latestSales === null) {
     return (
       <>
         <PortalPage title={t('salesTitle')} lede={t('salesLede')}>
@@ -60,6 +71,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     );
   }
 
+  const hasFilings = all.length > 0;
   const jurisdictions = [...new Map(all.flatMap((o) => (o.jurisdiction ? [[o.jurisdiction.code, o.jurisdiction] as const] : []))).values()];
   const selectedCode = jurisdictions.some((j) => j.code === params.jurisdiction) ? (params.jurisdiction ?? '') : '';
   const obligations = selectedCode === '' ? all : all.filter((o) => o.jurisdiction?.code === selectedCode);
@@ -124,9 +136,18 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
           <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-[13px]">{t('pendingReviewWarning', { count: pendingReview })}</p>
         )}
 
-        <div className="mt-6">
-          <StatCards items={cards} columns={3} />
-        </div>
+        {/* Sales first, then what was owed on them: the two describe the same
+            month and are routinely confused for each other. */}
+        {latestSales && <SalesFromRegister report={latestSales} />}
+
+        {hasFilings && (
+          <div className="mt-6">
+            <StatCards items={cards} columns={3} />
+          </div>
+        )}
+        {!hasFilings && (
+          <p className="text-muted-foreground mt-6 text-[14px]">{t('salesNoFilingsYet')}</p>
+        )}
 
         <TaxAlerts alerts={taxAlerts(obligations, today)} />
 
