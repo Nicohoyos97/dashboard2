@@ -132,9 +132,18 @@ function isObject(value: unknown): value is JsonSchema {
 
 // Strict tool use requires additionalProperties:false and every property in
 // required; zod's converter already lists the keys, this closes every object.
+//
+// It also drops the bounds zod 4 attaches to `.int()` (the safe-integer range):
+// the tool-use API rejects `minimum`/`maximum` on an integer outright, and the
+// mocked Anthropic server the suites run against never validated the schema, so
+// the 400 only showed up against the real API.
 function closeObjects(node: JsonSchema): JsonSchema {
   const out: JsonSchema = { ...node };
   delete out.$schema;
+  if (out.type === 'integer') {
+    delete out.minimum;
+    delete out.maximum;
+  }
   if (out.type === 'object' && isObject(out.properties)) {
     out.additionalProperties = false;
     out.required = Object.keys(out.properties);

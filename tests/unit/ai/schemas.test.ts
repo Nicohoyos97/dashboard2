@@ -36,6 +36,17 @@ describe('Nick tool definitions', () => {
     }
   });
 
+  it('carries no numeric bounds the tool-use API refuses', () => {
+    // zod 4 attaches the safe-integer range to `.int()`, and the API answers
+    // 400 "For 'integer' type, properties maximum, minimum are not supported"
+    // — which the mocked Anthropic server in the suites never checked.
+    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
+      const text = JSON.stringify(tool.input_schema);
+      expect(text).not.toContain('"minimum"');
+      expect(text).not.toContain('"maximum"');
+    }
+  });
+
   it('never accepts a tenant identifier in any tool', () => {
     for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
       const text = JSON.stringify(tool.input_schema).toLowerCase();
