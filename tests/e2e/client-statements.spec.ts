@@ -1,4 +1,7 @@
+import { readFile } from 'node:fs/promises';
+
 import { type Page, expect, test } from '@playwright/test';
+import { PDFDocument } from 'pdf-lib';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
 import { seedPublishedStatement } from './helpers/seed-statements';
@@ -30,16 +33,25 @@ test.describe('Client portal: Profit & Loss and Balance Sheet', () => {
     await expect(page).toHaveURL(/\/dashboard/);
   }
 
-  const money = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+  const money = (cents: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 
   test('P&L: cards match printed totals, drawer, search, download', async ({ browser }) => {
-    const entityId = await fx.makeEntity(await fx.makeClientRow('cs'), 'Harbor Coffee Roasters LLC');
+    const entityId = await fx.makeEntity(
+      await fx.makeClientRow('cs'),
+      'Harbor Coffee Roasters LLC',
+    );
     const member = await fx.makeUser('cs-member');
     await fx.addMembership(entityId, member.id, 'client_owner');
     const pnl = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded });
-    const draft = await seedPublishedStatement(fx, entityId, 'balance-sheet', { publish: false, uploaded });
+    const draft = await seedPublishedStatement(fx, entityId, 'balance-sheet', {
+      publish: false,
+      uploaded,
+    });
 
-    const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+    const page = await (
+      await browser.newContext({ viewport: { width: 1280, height: 900 } })
+    ).newPage();
     await signIn(page, member.email);
     await page.goto('/statements/profit-and-loss');
     await expect(page.getByRole('heading', { name: /profit & loss/i })).toBeVisible();
@@ -47,7 +59,8 @@ test.describe('Client portal: Profit & Loss and Balance Sheet', () => {
     // Cards read the printed totals (§14.7).
     const netIncome = pnl.totals.netIncome;
     const revenue = pnl.totals.revenue;
-    if (netIncome === null || revenue === null) throw new Error('P&L fixture is missing a required total');
+    if (netIncome === null || revenue === null)
+      throw new Error('P&L fixture is missing a required total');
     await expect(page.getByText(money(netIncome)).first()).toBeVisible();
     await expect(page.getByText(money(revenue)).first()).toBeVisible();
 
@@ -70,23 +83,81 @@ test.describe('Client portal: Profit & Loss and Balance Sheet', () => {
     await page.getByRole('checkbox', { name: /hide zero lines/i }).check();
 
     // Original PDF through the audited route (§14.9).
-    const res = await page.request.get(`/api/documents/${pnl.versionId}/download`, { maxRedirects: 0 });
+    const res = await page.request.get(`/api/documents/${pnl.versionId}/download`, {
+      maxRedirects: 0,
+    });
     expect(res.status()).toBe(302);
 
     // The unpublished balance sheet is not offered to the client (§14.12/§14.13).
     await page.goto('/statements/balance-sheet');
     await expect(page.getByText(/has not published a balance sheet yet/i)).toBeVisible();
-    const hidden = await page.request.get(`/api/documents/${draft.versionId}/download`, { maxRedirects: 0 });
+    const hidden = await page.request.get(`/api/documents/${draft.versionId}/download`, {
+      maxRedirects: 0,
+    });
     expect(hidden.status()).toBe(404);
   });
 
+  test('Export: the PDF report is drawn from the published lines, and only for your business', async ({
+    browser,
+  }) => {
+    const entityId = await fx.makeEntity(
+      await fx.makeClientRow('cp'),
+      'Harbor Coffee Roasters LLC',
+    );
+    const member = await fx.makeUser('cp-member');
+    await fx.addMembership(entityId, member.id, 'client_owner');
+    const pnl = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded });
+
+    // A second business the member has nothing to do with.
+    const otherId = await fx.makeEntity(await fx.makeClientRow('cp-other'), 'Someone Else LLC');
+    const other = await seedPublishedStatement(fx, otherId, 'letter-and-pnl', { uploaded });
+
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      acceptDownloads: true,
+    });
+    const page = await context.newPage();
+    await signIn(page, member.email);
+    await page.goto('/statements/profit-and-loss');
+    await expect(page.getByRole('heading', { name: /profit & loss/i })).toBeVisible();
+
+    // The Export menu offers both formats, and neither is disabled any more.
+    await page.getByRole('button', { name: /^export$/i }).click();
+    await expect(page.getByRole('menuitem', { name: /csv spreadsheet/i })).toBeEnabled();
+    const pdfItem = page.getByRole('menuitem', { name: /pdf report/i });
+    await expect(pdfItem).toBeEnabled();
+
+    const [download] = await Promise.all([page.waitForEvent('download'), pdfItem.click()]);
+    expect(download.suggestedFilename()).toMatch(
+      /^profit-and-loss_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.pdf$/,
+    );
+    const bytes = await readFile(await download.path());
+    expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    // The KILL-PDF document is a cover letter plus the statement, so never one page.
+    const rendered = await PDFDocument.load(bytes);
+    expect(rendered.getPageCount()).toBeGreaterThanOrEqual(2);
+    expect(rendered.getTitle() ?? '').toContain('Harbor Coffee Roasters LLC');
+
+    // Same route, another tenant's report: not found, not a PDF.
+    const mine = await page.request.get(`/api/reports/${pnl.reportId}/pdf`);
+    expect(mine.status()).toBe(200);
+    expect(mine.headers()['content-type']).toBe('application/pdf');
+    const theirs = await page.request.get(`/api/reports/${other.reportId}/pdf`);
+    expect(theirs.status()).toBe(404);
+  });
+
   test('Balance Sheet: totals, ratios only when calculable, composition', async ({ browser }) => {
-    const entityId = await fx.makeEntity(await fx.makeClientRow('cb'), 'Harbor Coffee Roasters LLC');
+    const entityId = await fx.makeEntity(
+      await fx.makeClientRow('cb'),
+      'Harbor Coffee Roasters LLC',
+    );
     const member = await fx.makeUser('cb-member');
     await fx.addMembership(entityId, member.id, 'client_viewer');
     const bs = await seedPublishedStatement(fx, entityId, 'balance-sheet', { uploaded });
 
-    const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+    const page = await (
+      await browser.newContext({ viewport: { width: 1280, height: 900 } })
+    ).newPage();
     await signIn(page, member.email);
     await page.goto('/statements/balance-sheet');
     await expect(page.getByRole('heading', { name: /balance sheet/i })).toBeVisible();

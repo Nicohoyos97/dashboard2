@@ -124,8 +124,16 @@ Every reuse and design decision is recorded, dated, in `docs/ASSUMPTIONS.md`
    better than two shades under colour-vision deficiency.
 5. **Expense aggregation runs in SQL** rather than TypeScript (`0011`). PostgREST
    cannot group, and the page was materialising the whole period to add it up.
-6. **PDF export is not implemented.** `create_financial_export` produces CSV;
-   PDF was deferred with the reporting work and is not in any shipped path.
+6. **PDF export ships on the statement pages only, to the KILL-PDF standard.**
+   `/api/reports/[id]/pdf` renders `KILL-PDF.md` — cover letter, letterhead,
+   four KPI cards, signature block, then the zebra statement with the navy
+   closing band — in a headless Chromium (`puppeteer-core` +
+   `@sparticuz/chromium`), because the standard is written in CSS and its
+   reference implementation is HTML. `pdf-lib` then clears the running header
+   and footer from the cover. The cover's analysis paragraph is derived in
+   TypeScript from printed totals only (`lib/reports/report-analysis.ts`); no
+   model writes it. The Expenses page and Nick's `create_financial_export` are
+   still CSV-only, and say so rather than offering a format they cannot produce.
 
 ---
 

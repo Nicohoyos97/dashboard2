@@ -6,8 +6,19 @@ import { useTranslations } from 'next-intl';
 import { secondaryButton } from '@/components/admin/ui';
 import { ExportMenu } from '@/components/dashboard/ExportMenu';
 
-// Print, CSV export and original-PDF download for a statement page (§7).
-export function StatementActions({ versionId, csvHref }: { versionId: string | null; csvHref: string | null }) {
+// Print, CSV/PDF export and original-PDF download for a statement page (§7).
+// The PDF here is the firm's report template rendered from the published
+// lines; "Download PDF" below it is the original document the firm uploaded.
+// They are different artefacts, so both are offered.
+export function StatementActions({
+  versionId,
+  csvHref,
+  pdfHref,
+}: {
+  versionId: string | null;
+  csvHref: string | null;
+  pdfHref: string | null;
+}) {
   const t = useTranslations('Statements');
   return (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -18,10 +29,7 @@ export function StatementActions({ versionId, csvHref }: { versionId: string | n
       <ExportMenu
         formats={[
           { format: 'csv', href: csvHref },
-          // Wired the day the firm's PDF report template lands; until then it
-          // is listed and says why, rather than being a button that does
-          // nothing or a silently missing option.
-          { format: 'pdf', href: null, unavailable: t('exportPdfPending') },
+          { format: 'pdf', href: pdfHref },
         ]}
       />
       {versionId && (

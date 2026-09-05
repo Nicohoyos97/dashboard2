@@ -21,11 +21,22 @@ const SECURITY_HEADERS = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  },
   { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
 ];
 
 const nextConfig: NextConfig = {
+  // Chromium is loaded at runtime by the PDF report route, not bundled: the
+  // binary and puppeteer's own loader break under webpack's module graph.
+  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
+  // The report's letterhead, signature and Archivo subsets are read from disk
+  // (lib/reports/report-assets.ts), so tracing has to be told to ship them.
+  outputFileTracingIncludes: {
+    '/api/reports/[reportId]/pdf': ['./lib/reports/assets/**'],
+  },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
   },

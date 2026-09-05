@@ -101,7 +101,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
               presetLabel: (preset) => tOverview(`preset_${preset}`),
             })}
           />
-          <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} />
+          <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />
         </>
       }
     >

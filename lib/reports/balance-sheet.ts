@@ -16,7 +16,7 @@ export const BALANCE_SYNONYMS = {
   currentLiabilities: ['current liabilities'],
 } as const;
 
-const LIABILITIES_AND_EQUITY = BALANCE_SYNONYMS.totalEquity.map((equity) => `liabilities and ${equity}`);
+export const LIABILITIES_AND_EQUITY = BALANCE_SYNONYMS.totalEquity.map((equity) => `liabilities and ${equity}`);
 
 export type BalanceMetricKey = keyof typeof BALANCE_SYNONYMS;
 
