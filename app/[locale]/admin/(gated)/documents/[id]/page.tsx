@@ -9,6 +9,7 @@ import { JobActions } from '@/components/admin/JobActions';
 import { BankReview } from '@/components/admin/review/BankReview';
 import { DocumentMetaForm } from '@/components/admin/review/DocumentMetaForm';
 import { PagesTable } from '@/components/admin/review/PagesTable';
+import { DeleteDocumentBar } from '@/components/admin/review/DeleteDocumentBar';
 import { PublishBar } from '@/components/admin/review/PublishBar';
 import { ReportHistory } from '@/components/admin/review/ReportHistory';
 import { StatementReview } from '@/components/admin/review/StatementReview';
@@ -18,6 +19,7 @@ import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
 import { loadDerivedHistory } from '@/lib/documents/history';
+import { deleteBlockers } from '@/lib/documents/delete';
 import { publishBlockers, reviewVersion } from '@/lib/documents/publish';
 import { parseReconciliation } from '@/lib/documents/reconciliation';
 import { DOCUMENT_TYPES, type DocumentType } from '@/lib/documents/types';
@@ -57,7 +59,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   // necessarily the one the client is seeing. Same helper publishBlockers uses,
   // so the page and the Publish button can never disagree about the target.
   const versionId = await reviewVersion(supabase, doc.id, doc.current_version_id);
-  const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers] =
+  const [{ data: versions }, { data: pages }, { data: reports }, { data: statements }, blockers, removal] =
     await Promise.all([
       supabase
         .from('document_versions')
@@ -74,6 +76,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
         ? supabase.from('bank_statements').select('id, period_start, period_end, beginning_balance, ending_balance, status, reconciliation, bank_accounts ( institution, masked_number, currency )').eq('document_version_id', versionId)
         : Promise.resolve({ data: [] }),
       publishBlockers(supabase, id),
+      deleteBlockers(supabase, id),
     ]);
 
   const versionIds = (versions ?? []).map((v) => v.id);
@@ -257,6 +260,17 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           errorCode: j.error_code,
           updatedAt: j.updated_at,
         }))}
+      />
+
+      {/* Last on the page and visually apart: the only irreversible control in
+          the firm portal. It refuses a published document and one that
+          published figures still derive from — the database enforces both. */}
+      <DeleteDocumentBar
+        documentId={doc.id}
+        clientPath={`/admin/entities/${doc.business_entity_id}`}
+        blockers={removal.blockers}
+        derivedCount={removal.derivedCount}
+        canEdit={canEdit}
       />
     </main>
   );

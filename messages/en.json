@@ -645,7 +645,15 @@
     "inviteEmailHelp": "We email a sign-in link so they can set a password. Leave empty to invite later.",
     "inviteName": "Their name",
     "clientLanguage": "Portal language",
-    "clientLanguageHelp": "The language their portal opens in. They can change it in their profile."
+    "clientLanguageHelp": "The language their portal opens in. They can change it in their profile.",
+    "deleteTitle": "Delete this document",
+    "deleteLede": "Removes the document, its versions, the figures that never reached the client, and the uploaded files. This cannot be undone.",
+    "deleteDocument": "Delete document",
+    "deleteConfirm": "Yes, delete it permanently",
+    "deleteFailed": "The document could not be deleted.",
+    "deleteBlockedPublished": "This document is published. Withdraw it first — the client can see it.",
+    "deleteBlockedDerived": "{count, plural, one {# published figure comes} other {# published figures come}} from this document. Withdraw it first, or those numbers would be left with no source.",
+    "deleteBlockedMissing": "This document no longer exists."
   },
   "Mfa": {
     "eyebrow": "Firm portal",

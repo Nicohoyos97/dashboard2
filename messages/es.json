@@ -645,7 +645,15 @@
     "inviteEmailHelp": "Le enviamos un enlace de acceso para que cree su contraseña. Déjalo vacío para invitar después.",
     "inviteName": "Su nombre",
     "clientLanguage": "Idioma del portal",
-    "clientLanguageHelp": "El idioma con el que abre su portal. Puede cambiarlo en su perfil."
+    "clientLanguageHelp": "El idioma con el que abre su portal. Puede cambiarlo en su perfil.",
+    "deleteTitle": "Eliminar este documento",
+    "deleteLede": "Borra el documento, sus versiones, las cifras que nunca llegaron al cliente y los archivos subidos. No se puede deshacer.",
+    "deleteDocument": "Eliminar documento",
+    "deleteConfirm": "Sí, eliminarlo definitivamente",
+    "deleteFailed": "No se pudo eliminar el documento.",
+    "deleteBlockedPublished": "Este documento está publicado. Retíralo primero — el cliente lo está viendo.",
+    "deleteBlockedDerived": "{count, plural, one {# cifra publicada sale} other {# cifras publicadas salen}} de este documento. Retíralo primero, o esos números quedarían sin fuente.",
+    "deleteBlockedMissing": "Este documento ya no existe."
   },
   "Mfa": {
     "eyebrow": "Portal de la firma",

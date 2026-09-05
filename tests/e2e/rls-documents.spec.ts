@@ -147,6 +147,68 @@ test.describe('RLS documents and storage', () => {
     expect((await versions(b.client)).data?.map((v) => v.id)).toEqual([s.versionId]);
   });
 
+  test('deleting a document: never published, never with published figures behind it', async () => {
+    // 0020. Two invariants, both in the database rather than the button:
+    // a published document is withdrawn and not deleted, and a document that
+    // published figures derive from cannot go even when it is unpublished
+    // itself — otherwise the foreign keys null out `document_version_id` and
+    // the client is left with a number that has no source.
+    const tenant = await fx.makeTenant('ddel');
+    const admin = await fx.makeFirmUser('ddel-admin');
+    await elevateToAal2(admin.client);
+
+    const remove = (db: Db, id: string) =>
+      db.from('documents').delete({ count: 'exact' }).eq('id', id);
+
+    // ── a client may never delete, published or not ────────────────────────
+    const own = await seedDocument(tenant.entityId);
+    expect((await remove(tenant.client, own.docId)).count ?? 0).toBe(0);
+    expect((await fx.admin.from('documents').select('id').eq('id', own.docId)).data).toHaveLength(1);
+
+    // ── published: refused by the policy ───────────────────────────────────
+    await publish(own.docId);
+    expect((await remove(admin.client, own.docId)).count ?? 0).toBe(0);
+    expect((await fx.admin.from('documents').select('id').eq('id', own.docId)).data).toHaveLength(1);
+
+    // ── unpublished, but a published figure derives from it ────────────────
+    // This is the shape that made the guard necessary: a sales-tax filing that
+    // was published once, then withdrawn — the document reads `reconciled`
+    // while the obligation it stamped keeps its published_at.
+    const withdrawn = await fx.admin
+      .from('documents')
+      .update({ status: 'reconciled', published_at: null })
+      .eq('id', own.docId);
+    expect(withdrawn.error).toBeNull();
+    const obligation = await fx.admin
+      .from('tax_obligations')
+      .insert({
+        business_entity_id: tenant.entityId,
+        tax_type: 'sales',
+        source: 'firm_document',
+        document_version_id: own.versionId,
+        published_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+    if (obligation.error) throw new Error(`seed obligation: ${obligation.error.message}`);
+
+    const blocked = await remove(admin.client, own.docId);
+    expect(blocked.error?.code).toBe('23503');
+    expect((await fx.admin.from('documents').select('id').eq('id', own.docId)).data).toHaveLength(1);
+
+    // ── withdraw the figure and it goes, taking its versions with it ───────
+    await fx.admin.from('tax_obligations').update({ published_at: null }).eq('id', obligation.data.id);
+    const gone = await remove(admin.client, own.docId);
+    expect(gone.error).toBeNull();
+    expect(gone.count).toBe(1);
+    expect((await fx.admin.from('documents').select('id').eq('id', own.docId)).data ?? []).toHaveLength(0);
+    // document_versions cascades; the unpublished obligation is left with a
+    // null pointer, which is why deleteDocument() clears it first.
+    expect(
+      (await fx.admin.from('document_versions').select('id').eq('document_id', own.docId)).data ?? [],
+    ).toHaveLength(0);
+  });
+
   test('clients cannot create or edit documents, versions or jobs', async () => {
     const b = await fx.makeTenant('dw');
     const s = await seedDocument(b.entityId);

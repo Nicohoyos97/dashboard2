@@ -33,8 +33,10 @@ test.describe('Firm portal: review, corrections, publish', () => {
     await expect(page).toHaveURL(/\/dashboard/);
   }
 
-  async function adminPage(browser: Browser): Promise<Page> {
-    const firm = await fx.makeFirmUser('rv-admin');
+  // The label is per test: these run in parallel and makeFirmUser derives the
+  // email from it, so a shared one has two workers registering the same address.
+  async function adminPage(browser: Browser, label: string): Promise<Page> {
+    const firm = await fx.makeFirmUser(`rv-admin-${label}`);
     const page = await (await browser.newContext()).newPage();
     await signIn(page, firm.email);
     await page.goto('/admin');
@@ -135,7 +137,7 @@ test.describe('Firm portal: review, corrections, publish', () => {
     const first = await seedExtraction(entityId);
     const second = await seedExtraction(entityId);
 
-    const page = await adminPage(browser);
+    const page = await adminPage(browser, 'history');
     await correctAndPublish(page, first);
     await correctAndPublish(page, second);
 
@@ -161,7 +163,7 @@ test.describe('Firm portal: review, corrections, publish', () => {
     await fx.addMembership(entityId, member.id, 'client_owner');
     const seeded = await seedExtraction(entityId);
 
-    const page = await adminPage(browser);
+    const page = await adminPage(browser, 'publish');
     await page.goto(`/admin/documents/${seeded.documentId}`);
     await expect(page.getByText(/checks failing/i)).toBeVisible();
     await expect(page.getByText(/1 low-confidence line/i)).toBeVisible();
@@ -204,13 +206,57 @@ test.describe('Firm portal: review, corrections, publish', () => {
     const after = await memberPage.request.get(`/api/documents/${seeded.versionId}/download`, { maxRedirects: 0 });
     expect(after.status()).toBe(302);
 
+    // A tax obligation on the same version: publishing stamps five tables, and
+    // withdrawing used to reverse only two — so a retracted filing left its
+    // obligations `published_at` and visible in the client's Sales Taxes page.
+    const { data: obligation } = await fx.admin
+      .from('tax_obligations')
+      .insert({ business_entity_id: entityId, tax_type: 'sales', source: 'firm_document', document_version_id: seeded.versionId, published_at: new Date().toISOString() })
+      .select('id')
+      .single();
+
     // Unpublish hides it again — history is untouched.
     await page.getByRole('button', { name: /^unpublish$/i }).click();
     await page.getByRole('button', { name: /confirm unpublish/i }).click();
     await expect(page.getByRole('button', { name: /publish to client/i })).toBeVisible();
     const hidden = await memberPage.request.get(`/api/documents/${seeded.versionId}/download`, { maxRedirects: 0 });
     expect(hidden.status()).toBe(404);
+
+    const { data: withdrawnObligation } = await fx.admin.from('tax_obligations').select('published_at').eq('id', obligation!.id).single();
+    expect(withdrawnObligation?.published_at, 'withdrawing must clear the figures the document published').toBeNull();
     const { count: lineCount } = await fx.admin.from('financial_statement_lines').select('id', { count: 'exact', head: true }).eq('business_entity_id', entityId);
     expect(lineCount).toBeGreaterThan(10);
+  });
+
+  test('deleting a document from the review page: refused while published, then it and its bytes go', async ({ browser }) => {
+    test.slow();
+    const entityId = (await fx.makeTenant('rdel')).entityId;
+    const seeded = await seedExtraction(entityId);
+    const page = await adminPage(browser, 'delete');
+    await page.goto(`/admin/documents/${seeded.documentId}`);
+
+    // Published: the control refuses and says why, rather than being a
+    // disabled button with no explanation.
+    await correctAndPublish(page, seeded);
+    const deleteButton = page.getByRole('button', { name: /^delete document$/i });
+    await expect(deleteButton).toBeDisabled();
+    await expect(page.getByText(/withdraw it first/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /^unpublish$/i }).click();
+    await page.getByRole('button', { name: /confirm unpublish/i }).click();
+    await expect(page.getByRole('button', { name: /publish to client/i })).toBeVisible();
+
+    // Withdrawn: now it goes, and takes its version and its file with it.
+    await expect(deleteButton).toBeEnabled();
+    await deleteButton.click();
+    await page.getByRole('button', { name: /permanently/i }).click();
+    await expect(page).toHaveURL(new RegExp(`/admin/entities/${entityId}$`));
+
+    const { data: gone } = await fx.admin.from('documents').select('id').eq('id', seeded.documentId);
+    expect(gone ?? []).toHaveLength(0);
+    const { data: versions } = await fx.admin.from('document_versions').select('id').eq('document_id', seeded.documentId);
+    expect(versions ?? []).toHaveLength(0);
+    const { data: files } = await fx.admin.storage.from('documents').list(`${entityId}/${seeded.documentId}/v1`);
+    expect(files ?? []).toHaveLength(0);
   });
 });
