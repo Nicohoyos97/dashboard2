@@ -12,6 +12,7 @@ The wordmark is the stacked lockup: **"Hoyos"** in navy `#0b1a3a` over
 |---|---|---|---|---|
 | `bizgrowth-lockup.png` | **Dashboard logo** — the sidebar and mobile bar of both portals (renders 32px tall, 24px compact) | 445×107 today; ≥2× the render height | PNG | **Transparent** |
 | `bizgrowth-lockup-dark.png` | Dark-surface variant ("By Hoyos" in white). `Brand.tsx` renders both and CSS shows one, so neither theme ever paints the wrong artwork | 442×107 today; ≥2× the render height | PNG | **Transparent** |
+| `bizgrowth-mark.png` | **Mobile logo** — the capybara alone, in the compact top bar of both portals (renders 40px). One artwork for both themes: the illustration reads on paper and on navy | 512×512 today; ≥2× the render size | PNG | **Transparent** |
 | `logo-wordmark.png` | Sign-in `BrandMark` (renders ~96px tall) | ~480×480 (≥2× the render size) | PNG | **Transparent** |
 | `logo-wordmark-dark.png` | Optional — wordmark for dark/navy surfaces (Baker stays blue, "Hoyos" in paper `#f3ece0`) | ~480×480 | PNG | **Transparent** |
 | `icon.png` | Favicon / app-icon source (we generate sizes from this) | 512×512 square | PNG | Transparent or solid paper `#f3ece0` |
