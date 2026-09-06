@@ -8,6 +8,7 @@ import { MemberManager, type MemberRow } from '@/components/admin/MemberManager'
 import { NotesForm } from '@/components/admin/NotesForm';
 import { type ReminderItem, RemindersManager } from '@/components/admin/RemindersManager';
 import { StatusButton } from '@/components/admin/StatusButton';
+import { type ObligationItem, TaxObligations } from '@/components/admin/TaxObligations';
 import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
 import { previewEntity } from '@/lib/entities/actions';
@@ -40,7 +41,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     params,
   ]);
   const supabase = await createClient();
-  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }, { data: reminders }] =
+  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }, { data: reminders }, { data: obligations }] =
     await Promise.all([
       supabase
         .from('business_entities')
@@ -63,6 +64,12 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         .eq('business_entity_id', id)
         .order('due_date')
         .limit(200),
+      supabase
+        .from('tax_obligations')
+        .select('id, tax_type, period_start, period_end, due_date, status, amount_payable, amount_paid, published_at, tax_payments ( paid_on, amount, confirmation_number, method, source )')
+        .eq('business_entity_id', id)
+        .order('due_date', { ascending: false, nullsFirst: false })
+        .limit(100),
     ]);
   if (!entity) notFound();
 
@@ -71,6 +78,34 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     resourceType: 'business_entity',
     resourceId: entity.id,
     businessEntityId: entity.id,
+  });
+
+  const cents = (value: number | null) => (value === null ? null : Math.round(value * 100));
+  const obligationItems: ObligationItem[] = (obligations ?? []).map((o) => {
+    // The firm's own entry is the one this screen edits; a payment the
+    // pipeline read from a confirmation document is shown but not overwritten.
+    const entry = o.tax_payments.find((p) => p.source === 'firm_entry') ?? null;
+    return {
+      id: o.id,
+      taxType: o.tax_type,
+      periodStart: o.period_start,
+      periodEnd: o.period_end,
+      dueDate: o.due_date,
+      status: o.status,
+      payableCents: cents(o.amount_payable),
+      paidCents: cents(o.amount_paid),
+      currency: entity.currency,
+      published: o.published_at !== null,
+      payment: entry
+        ? {
+            paidOn: entry.paid_on,
+            amount: entry.amount.toFixed(2),
+            amountCents: Math.round(entry.amount * 100),
+            confirmationNumber: entry.confirmation_number ?? '',
+            method: entry.method ?? '',
+          }
+        : null,
+    };
   });
 
   const reminderItems: ReminderItem[] = (reminders ?? []).map((r) => ({
@@ -208,6 +243,12 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         <h2 className="text-ink text-[17px] font-semibold">{t('remindersTitle')}</h2>
         <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('remindersLede')}</p>
         <RemindersManager entityId={entity.id} items={reminderItems} canEdit={canEdit && status === 'active'} />
+      </section>
+
+      <section className={`${card} mt-6`}>
+        <h2 className="text-ink text-[17px] font-semibold">{t('obligationsTitle')}</h2>
+        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('obligationsLede')}</p>
+        <TaxObligations items={obligationItems} canEdit={canEdit && status === 'active'} />
       </section>
 
       <section className={`${card} mt-6`}>

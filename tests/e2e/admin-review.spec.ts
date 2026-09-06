@@ -282,6 +282,73 @@ test.describe('Firm portal: review, corrections, publish', () => {
     await expect(page.getByText(/difference of \$70/i)).toHaveCount(0);
   });
 
+  test('marking a tax obligation paid from the business page', async ({ browser }) => {
+    test.slow();
+    // The gap this closes: the pipeline could only mark an obligation paid from
+    // an uploaded confirmation, and most payments are an ACH transfer whose
+    // confirmation is a number in an email. A settled quarter sat on the
+    // client's portal as a balance.
+    const tenant = await fx.makeTenant('rpaid');
+    const now = new Date().toISOString();
+    const { data: obligation } = await fx.admin
+      .from('tax_obligations')
+      .insert({
+        business_entity_id: tenant.entityId, tax_type: 'sales',
+        period_start: '2026-07-01', period_end: '2026-07-31', due_date: '2026-08-20',
+        amount_payable: 1328.0, status: 'payable', source: 'firm_document',
+        published_at: now,
+      })
+      .select('id')
+      .single();
+
+    const page = await adminPage(browser, 'markpaid');
+    await page.goto(`/admin/entities/${tenant.entityId}`);
+    await expect(page.getByText(/payable/i).first()).toBeVisible();
+    await page.getByRole('button', { name: /^mark as paid$/i }).first().click();
+    await page.fill(`#paid-${obligation!.id}`, '2026-08-18');
+    await page.fill(`#conf-${obligation!.id}`, 'ACH-99120');
+    await page.getByRole('button', { name: /^mark as paid$/i }).last().click();
+    await expect(page.getByText(/paid 2026|paid aug|pagado/i).first()).toBeVisible();
+
+    const { data: after } = await fx.admin
+      .from('tax_obligations')
+      .select('status, amount_paid, amount_payable, document_version_id')
+      .eq('id', obligation!.id)
+      .single();
+    expect(after!.status).toBe('paid');
+    expect(Number(after!.amount_paid)).toBe(1328);
+    // amount_payable stays as the record of what was owed — the portal reads
+    // status === 'paid' first and shows nothing outstanding.
+    expect(Number(after!.amount_payable)).toBe(1328);
+    expect(after!.document_version_id, 'a payment is not a filing').toBeNull();
+
+    const { data: payments } = await fx.admin
+      .from('tax_payments')
+      .select('paid_on, amount, confirmation_number, source, published_at')
+      .eq('obligation_id', obligation!.id);
+    expect(payments).toHaveLength(1);
+    expect(payments![0]!.confirmation_number).toBe('ACH-99120');
+    expect(payments![0]!.source).toBe('firm_entry');
+    // The obligation is published, so the payment behind it is too.
+    expect(payments![0]!.published_at, 'a settled obligation must show its payment').not.toBeNull();
+
+    // Editing replaces the entry rather than stacking a second one.
+    await page.reload();
+    await page.getByRole('button', { name: /^edit payment$/i }).first().click();
+    await page.fill(`#amt-${obligation!.id}`, '1300.00');
+    await page.getByRole('button', { name: /^mark as paid$/i }).last().click();
+    await expect(page.getByText('1,300.00').first()).toBeVisible();
+    const { data: again } = await fx.admin
+      .from('tax_payments')
+      .select('amount')
+      .eq('obligation_id', obligation!.id);
+    expect(again, 'one firm entry, corrected').toHaveLength(1);
+    expect(Number(again![0]!.amount)).toBe(1300);
+    if (process.env.SHOT === '1') {
+      await page.locator('section').filter({ hasText: /tax obligations/i }).first().screenshot({ path: 'test-results/paid.png' });
+    }
+  });
+
   test('deleting a document from the review page: refused while published, then it and its bytes go', async ({ browser }) => {
     test.slow();
     const entityId = (await fx.makeTenant('rdel')).entityId;
