@@ -243,11 +243,18 @@ test.describe('sales reports and the filing that follows them', () => {
     const main = page.getByRole('main');
     await expect(main.getByRole('heading', { name: /sales from your register/i }).first()).toBeVisible();
     // The figures are the POS ones, not the filing's — this is the assertion
-    // the whole rule comes down to. $14,119.36 was sold; the filing for the
-    // same month reports $12,955 of receipts, and must never be what a client
-    // reads as their sales.
-    await expect(main.getByText('$14,119.36').first()).toBeVisible();
+    // the whole rule comes down to. The register took $16,885.69 over July,
+    // $12,955.46 of it on cards; the ST-1 for the same month reports $12,955.00
+    // of receipts, and that is never what a client reads as their sales.
     await expect(main.getByText('$16,885.69').first()).toBeVisible();
     await expect(main.getByText('Credit and debit cards').first()).toBeVisible();
+    await expect(main.getByText('$12,955.46').first()).toBeVisible();
+    await expect(main.getByText('$12,955.00')).toHaveCount(0);
+    // "DOORDASH" is how the report prints it; the portal spells the company's
+    // own name. Exact matching on both: getByText is a case-insensitive
+    // substring match by default, under which the shout and the name are the
+    // same string and the second assertion would say nothing.
+    await expect(main.getByText('DoorDash', { exact: true }).first()).toBeVisible();
+    await expect(main.getByText('DOORDASH', { exact: true })).toHaveCount(0);
   });
 });
