@@ -25,6 +25,8 @@ import { cn } from '@/lib/utils/cn';
 import { Composer } from './Composer';
 import { NickOrb } from './NickOrb';
 import { NickThread } from './NickThread';
+import { RotatingWords } from './RotatingWords';
+import { HERO_WORDS } from './hero-words';
 import { SUGGESTIONS } from './suggestions';
 import { fromThread, useNickChat } from './useNickChat';
 
@@ -146,7 +148,7 @@ export function NickWorkspace({
         {greeting}
         <br />
         {t('heroQuestionLead')}
-        <span className="text-blue">{t('heroQuestionAccent')}</span>
+        <RotatingWords words={HERO_WORDS.map((key) => t(key))} />
       </h2>
       <div className="mt-8 w-full">
         <Composer onSend={send} disabled={disabled} autoFocus size="hero" />

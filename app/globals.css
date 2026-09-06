@@ -237,6 +237,64 @@
   }
 }
 
+/* Nick's hero question cycles through what a client actually comes to ask —
+   sales, taxes, expenses, obligations. The words share one grid cell, so the
+   line is as wide as the longest of them and the heading never reflows or
+   shifts off centre as they change. No `overflow: hidden` to clip the slide:
+   on an inline box that moves the baseline to the bottom edge and drops the
+   word off the line it sits on. The slide is short and the word is fully
+   transparent at either end of it, so there is nothing to clip. */
+.nick-rotator {
+  display: inline-grid;
+}
+.nick-rotator__word {
+  grid-area: 1 / 1;
+  justify-self: start;
+  opacity: 0;
+  animation: nick-rotate 8s ease-in-out infinite;
+}
+@keyframes nick-rotate {
+  0% {
+    opacity: 0;
+    transform: translateY(0.3em);
+  }
+  4% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  21% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  27%,
+  100% {
+    opacity: 0;
+    transform: translateY(-0.3em);
+  }
+}
+@media (max-width: 39.9375rem) {
+  /* On a phone the line does not hold "How are my" and the longest of them, so
+     the word takes the next line — deliberately, at every phone width rather
+     than only the narrow ones — and is centred on it. Beside the lead text it
+     is start-aligned instead, or a short word would open a hole mid-sentence. */
+  .nick-rotator {
+    display: grid;
+  }
+  .nick-rotator__word {
+    justify-self: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The first word is the one the sentence is written around, and the only one
+     a screen reader is given, so it is the one that stays. */
+  .nick-rotator__word {
+    animation: none;
+  }
+  .nick-rotator__word:first-child {
+    opacity: 1;
+  }
+}
+
 /* Sidebar: a faint brand-blue glow rising from the foot of the rail (DESIGN.md → Navigation). */
 .sidebar-glow {
   background-image: radial-gradient(

@@ -94,8 +94,11 @@ export function Composer({
       </label>
       {textarea}
       {hero ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground text-[12px]">{t('composerHint')}</span>
+        // Just the send button: the keyboard hint that used to sit beside it
+        // spoke for a keyboard half the readers do not have in front of them,
+        // and Enter is what every message box on a phone or a laptop already
+        // does.
+        <div className="flex items-center justify-end gap-3">
           <button
             type="submit"
             aria-label={t('send')}
