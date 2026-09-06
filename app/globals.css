@@ -262,3 +262,26 @@
       border-color 180ms ease;
   }
 }
+
+/*
+ * iOS Safari zooms the page in when it focuses a field whose text is under
+ * 16px — and it does not zoom back out, so a client tapping "Email" on their
+ * phone is left with a form half off the screen and has to pinch their way
+ * back. Every field on a phone is therefore at least 16px, whatever size the
+ * design asked for; from `sm` up the designed sizes apply again untouched.
+ *
+ * Deliberately outside `@layer`: Tailwind's utilities are layered, unlayered
+ * rules beat layered ones whatever their specificity, so this wins over
+ * `text-[14px]` on the element itself without an `!important` for each one —
+ * and it covers the fields nobody remembered to check. Checkboxes and radios
+ * are excluded: they carry no text and iOS never zooms for them.
+ * `max-width` rather than the `width <` range syntax, which is Safari 16.4+ —
+ * the older phones are exactly the ones with the problem.
+ */
+@media (max-width: 39.9375rem) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

@@ -33,6 +33,24 @@ test.describe('Phase 6: accessibility and mobile', () => {
     await expect(page).toHaveURL(/\/dashboard/);
   }
 
+  /**
+   * Fields small enough for iOS Safari to zoom into. It zooms the page in when
+   * it focuses text under 16px and never zooms back out, so on a phone the
+   * answer has to be none — see the media query at the foot of globals.css.
+   */
+  async function fieldsUnder16px(page: Page): Promise<string[]> {
+    return page.evaluate(() =>
+      [...document.querySelectorAll('input, select, textarea')]
+        .filter((el) => !['checkbox', 'radio', 'hidden'].includes((el as HTMLInputElement).type))
+        .filter((el) => Number.parseFloat(getComputedStyle(el).fontSize) < 16)
+        .map(
+          (el) =>
+            `${el.tagName.toLowerCase()}#${el.id || (el as HTMLInputElement).name || '?'} ` +
+            `at ${getComputedStyle(el).fontSize}`,
+        ),
+    );
+  }
+
   /** A business with a published P&L, six months of bank activity and a reminder. */
   async function seedPortal(label: string) {
     const entityId = await fx.makeEntity(await fx.makeClientRow(label), `${label} Coffee LLC`);
@@ -167,6 +185,30 @@ test.describe('Phase 6: accessibility and mobile', () => {
     }
   });
 
+  test('on a phone no field is small enough for iOS to zoom into', async ({ browser }) => {
+    // The sign-in form is where this was reported: tapping Email zoomed the
+    // page in and left it there, with the form half off screen.
+    const page = await (
+      await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      })
+    ).newPage();
+
+    for (const route of ['/signin', '/forgot-password', '/es/signin']) {
+      await page.goto(route);
+      expect(await fieldsUnder16px(page), `${route} has fields iOS will zoom into`).toEqual([]);
+    }
+
+    // And the designed sizes come back above the breakpoint, where no browser
+    // zooms and 16px everywhere would be a heavier form than the design asks for.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/signin');
+    expect(await fieldsUnder16px(page)).not.toEqual([]);
+    await page.close();
+  });
+
   test('on a phone the sidebar is a drawer and nothing scrolls sideways', async ({ browser }) => {
     const { member, pnl } = await seedPortal('mobile');
     const context = await browser.newContext({
@@ -190,6 +232,7 @@ test.describe('Phase 6: accessibility and mobile', () => {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, `${route} scrolls horizontally by ${overflow}px`).toBeLessThanOrEqual(1);
+      expect(await fieldsUnder16px(page), `${route} has fields iOS will zoom into`).toEqual([]);
     }
 
     // Back on the Overview: the desktop top bar is `hidden` at this width, so
