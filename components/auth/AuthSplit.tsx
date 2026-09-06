@@ -3,8 +3,7 @@ import { TestimonialPanel } from './TestimonialPanel';
 
 // Shared authentication shell: a 60% form column that blends into the page
 // background and a 40% visual story hugging the right edge on larger screens.
-// On mobile the form remains first and the visual becomes a compact
-// social-proof card below it.
+// Below `lg` the visual is dropped entirely and the phone gets the form alone.
 export function AuthSplit({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-paper min-h-svh overflow-x-hidden lg:py-2 lg:pr-2">
