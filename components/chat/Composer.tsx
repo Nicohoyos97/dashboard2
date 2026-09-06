@@ -52,7 +52,13 @@ export function Composer({
         }
       }}
       className={cn(
-        'text-ink placeholder:text-muted-foreground w-full resize-none bg-transparent leading-[1.5] outline-none disabled:opacity-60',
+        // The placeholder is hidden on a phone rather than shortened: at 16px
+        // (the size iOS demands of a field it focuses) "Ask Nick about your
+        // finances…" runs to within 9px of the box edge at 390px and is cut on
+        // anything narrower, and a hint that reads as a truncated sentence is
+        // worse than no hint. The <label> below carries the same words for
+        // screen readers, so nothing is lost with it gone.
+        'text-ink sm:placeholder:text-muted-foreground w-full resize-none bg-transparent leading-[1.5] outline-none placeholder:text-transparent disabled:opacity-60',
         hero
           ? 'max-h-60 min-h-[88px] px-2 py-1.5 text-[15.5px]'
           : 'max-h-40 min-h-[40px] flex-1 px-2 py-2 text-[14.5px]',

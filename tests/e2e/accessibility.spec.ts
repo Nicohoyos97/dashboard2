@@ -282,6 +282,17 @@ test.describe('Phase 6: accessibility and mobile', () => {
     ).toBeLessThanOrEqual(1);
     await page.keyboard.press('Escape');
 
+    // Nick's composer opens without its placeholder on a phone: at the 16px iOS
+    // demands, "Ask Nick about your finances…" reaches the edge of the box at
+    // 390px and is cut on anything narrower.
+    await page.getByRole('button', { name: /ask nick/i }).click();
+    const composer = page.locator('#nick-composer');
+    await expect(composer).toBeVisible();
+    expect(await composer.evaluate((el) => getComputedStyle(el, '::placeholder').color)).toBe(
+      'rgba(0, 0, 0, 0)',
+    );
+    await page.keyboard.press('Escape');
+
     // The drawer opens, traps focus in a dialog, and closes on Escape.
     await page
       .getByRole('button', { name: /open menu|menu/i })
@@ -307,5 +318,17 @@ test.describe('Phase 6: accessibility and mobile', () => {
       });
     expect(card.width).toBeLessThan(card.viewport);
     expect(card.x).toBeGreaterThan(0);
+    await page.keyboard.press('Escape');
+
+    // …and the composer's placeholder is back, where there is room for it.
+    await page
+      .getByRole('button', { name: /ask nick/i })
+      .first()
+      .click();
+    expect(
+      await page
+        .locator('#nick-composer')
+        .evaluate((el) => getComputedStyle(el, '::placeholder').color),
+    ).not.toBe('rgba(0, 0, 0, 0)');
   });
 });
