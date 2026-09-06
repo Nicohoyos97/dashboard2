@@ -10,6 +10,8 @@ import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu'
 import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
+import { OverviewEmpty, OverviewShell } from '@/components/dashboard/OverviewShell';
+import { SalesTaxOverview } from '@/components/dashboard/SalesTaxOverview';
 import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
 import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
 import { periodPickerProps } from '@/lib/portal/period-picker';
@@ -101,17 +103,29 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     firstName = data?.full_name?.trim().split(/\s+/)[0] ?? '';
   }
 
+  const greeting = firstName ? t('greeting', { name: firstName }) : t('greetingAnon');
+
   if (!entity) {
     return (
-      <OverviewShell greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')} subtitle={t('subtitlePending')}>
-        <EmptyState title={t('pendingTitle')} body={t('pendingBody')} />
+      <OverviewShell greeting={greeting} subtitle={t('subtitlePending')}>
+        <OverviewEmpty title={t('pendingTitle')} body={t('pendingBody')} />
       </OverviewShell>
     );
   }
 
   const supabase = await createClient();
-  const [settings, reports, bankStatements, documents, reminders, incomeTaxes, dismissedInsights] = await Promise.all([
-    loadPortalEntitySettings(supabase, entity.id),
+  const settings = await loadPortalEntitySettings(supabase, entity.id);
+
+  // Everything below reads the Profit & Loss, which a client who bought only
+  // sales tax does not have: the period picker, the KPI cards and the charts
+  // all resolve to nothing, and even the period itself is derived from
+  // published statements, so this client used to land on "no reports published
+  // yet". Their Overview is built from the register and the filings instead.
+  if (settings.modules.sales_taxes && !settings.modules.bookkeeping) {
+    return <SalesTaxOverview entity={entity} settings={settings} greeting={greeting} />;
+  }
+
+  const [reports, bankStatements, documents, reminders, incomeTaxes, dismissedInsights] = await Promise.all([
     loadPublishedReports(supabase, entity.id),
     loadPublishedBankStatements(supabase, entity.id),
     loadPublishedDocuments(supabase, entity.id),
@@ -136,12 +150,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
     return (
       <OverviewShell
-        greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
+        greeting={greeting}
         subtitle={t('subtitle', { business: entity.name })}
         logoUrl={settings.logoUrl}
         actions={<DownloadReportsMenu items={downloadItems} />}
       >
-        <EmptyState title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
+        <OverviewEmpty title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
         <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={settings.currency} today={todayIn(settings.timezone)} /></div>
         <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
         <NickPanel page="overview" businessName={entity.name} />
@@ -267,7 +281,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   return (
     <OverviewShell
-      greeting={firstName ? t('greeting', { name: firstName }) : t('greetingAnon')}
+      greeting={greeting}
       subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
       logoUrl={settings.logoUrl}
       actions={
@@ -340,29 +354,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function OverviewShell({ greeting, subtitle, logoUrl, actions, children }: { greeting: string; subtitle: string; logoUrl?: string | null; actions?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {/* The client's own logo when the firm set one. Decorative: the
-              business name is already the accessible text beside it. */}
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- client-supplied host
-            <img src={logoUrl} alt="" className="border-line bg-card size-12 shrink-0 rounded-xl border object-contain p-1" />
-          )}
-          <div>
-            <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{greeting}</h1>
-            <p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p>
-          </div>
-        </div>
-        {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
-      </div>
-      {children}
-    </main>
-  );
-}
-
 function Swatch({ color, label }: { color: string; label: string }) {
   return (
     <li className="text-muted-foreground flex items-center gap-2">
@@ -370,8 +361,4 @@ function Swatch({ color, label }: { color: string; label: string }) {
       {label}
     </li>
   );
-}
-
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><h2 className="text-ink text-[18px] font-semibold">{title}</h2><p className="text-muted-foreground mt-2 max-w-[560px] text-[15px] leading-[1.55]">{body}</p></section>;
 }

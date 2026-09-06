@@ -7,6 +7,7 @@ import {
   nextDueDate,
   remainingOwed,
   salesTaxCardFigures,
+  taxPaidSeries,
   taxYearSeries,
   sumField,
   taxAlerts,
@@ -245,5 +246,40 @@ describe('taxYearSeries', () => {
       obligation({ id: 'a', taxYear: 2024, estimatedCents: 1 }),
     ];
     expect(taxYearSeries(rows).map((p) => p.year)).toEqual([2024, 2026]);
+  });
+});
+
+describe('sales tax paid per filing period', () => {
+  const month = (id: string, start: string, end: string, paidCents: number | null) =>
+    obligation({ id, periodStart: start, periodEnd: end, paidCents });
+
+  it('runs oldest first and sums the jurisdictions of one period into one bar', () => {
+    // The state and the city are two filings for one month; the client paid
+    // that month once, and reads the chart as what the month cost them.
+    const rows = [
+      month('jul-state', '2026-07-01', '2026-07-31', 1_200_00),
+      month('jun', '2026-06-01', '2026-06-30', 900_00),
+      month('jul-city', '2026-07-01', '2026-07-31', 150_00),
+    ];
+    expect(taxPaidSeries(rows, 8)).toEqual([
+      { periodStart: '2026-06-01', periodEnd: '2026-06-30', paidCents: 900_00 },
+      { periodStart: '2026-07-01', periodEnd: '2026-07-31', paidCents: 1_350_00 },
+    ]);
+  });
+
+  it('keeps a filed period whose payment is not recorded, with no figure', () => {
+    // A null draws no bar; a zero would tell the client they paid nothing.
+    const rows = [month('a', '2026-06-01', '2026-06-30', null), month('b', '2026-07-01', '2026-07-31', 10_00)];
+    expect(taxPaidSeries(rows, 8).map((p) => p.paidCents)).toEqual([null, 10_00]);
+  });
+
+  it('leaves out a filing with no period rather than guessing one from its due date', () => {
+    const rows = [obligation({ id: 'x', periodStart: null, periodEnd: null, paidCents: 500_00 })];
+    expect(taxPaidSeries(rows, 8)).toEqual([]);
+  });
+
+  it('keeps the most recent periods when there are more than the chart draws', () => {
+    const rows = ['01', '02', '03', '04'].map((m) => month(m, `2026-${m}-01`, `2026-${m}-28`, 100));
+    expect(taxPaidSeries(rows, 2).map((p) => p.periodStart)).toEqual(['2026-03-01', '2026-04-01']);
   });
 });

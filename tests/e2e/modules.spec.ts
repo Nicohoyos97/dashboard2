@@ -43,11 +43,38 @@ test.describe('the portal shows the modules the firm sold', () => {
     await expect(page).toHaveURL(/\/dashboard/);
   }
 
+  // The two figures a sales-tax-only client's Overview is built from: what the
+  // register rang up, and what was paid on it. Written straight to the tables
+  // because the point is the portal's reading of them, not the pipeline.
+  async function seedSalesAndFilings(entityId: string) {
+    const published = new Date().toISOString();
+    const months = [
+      { start: '2026-06-01', end: '2026-06-30', net: 54210, tax: 4607.85 },
+      { start: '2026-07-01', end: '2026-07-31', net: 56990.35, tax: 4844.18 },
+    ];
+    for (const month of months) {
+      const { error } = await fx.admin.from('sales_reports').insert({
+        business_entity_id: entityId, source_system: 'clover', period_start: month.start,
+        period_end: month.end, currency: 'USD', net_sales: month.net, tax_collected: month.tax,
+        source: 'firm_document', status: 'published', published_at: published,
+      });
+      if (error) throw new Error(`insert sales report: ${error.message}`);
+      const { error: filingError } = await fx.admin.from('tax_obligations').insert({
+        business_entity_id: entityId, tax_type: 'sales', period_start: month.start,
+        period_end: month.end, due_date: '2026-08-20', filing_status: 'filed',
+        amount_payable: month.tax, amount_paid: month.tax, status: 'paid',
+        source: 'firm_document', published_at: published,
+      });
+      if (filingError) throw new Error(`insert obligation: ${filingError.message}`);
+    }
+  }
+
   test('a sales-tax-only client gets Sales Taxes and Nick, and nothing else', async ({ page }) => {
     // Visits four routes this run has not compiled yet; each first request
     // costs seconds on the dev server, which is real work rather than waiting.
     test.slow();
-    const { user } = await clientOn('salesonly', { bookkeeping: false, income_taxes: false }, true);
+    const { user, entityId } = await clientOn('salesonly', { bookkeeping: false, income_taxes: false }, true);
+    await seedSalesAndFilings(entityId);
     await signIn(page, user.email);
 
     const nav = page.getByRole('complementary', { name: /navigation/i });
@@ -62,6 +89,9 @@ test.describe('the portal shows the modules the firm sold', () => {
     // kept rendering Profit & Loss KPIs for a client with no Profit & Loss.
     const main = page.getByRole('main');
     await expect(main.getByText(/reminders & obligations/i)).toBeVisible();
+    // And in their place, the two this client's engagement is made of.
+    await expect(main.getByRole('heading', { name: 'Net sales' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Sales tax paid' })).toBeVisible();
     await expect(main.getByText('Gross Income')).toHaveCount(0);
     await expect(main.getByText('Net Income')).toHaveCount(0);
     await expect(main.getByText(/income vs expense/i)).toHaveCount(0);

@@ -250,3 +250,37 @@ export function taxYearSeries(obligations: readonly TaxObligation[]): TaxYearPoi
     return [{ year, projectedCents, paidCents, remainingCents }];
   });
 }
+
+/**
+ * What was actually paid, one point per filing period, oldest first.
+ *
+ * Sales tax is filed per period rather than per year, so `taxYearSeries` has
+ * nothing to say about it: a client filing monthly would see twelve months
+ * collapsed into one column. Rows are grouped by the period they cover and
+ * summed across jurisdictions — the same money, owed to two authorities for
+ * one month, is one month's payment on this chart.
+ *
+ * A filing with no period is left out rather than guessed at from its due
+ * date, which falls in the month *after* the one it settles. A period whose
+ * filings print no payment stays on the axis with a null: the period was filed,
+ * and drawing it at zero would say the client paid nothing when the record
+ * simply does not state a payment.
+ */
+export type TaxPaidPoint = { periodStart: string; periodEnd: string; paidCents: number | null };
+
+export function taxPaidSeries(obligations: readonly TaxObligation[], limit: number): TaxPaidPoint[] {
+  const byPeriod = new Map<string, TaxObligation[]>();
+  for (const obligation of obligations) {
+    const { periodStart, periodEnd } = obligation;
+    if (periodStart === null || periodEnd === null) continue;
+    const key = `${periodStart}|${periodEnd}`;
+    byPeriod.set(key, [...(byPeriod.get(key) ?? []), obligation]);
+  }
+  return [...byPeriod.entries()]
+    .map(([key, rows]) => {
+      const [periodStart = '', periodEnd = ''] = key.split('|');
+      return { periodStart, periodEnd, paidCents: sumField(rows, (o) => o.paidCents) };
+    })
+    .sort((a, b) => a.periodEnd.localeCompare(b.periodEnd) || a.periodStart.localeCompare(b.periodStart))
+    .slice(-limit);
+}
