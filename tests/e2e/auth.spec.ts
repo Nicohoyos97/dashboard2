@@ -1,61 +1,69 @@
-import { type APIRequestContext, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
-// Full auth flow against local Supabase: sign up, confirm the email (read from
-// the local mail catcher — Mailpit, shipped by Supabase CLI v2), sign in, and
-// sign out. Requires `pnpm supabase:start`.
-const MAILPIT = 'http://127.0.0.1:54324';
-const PASSWORD = 'Str0ng!Pass1';
+import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
 
-test('signup → email confirm → signin → signout', async ({ page, request }) => {
-  const stamp = Date.now();
-  const mailbox = `e2e-${stamp}`;
-  const email = `${mailbox}@example.com`;
+// Sign in, sign out — and the door that is now shut. There is no self-serve
+// sign-up: the account below is made the way the firm makes one (the auth admin
+// API, which is what an invitation uses), and /signup leaves for the plans on
+// the marketing site instead of offering a form.
+test.describe('Auth', () => {
+  test.skip(!supabaseEnv(), 'Supabase env not available');
 
-  // ── Sign up ──────────────────────────────────────────────────────────
-  await page.goto('/signup');
-  await page.fill('#firstName', 'E2E');
-  await page.fill('#lastName', 'Tester');
-  await page.fill('#email', email);
-  await page.fill('#password', PASSWORD);
-  await page.getByRole('button', { name: /create my account/i }).click();
-  await expect(page.getByText(/check your email/i)).toBeVisible();
+  const fx = new Fixtures();
+  test.afterAll(() => fx.cleanup());
 
-  // ── Confirm via the Mailpit message ──────────────────────────────────
-  const confirmUrl = await confirmationLink(request, email);
-  await page.goto(confirmUrl);
-  await expect(page).toHaveURL(/\/dashboard/);
+  test('sign in → sign out → sign in again', async ({ page }) => {
+    const { email } = await fx.makeUser('auth');
 
-  // ── Sign out ─────────────────────────────────────────────────────────
-  await page.getByRole('button', { name: /account menu/i }).click();
-  await page.getByRole('menuitem', { name: /sign out/i }).click();
-  await expect(page).toHaveURL(/\/signin/);
+    await page.goto('/signin');
+    await page.fill('#email', email);
+    await page.fill('#password', PASSWORD);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
 
-  // ── Sign in with the confirmed credentials ───────────────────────────
-  await page.goto('/signin');
-  await page.fill('#email', email);
-  await page.fill('#password', PASSWORD);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+    await page.getByRole('button', { name: /account menu/i }).click();
+    await page.getByRole('menuitem', { name: /sign out/i }).click();
+    await expect(page).toHaveURL(/\/signin/);
 
-  // ── Sign out again ───────────────────────────────────────────────────
-  await page.getByRole('button', { name: /account menu/i }).click();
-  await page.getByRole('menuitem', { name: /sign out/i }).click();
-  await expect(page).toHaveURL(/\/signin/);
-});
+    // Load the page rather than typing into the one the redirect just handed
+    // us: a click that beats hydration submits the form natively and goes
+    // nowhere, which is what made this flaky.
+    await page.goto('/signin');
+    await page.fill('#email', email);
+    await page.fill('#password', PASSWORD);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+  });
 
-async function confirmationLink(request: APIRequestContext, email: string): Promise<string> {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const list = await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
-    const { messages } = (await list.json()) as { messages: Array<{ ID: string }> };
-    const latest = messages[0];
-    if (latest) {
-      const detail = await request.get(`${MAILPIT}/api/v1/message/${latest.ID}`);
-      const body = (await detail.json()) as { HTML?: string; Text?: string };
-      const html = body.HTML || body.Text || '';
-      const match = html.match(/https?:\/\/[^\s"']*\/auth\/v1\/verify[^\s"']*/);
-      if (match) return match[0].replace(/&amp;/g, '&');
+  test('sign-up is closed and points at the plans', async ({ page, request }) => {
+    // The way out for a visitor with no account is a link, not a second form.
+    await page.goto('/signin');
+    await expect(page.getByRole('link', { name: /choose a plan/i })).toHaveAttribute(
+      'href',
+      'https://hoyosbaker.com/get-started/bookkeeping?start=plans',
+    );
+    await expect(page.locator('#firstName')).toHaveCount(0);
+
+    // The old route follows it, in the reader's own language.
+    for (const [path, destination] of [
+      ['/signup', 'https://hoyosbaker.com/get-started/bookkeeping?start=plans'],
+      ['/es/signup', 'https://hoyosbaker.com/es/get-started/bookkeeping?start=plans'],
+    ]) {
+      const response = await request.get(path!, { maxRedirects: 0 });
+      expect(response.status()).toBeGreaterThanOrEqual(300);
+      expect(response.status()).toBeLessThan(400);
+      expect(response.headers()['location']).toBe(destination);
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`No confirmation email arrived in Mailpit for ${email}`);
-}
+
+    // And the app is not the only lock: the Auth server refuses a walk-in too,
+    // which is what closes Google as well. (Needs a local stack restarted since
+    // `enable_signup = false` landed in supabase/config.toml.)
+    const env = supabaseEnv()!;
+    const refused = await request.post(`${env.url}/auth/v1/signup`, {
+      headers: { apikey: env.anon, 'content-type': 'application/json' },
+      data: { email: `walk-in-${Date.now()}@example.com`, password: PASSWORD },
+    });
+    expect(refused.status()).toBe(422);
+    expect(((await refused.json()) as { error_code?: string }).error_code).toBe('signup_disabled');
+  });
+});

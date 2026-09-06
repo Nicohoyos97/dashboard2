@@ -110,7 +110,11 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Closed on purpose, and closed in the cloud project too: a portal account
+# exists because a business bought a plan and the firm provisioned it. The
+# admin API is unaffected, so invitations (lib/firm/onboarding.ts), the firm
+# bootstrap and the demo seed all still create users.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -122,7 +126,10 @@ minimum_password_length = 8
 password_requirements = "lower_upper_letters_digits_symbols"
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
+# Deliberately left on: in the CLI this key maps to GoTrue's email *provider*,
+# so turning it off disables email sign-in as well ("Email logins are disabled",
+# measured 2026-09-05). The project-wide enable_signup above is what closes
+# registration, for email and Google alike.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.

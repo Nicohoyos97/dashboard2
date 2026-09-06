@@ -9,20 +9,11 @@ import { safeRedirectPath } from '@/lib/auth/redirect';
 import { createClient } from '@/lib/supabase/server';
 import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE } from '@/lib/supabase/env';
 
-import {
-  type SignInValues,
-  type SignUpValues,
-  forgotPasswordSchema,
-  passwordSchema,
-  signInSchema,
-  signUpSchema,
-} from './schemas';
+import { type SignInValues, forgotPasswordSchema, passwordSchema, signInSchema } from './schemas';
 
 // Discriminated result returned to the client form. Never leak provider error
 // details that would aid account enumeration.
-export type AuthResult =
-  | { ok: true; url?: string; needsConfirmation?: boolean }
-  | { ok: false; error: string };
+export type AuthResult = { ok: true; url?: string } | { ok: false; error: string };
 
 async function getOrigin(): Promise<string> {
   const h = await headers();
@@ -83,44 +74,6 @@ export async function signInWithPassword(
     safeRedirectPath(redirectTo) ??
       (preferred ? `${localePrefix(preferred)}/dashboard` : await localePath('/dashboard')),
   );
-}
-
-export async function signUpWithPassword(values: SignUpValues): Promise<AuthResult> {
-  const t = await getTranslations('AuthErrors');
-  const parsed = signUpSchema.safeParse(values);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? t('checkDetails') };
-  }
-
-  const supabase = await createClient();
-  const origin = await getOrigin();
-  const { firstName, lastName, email, password } = parsed.data;
-
-  // Carry the locale through the email-confirmation round-trip: after the user
-  // clicks the link, /callback redirects to this locale-aware dashboard.
-  const next = await localePath('/dashboard');
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${origin}/callback?next=${encodeURIComponent(next)}`,
-      data: { full_name: `${firstName} ${lastName}`.trim() },
-    },
-  });
-
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes('password')) return { ok: false, error: error.message };
-    return { ok: false, error: t('createFailed') };
-  }
-
-  // With email confirmations on, an existing email returns a user with no
-  // identities (Supabase obfuscates to prevent enumeration). Treat as in-use.
-  if (data.user && data.user.identities && data.user.identities.length === 0) {
-    return { ok: false, error: t('emailInUse') };
-  }
-
-  return { ok: true, needsConfirmation: true };
 }
 
 export async function signInWithGoogle(redirectTo?: string): Promise<AuthResult> {

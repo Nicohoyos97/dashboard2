@@ -5,8 +5,8 @@
 // the `next` param, which keeps a Spanish user in /es on the way back.
 import { NextResponse } from 'next/server';
 
+import { isUnprovisioned } from '@/lib/auth/provisioned';
 import { safeRedirectPath } from '@/lib/auth/redirect';
-
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
@@ -26,21 +26,33 @@ export async function GET(request: Request) {
 
   // Derive the locale from `next` so error bounces stay in the user's language.
   const localePrefix = next === '/es' || next.startsWith('/es/') ? '/es' : '';
+  const bounce = (reason: string) =>
+    NextResponse.redirect(`${base}${localePrefix}/signin?error=${reason}`);
 
   if (!code) {
-    return NextResponse.redirect(`${base}${localePrefix}/signin?error=server_error`);
+    // Supabase sends the user back here with no code when it refuses the
+    // sign-in. With sign-ups closed, an unknown Google account is exactly that
+    // case, and it deserves the answer that points at the plans.
+    return bounce(
+      url.searchParams.get('error_code') === 'signup_disabled' ? 'no_account' : 'server_error',
+    );
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     // Expired/invalid link. Recovery links route the user back to request a new
     // one; OAuth failures go back to sign-in — in the same locale.
-    const dest = next.includes('/reset-password')
-      ? `${base}${localePrefix}/forgot-password?error=link_expired`
-      : `${base}${localePrefix}/signin?error=server_error`;
-    return NextResponse.redirect(dest);
+    if (next.includes('/reset-password')) {
+      return NextResponse.redirect(`${base}${localePrefix}/forgot-password?error=link_expired`);
+    }
+    return bounce('server_error');
+  }
+
+  if (await isUnprovisioned(supabase, data.user)) {
+    await supabase.auth.signOut();
+    return bounce('no_account');
   }
 
   return NextResponse.redirect(`${base}${next}`);

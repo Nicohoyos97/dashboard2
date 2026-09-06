@@ -1,29 +1,28 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useState } from 'react';
 
 import { Link } from '@/i18n/navigation';
+import { getStartedUrl } from '@/lib/auth/get-started';
 
 import { AuthForm } from './AuthForm';
 import { AuthSplit } from './AuthSplit';
 import { SocialRow } from './SocialRow';
 
-type Mode = 'signin' | 'signup';
-
+// Sign-in, and only sign-in. Accounts are not self-serve — see
+// lib/auth/get-started.ts — so the way out for a visitor with no account is a
+// link to the plans, not a second mode of this screen.
 export function AuthExperience({
-  initialMode,
   redirectTo,
   initialError,
 }: {
-  initialMode: Mode;
   redirectTo?: string | undefined;
   initialError?: string | undefined;
 }) {
   const t = useTranslations('Auth');
-  const mode = initialMode;
-  const isSignup = mode === 'signup';
+  const locale = useLocale();
   const [error, setError] = useState<string | null>(initialError ?? null);
 
   return (
@@ -38,10 +37,10 @@ export function AuthExperience({
       />
 
       <h1 className="text-ink text-center text-[34px] leading-tight font-bold tracking-[-0.025em]">
-        {isSignup ? t('signupTitle') : t('signinTitle')}
+        {t('signinTitle')}
       </h1>
       <p className="text-muted-foreground mt-2 text-center text-[15px] leading-relaxed">
-        {isSignup ? t('signupLede') : t('signinLede')}
+        {t('signinLede')}
       </p>
 
       {error && (
@@ -69,16 +68,18 @@ export function AuthExperience({
         {t('orWithEmail')}
       </div>
 
-      <AuthForm key={mode} mode={mode} redirectTo={redirectTo} onError={setError} />
+      <AuthForm redirectTo={redirectTo} onError={setError} />
 
+      {/* Out of the app and onto the marketing site's plans, so it is a plain
+          <a>: no locale prefix of ours, no client router. */}
       <p className="text-muted-foreground mt-6 text-center text-[13.5px]">
-        {isSignup ? t('haveAccount') : t('noAccount')}{' '}
-        <Link
-          href={isSignup ? '/signin' : '/signup'}
+        {t('noAccount')}{' '}
+        <a
+          href={getStartedUrl(locale)}
           className="text-blue font-semibold underline-offset-4 hover:underline"
         >
-          {isSignup ? t('signIn') : t('createAccount')}
-        </Link>
+          {t('getStarted')}
+        </a>
       </p>
 
       <footer className="border-line text-muted-foreground mt-10 flex flex-wrap justify-center gap-6 border-t pt-8 text-[12px] font-medium">

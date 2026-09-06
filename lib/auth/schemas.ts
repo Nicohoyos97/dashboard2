@@ -17,14 +17,6 @@ export const signInSchema = z.object({
   remember: z.boolean().optional(),
 });
 
-export const signUpSchema = z.object({
-  firstName: z.string().min(1, 'Required'),
-  lastName: z.string().min(1, 'Required'),
-  email: z.string().email('Enter a valid email'),
-  password: passwordSchema,
-  updates: z.boolean().optional(),
-});
-
 export const forgotPasswordSchema = z.object({
   email: z.string().email('Enter a valid email'),
 });
@@ -40,11 +32,10 @@ export const resetPasswordSchema = z
   });
 
 export type SignInValues = z.infer<typeof signInSchema>;
-export type SignUpValues = z.infer<typeof signUpSchema>;
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 
-// Shared 0–4 password strength score for the signup meter.
+// Shared 0–4 password strength score for the invite and reset meters.
 export function passwordStrength(value: string): number {
   if (!value || value.length < 8) return 0;
   let score = 0;

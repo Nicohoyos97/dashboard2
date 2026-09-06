@@ -3,107 +3,49 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useState, useTransition } from 'react';
-import { type Resolver, useForm } from 'react-hook-form';
+import { useTransition } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { Link } from '@/i18n/navigation';
-import { signInWithPassword, signUpWithPassword } from '@/lib/auth/actions';
-import { signInSchema, signUpSchema } from '@/lib/auth/schemas';
+import { signInWithPassword } from '@/lib/auth/actions';
+import { type SignInValues, signInSchema } from '@/lib/auth/schemas';
 
-import { Field, PasswordField, Spinner, StrengthMeter, fieldClass } from './fields';
-
-type Mode = 'signin' | 'signup';
-
-type FormValues = {
-  firstName?: string;
-  lastName?: string;
-  email: string;
-  password: string;
-  remember?: boolean;
-};
+import { Field, PasswordField, Spinner, fieldClass } from './fields';
 
 export function AuthForm({
-  mode,
   redirectTo,
   onError,
 }: {
-  mode: Mode;
   redirectTo?: string | undefined;
   onError: (message: string | null) => void;
 }) {
   const t = useTranslations('Auth');
-  const isSignup = mode === 'signup';
   const [isPending, startTransition] = useTransition();
-  const [confirmation, setConfirmation] = useState(false);
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(isSignup ? signUpSchema : signInSchema) as Resolver<FormValues>,
+  } = useForm<SignInValues>({
+    resolver: zodResolver(signInSchema),
     mode: 'onBlur',
-    defaultValues: isSignup ? {} : { remember: true },
+    defaultValues: { remember: true },
   });
 
   const onSubmit = handleSubmit((values) => {
     onError(null);
     startTransition(async () => {
-      const result = isSignup
-        ? await signUpWithPassword({
-            firstName: values.firstName ?? '',
-            lastName: values.lastName ?? '',
-            email: values.email,
-            password: values.password,
-          })
-        : await signInWithPassword(
-            { email: values.email, password: values.password, remember: values.remember ?? true },
-            redirectTo,
-          );
-
+      const result = await signInWithPassword(
+        { email: values.email, password: values.password, remember: values.remember ?? true },
+        redirectTo,
+      );
       // signInWithPassword redirects on success and never returns here.
-      if (result.ok && result.needsConfirmation) setConfirmation(true);
-      else if (!result.ok) onError(result.error);
+      if (!result.ok) onError(result.error);
     });
   });
 
-  if (confirmation) {
-    return (
-      <div className="border-line bg-paper mt-6 rounded-[16px] border p-6 text-center">
-        <h2 className="text-ink text-lg font-bold">{t('checkEmailTitle')}</h2>
-        <p className="text-muted-foreground mt-2 text-[14.5px] leading-relaxed">
-          {t('checkEmailBody')}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col">
-      {isSignup && (
-        <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-          <Field id="firstName" label={t('firstName')} error={errors.firstName?.message}>
-            <input
-              id="firstName"
-              placeholder={t('firstNamePlaceholder')}
-              autoComplete="given-name"
-              className={fieldClass}
-              {...register('firstName')}
-            />
-          </Field>
-          <Field id="lastName" label={t('lastName')} error={errors.lastName?.message}>
-            <input
-              id="lastName"
-              placeholder={t('lastNamePlaceholder')}
-              autoComplete="family-name"
-              className={fieldClass}
-              {...register('lastName')}
-            />
-          </Field>
-        </div>
-      )}
-
       <Field id="email" label={t('emailLabel')} error={errors.email?.message}>
         <div className="relative">
           <Mail className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2" aria-hidden="true" />
@@ -121,31 +63,27 @@ export function AuthForm({
       <PasswordField
         id="password"
         label={t('passwordLabel')}
-        autoComplete={isSignup ? 'new-password' : 'current-password'}
+        autoComplete="current-password"
         error={errors.password?.message}
         registration={register('password')}
       />
 
-      {!isSignup && (
-        <div className="mb-4 flex items-center justify-between gap-4 text-[13px]">
-          <label className="text-muted-foreground flex min-h-11 cursor-pointer items-center gap-2.5 font-medium">
-            <input
-              type="checkbox"
-              className="border-input text-blue focus-visible:ring-blue/35 size-4 rounded border bg-card accent-blue outline-none focus-visible:ring-3"
-              {...register('remember')}
-            />
-            <span>{t('keepSignedIn')}</span>
-          </label>
-          <Link
-            href="/forgot-password"
-            className="text-blue focus-visible:ring-blue/35 rounded-sm font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-3"
-          >
-            {t('forgotPassword')}
-          </Link>
-        </div>
-      )}
-
-      {isSignup && <StrengthMeter value={watch('password') ?? ''} />}
+      <div className="mb-4 flex items-center justify-between gap-4 text-[13px]">
+        <label className="text-muted-foreground flex min-h-11 cursor-pointer items-center gap-2.5 font-medium">
+          <input
+            type="checkbox"
+            className="border-input text-blue focus-visible:ring-blue/35 size-4 rounded border bg-card accent-blue outline-none focus-visible:ring-3"
+            {...register('remember')}
+          />
+          <span>{t('keepSignedIn')}</span>
+        </label>
+        <Link
+          href="/forgot-password"
+          className="text-blue focus-visible:ring-blue/35 rounded-sm font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-3"
+        >
+          {t('forgotPassword')}
+        </Link>
+      </div>
 
       <button
         type="submit"
@@ -155,37 +93,12 @@ export function AuthForm({
         {isPending ? (
           <>
             <Spinner />
-            {isSignup ? t('creating') : t('signingIn')}
+            {t('signingIn')}
           </>
-        ) : isSignup ? (
-          t('createAccount')
         ) : (
           t('signIn')
         )}
       </button>
-
-      {isSignup && (
-        <p className="text-muted-foreground mt-4 text-center text-[12.5px] leading-relaxed">
-          {t.rich('termsAgree', {
-            terms: (chunks) => (
-              <Link
-                href="/terms"
-                className="text-blue font-medium underline-offset-2 hover:underline"
-              >
-                {chunks}
-              </Link>
-            ),
-            privacy: (chunks) => (
-              <Link
-                href="/privacy"
-                className="text-blue font-medium underline-offset-2 hover:underline"
-              >
-                {chunks}
-              </Link>
-            ),
-          })}
-        </p>
-      )}
     </form>
   );
 }

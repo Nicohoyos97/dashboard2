@@ -1,12 +1,12 @@
-// Sign-up page. Renders the shared auth experience in sign-up mode. The in-page
-// toggle keeps users on /signin#signup; this route is the direct entry point.
-import { AuthExperience } from '@/components/auth/AuthExperience';
+// Sign-up is closed. Accounts follow a purchase: the client picks a plan on the
+// marketing site, the firm provisions the business and emails the invitation,
+// and the client sets a password at /invite. This route stays so old links,
+// bookmarks and password managers land on the plans instead of a dead end.
+import { getLocale } from 'next-intl/server';
+import { redirect } from 'next/navigation';
 
-export default async function SignUpPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ redirectedFrom?: string }>;
-}) {
-  const params = await searchParams;
-  return <AuthExperience initialMode="signup" redirectTo={params.redirectedFrom} />;
+import { getStartedUrl } from '@/lib/auth/get-started';
+
+export default async function SignUpPage() {
+  redirect(getStartedUrl(await getLocale()));
 }
