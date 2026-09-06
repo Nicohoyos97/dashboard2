@@ -61,13 +61,15 @@ export function AuthExperience({
         </div>
       )}
 
-      <AuthForm key={mode} mode={mode} redirectTo={redirectTo} onError={setError} />
-
-      <div className="text-muted-foreground before:bg-line after:bg-line my-6 flex items-center gap-4 text-[12px] font-medium tracking-[0.12em] uppercase before:h-px before:flex-1 after:h-px after:flex-1">
-        {t('orContinueWith')}
+      <div className="mt-6">
+        <SocialRow redirectTo={redirectTo} onError={setError} />
       </div>
 
-      <SocialRow redirectTo={redirectTo} onError={setError} />
+      <div className="text-muted-foreground before:bg-line after:bg-line my-6 flex items-center gap-4 text-[12px] font-medium tracking-[0.12em] uppercase before:h-px before:flex-1 after:h-px after:flex-1">
+        {t('orWithEmail')}
+      </div>
+
+      <AuthForm key={mode} mode={mode} redirectTo={redirectTo} onError={setError} />
 
       <p className="text-muted-foreground mt-6 text-center text-[13.5px]">
         {isSignup ? t('haveAccount') : t('noAccount')}{' '}

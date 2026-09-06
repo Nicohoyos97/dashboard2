@@ -80,7 +80,7 @@ export function AuthForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col">
       {isSignup && (
         <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
           <Field id="firstName" label={t('firstName')} error={errors.firstName?.message}>
