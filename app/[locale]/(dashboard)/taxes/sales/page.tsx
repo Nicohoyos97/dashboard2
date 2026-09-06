@@ -113,7 +113,9 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     tipsCents: report.tipsCents,
     taxCollectedCents: report.taxCollectedCents,
   }));
-  const netTrend = netSeries.filter((point) => point.netSalesCents !== null).length >= 2 ? netSeries : null;
+  // One bar is a legitimate chart: a client with a single published month has
+  // sold one month, and its three bars read exactly as the eighth month's do.
+  const netTrend = netSeries.some((point) => point.netSalesCents !== null) ? netSeries : null;
   const tenderPeriods = registerPeriods.map((report) => ({
     id: report.id,
     label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),

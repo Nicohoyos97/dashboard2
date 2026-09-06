@@ -3,11 +3,12 @@
 // The Recharts drawing for NetSalesChart; the figure, its legend and its
 // caption stay in the wrapper so the screen-reader reading never waits on the
 // chart bundle.
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { REGISTER_SERIES } from '@/lib/charts/palette';
 
-import { compactMoney, fullMoney, moneyAxisWidth } from '../format';
+import { ChartTooltip } from '../ChartTooltip';
+import { compactMoney, moneyAxisWidth } from '../format';
 
 export type NetSalesPoint = {
   label: string;
@@ -19,7 +20,7 @@ export type NetSalesPoint = {
 /**
  * Tips and tax are drawn only when they are named, the way TrendBars treats its
  * second series: a caller with nothing to say about them (the Overview's
- * net-sales card) neither passes a label nor gets a line.
+ * net-sales card) neither passes a label nor gets a bar.
  */
 export type NetSalesLabels = { net: string; tips?: string; tax?: string };
 
@@ -41,13 +42,7 @@ export function NetSalesPlot({
 
   return (
     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} accessibilityLayer>
-        <defs>
-          <linearGradient id="netSales-net" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={REGISTER_SERIES.net} stopOpacity={0.22} />
-            <stop offset="100%" stopColor={REGISTER_SERIES.net} stopOpacity={0} />
-          </linearGradient>
-        </defs>
+      <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
         {/* Sized from the ticks it will actually draw — see moneyAxisWidth. */}
@@ -62,66 +57,38 @@ export function NetSalesPlot({
           tickFormatter={(value: number) => compactMoney(value, currency)}
         />
         <Tooltip
-          cursor={{ stroke: 'var(--chart-axis)', strokeWidth: 1, strokeDasharray: '4 4' }}
-          content={({ active, label, payload }) => {
-            const rows = (payload ?? []).filter((entry) => typeof entry.value === 'number');
-            if (!active || rows.length === 0) return null;
-            return (
-              <div className="rounded-xl bg-[var(--chart-tooltip-bg)] px-3.5 py-2.5 text-white shadow-[0_10px_28px_rgba(15,23,42,0.24)]">
-                {rows.map((entry) => (
-                  <p key={String(entry.name)} className="not-first:mt-2">
-                    <span className="block text-[11.5px] text-white/70">{String(entry.name)}</span>
-                    <span className="block text-[18px] leading-tight font-bold tabular-nums">
-                      {fullMoney(Number(entry.value), currency)}
-                    </span>
-                  </p>
-                ))}
-                {typeof label === 'string' && <p className="mt-1.5 text-[11.5px] text-white/70">{label}</p>}
-              </div>
-            );
-          }}
+          cursor={{ fill: 'var(--chart-cursor)' }}
+          content={({ active, label, payload }) => (
+            <ChartTooltip
+              active={active}
+              label={typeof label === 'string' ? label : undefined}
+              currency={currency}
+              rows={(payload ?? [])
+                .filter((entry) => typeof entry.value === 'number')
+                .map((entry) => ({
+                  name: String(entry.name),
+                  value: Number(entry.value),
+                  color: String(entry.color ?? REGISTER_SERIES.net),
+                }))}
+            />
+          )}
         />
-        {/* Net sales carries the fill; tips and tax are plain lines beside it,
-            two figures an order of magnitude smaller that would be lost under
-            areas of their own. A period whose report does not print one breaks
-            that line rather than being joined across — connectNulls would draw
-            a month that was never reported. */}
-        <Area
-          type="monotone"
-          dataKey="net"
-          name={labels.net}
-          stroke={REGISTER_SERIES.net}
-          strokeWidth={2.25}
-          fill="url(#netSales-net)"
-          dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--chart-surface)' }}
-          connectNulls={false}
-        />
+        {/* Three bars per period, all three from the same point-of-sale report:
+            what was sold, and the two amounts the register held on top of it.
+            Tips and tax are an order of magnitude smaller than net sales and
+            read as short bars beside it — the tooltip carries the exact
+            figures, which a shared axis is what makes comparable in the first
+            place. A period whose report does not print one leaves a gap rather
+            than a zero bar: Recharts draws nothing for a null, and "not
+            printed" is not "nothing". */}
+        <Bar dataKey="net" name={labels.net} fill={REGISTER_SERIES.net} radius={[4, 4, 0, 0]} maxBarSize={28} />
         {labels.tips && (
-        <Line
-          type="monotone"
-          dataKey="tips"
-          name={labels.tips}
-          stroke={REGISTER_SERIES.tips}
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--chart-surface)' }}
-          connectNulls={false}
-        />
+          <Bar dataKey="tips" name={labels.tips} fill={REGISTER_SERIES.tips} radius={[4, 4, 0, 0]} maxBarSize={28} />
         )}
         {labels.tax && (
-        <Line
-          type="monotone"
-          dataKey="tax"
-          name={labels.tax}
-          stroke={REGISTER_SERIES.tax}
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--chart-surface)' }}
-          connectNulls={false}
-        />
+          <Bar dataKey="tax" name={labels.tax} fill={REGISTER_SERIES.tax} radius={[4, 4, 0, 0]} maxBarSize={28} />
         )}
-      </ComposedChart>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

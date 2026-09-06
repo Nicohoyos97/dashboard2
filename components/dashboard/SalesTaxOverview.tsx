@@ -85,9 +85,9 @@ export async function SalesTaxOverview({
     label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),
     netSalesCents: report.netSalesCents,
   }));
-  // A line needs two points to be a line; one published month is a figure, and
-  // the register breakdown on the Sales Taxes page is where it is read.
-  const netTrend = netPoints.filter((point) => point.netSalesCents !== null).length >= 2 ? netPoints : null;
+  // One bar is a legitimate chart, the same rule the payments chart below
+  // follows: a client who has published one month has sold one month.
+  const netTrend = netPoints.some((point) => point.netSalesCents !== null) ? netPoints : null;
 
   const paidPoints = taxPaidSeries(obligations, TREND_LIMIT).map((point) => ({
     label: formatPeriodCompact(point.periodStart, point.periodEnd, locale),

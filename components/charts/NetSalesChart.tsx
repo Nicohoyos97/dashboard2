@@ -10,8 +10,8 @@ import type { NetSalesLabels, NetSalesPoint } from './plot/NetSalesPlot';
 
 export type { NetSalesLabels, NetSalesPoint };
 
-// What the client's register rang up over the published periods: net sales as
-// a soft area, with the tips and the tax it collected on top of them as lines.
+// What the client's register rang up over the published periods: three bars a
+// period — net sales, and the tips and the tax it collected on top of them.
 // All three come from the same point-of-sale report, so nothing is mixed across
 // sources (§10) — and a tax filing's receipts, a different fact, are never
 // plotted here.
