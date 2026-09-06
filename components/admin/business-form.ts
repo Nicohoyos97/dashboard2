@@ -18,7 +18,22 @@ export const EMPTY_BUSINESS: EntityFormValues = {
   currency: 'USD',
   timezone: DEFAULT_TIMEZONE,
   salesTaxEnabled: false,
+  salesTax: { state: '', hasCityTax: false, cities: [] },
   enabledModules: { bookkeeping: true, income_taxes: true },
   industry: '',
   logoUrl: null,
 };
+
+/**
+ * Whether the business half of a provisioning form is still missing an answer
+ * its own rules require: a DBA without its trade name, or sales tax without the
+ * state it is collected in. The Server Action and the database refuse the same
+ * combinations — this only keeps the firm from making the round trip.
+ */
+export function businessIncomplete(values: EntityFormValues): boolean {
+  if (values.name.trim() === '') return true;
+  if (values.hasDba && values.dbaName.trim() === '') return true;
+  if (!values.salesTaxEnabled) return false;
+  if (values.salesTax.state === '') return true;
+  return values.salesTax.hasCityTax && values.salesTax.cities.every((city) => city.trim() === '');
+}

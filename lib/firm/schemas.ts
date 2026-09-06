@@ -6,6 +6,7 @@
 import { z } from 'zod';
 
 import { routing } from '@/i18n/routing';
+import { isUsStateCode } from '@/lib/taxes/us-jurisdictions';
 import { isValidTimeZone } from '@/lib/utils/timezone';
 
 export const clientFields = {
@@ -22,6 +23,22 @@ export const modulesSchema = z.object({
   bookkeeping: z.boolean(),
   income_taxes: z.boolean(),
 });
+
+// Where the business collects sales tax, asked at the moment the module is
+// turned on. The state is a code from a closed list; the cities are free text
+// because the taxing body on a registration is whatever it says it is ("City of
+// Niles", "Village of Skokie"). Both become tax_jurisdictions rows (0024), and
+// the client's portal prints their names.
+export const salesTaxSchema = z.object({
+  state: z.union([
+    z.literal(''),
+    z.string().trim().toUpperCase().refine(isUsStateCode, 'invalid_state'),
+  ]),
+  hasCityTax: z.boolean(),
+  cities: z.array(z.string().trim().max(120)).max(20),
+});
+
+export type SalesTaxRegistration = z.infer<typeof salesTaxSchema>;
 
 export const entityConfigFields = {
   name: z.string().trim().min(1).max(120),
@@ -40,6 +57,7 @@ export const entityConfigFields = {
   // trigger in 0010.
   timezone: z.string().trim().min(1).max(64).refine(isValidTimeZone, 'invalid_timezone'),
   salesTaxEnabled: z.boolean(),
+  salesTax: salesTaxSchema,
   enabledModules: modulesSchema,
   industry: z.string().trim().max(80),
   // Written by the firm's uploader into the `logos` bucket, so it is checked
@@ -65,6 +83,52 @@ export function refineDba<T extends { hasDba: boolean; dbaName: string }>(
 /** Whether a failed parse failed *because* of the DBA pair, so the form can say so. */
 export function isDbaIssue(error: z.ZodError): boolean {
   return error.issues.some((issue) => issue.message === 'dba_required');
+}
+
+/**
+ * Selling sales tax means knowing where. The module and its registration are
+ * checked together for the same reason the DBA pair is: a business whose portal
+ * has a Sales Taxes page and no jurisdiction on file is a half-filled record
+ * that looks complete.
+ *
+ * Cities left over from a "yes" that became a "no" are not an error here — the
+ * form clears them and syncSalesTaxJurisdictions never reads them — so the only
+ * thing that can be missing is an answer the firm has not given.
+ */
+export function refineSalesTax<
+  T extends { salesTaxEnabled: boolean; salesTax: SalesTaxRegistration },
+>(values: T, ctx: z.RefinementCtx): void {
+  if (!values.salesTaxEnabled) return;
+  if (values.salesTax.state === '') {
+    ctx.addIssue({ code: 'custom', path: ['salesTax', 'state'], message: 'sales_tax_state_required' });
+  }
+  if (values.salesTax.hasCityTax && values.salesTax.cities.every((city) => city.trim() === '')) {
+    ctx.addIssue({ code: 'custom', path: ['salesTax', 'cities'], message: 'sales_tax_city_required' });
+  }
+}
+
+/** Which half of the sales-tax registration is missing, so the form can say which. */
+export function salesTaxIssue(error: z.ZodError): 'state' | 'city' | null {
+  if (error.issues.some((issue) => issue.message === 'sales_tax_state_required')) return 'state';
+  if (error.issues.some((issue) => issue.message === 'sales_tax_city_required')) return 'city';
+  return null;
+}
+
+/**
+ * Every cross-field rule a business carries, in one place: the three actions
+ * that write one (create, edit, one-step onboarding) apply this rather than
+ * each remembering the list.
+ */
+export function refineEntity<
+  T extends {
+    hasDba: boolean;
+    dbaName: string;
+    salesTaxEnabled: boolean;
+    salesTax: SalesTaxRegistration;
+  },
+>(values: T, ctx: z.RefinementCtx): void {
+  refineDba(values, ctx);
+  refineSalesTax(values, ctx);
 }
 
 /** The portal language the firm sets for a client they invite (0019). */

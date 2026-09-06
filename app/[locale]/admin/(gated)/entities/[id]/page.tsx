@@ -12,10 +12,12 @@ import { type ObligationItem, TaxObligations } from '@/components/admin/TaxOblig
 import { card, statusPill } from '@/components/admin/ui';
 import { Link } from '@/i18n/navigation';
 import { previewEntity } from '@/lib/entities/actions';
+import { loadSalesTaxRegistration } from '@/lib/firm/jurisdictions';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
 import type { EnabledModules } from '@/lib/firm/schemas';
 import { createClient } from '@/lib/supabase/server';
+import { usStateName } from '@/lib/taxes/us-jurisdictions';
 import { formatPeriod } from '@/lib/utils/dates';
 
 function modulesOf(value: unknown): EnabledModules {
@@ -41,7 +43,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     params,
   ]);
   const supabase = await createClient();
-  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }, { data: reminders }, { data: obligations }] =
+  const [{ data: entity }, { data: memberships }, { data: notes }, { data: documents }, { data: reminders }, { data: obligations }, salesTax] =
     await Promise.all([
       supabase
         .from('business_entities')
@@ -70,6 +72,9 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         .eq('business_entity_id', id)
         .order('due_date', { ascending: false, nullsFirst: false })
         .limit(100),
+      // Where this business collects sales tax: shown below, and the starting
+      // point of the edit dialog, which writes the same rows back.
+      loadSalesTaxRegistration(supabase, id),
     ]);
   if (!entity) notFound();
 
@@ -148,6 +153,14 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     [t('fiscalYearStart'), month],
     [t('accountingBasis'), entity.accounting_basis === 'accrual' ? t('basisAccrual') : t('basisCash')],
     [t('currency'), entity.currency],
+    ...(entity.sales_tax_enabled
+      ? ([
+          [
+            t('salesTaxJurisdictions'),
+            [usStateName(salesTax.state) ?? '—', ...salesTax.cities].join(' · '),
+          ],
+        ] as [string, string][])
+      : []),
     [
       t('modules'),
       [
@@ -202,6 +215,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
                 currency: entity.currency,
                 timezone: entity.timezone,
                 salesTaxEnabled: entity.sales_tax_enabled,
+                salesTax,
                 enabledModules: modules,
                 industry: entity.industry ?? '',
                 logoUrl: entity.logo_url,

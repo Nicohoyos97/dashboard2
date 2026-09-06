@@ -2005,6 +2005,7 @@ export type Database = {
           id: string
           level: string
           name: string
+          tax_type: string
         }
         Insert: {
           business_entity_id: string
@@ -2014,6 +2015,7 @@ export type Database = {
           id?: string
           level: string
           name: string
+          tax_type: string
         }
         Update: {
           business_entity_id?: string
@@ -2023,6 +2025,7 @@ export type Database = {
           id?: string
           level?: string
           name?: string
+          tax_type?: string
         }
         Relationships: [
           {

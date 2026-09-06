@@ -9,9 +9,10 @@ import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
+import { syncSalesTaxJurisdictions } from './jurisdictions';
 import { localePrefix, requestOrigin } from './origin';
-import type { ActionResult } from './result';
-import { clientFields, entityConfigFields, isDbaIssue, localeSchema, memberRoleSchema, refineDba } from './schemas';
+import { type ActionResult, invalidEntity } from './result';
+import { clientFields, entityConfigFields, localeSchema, memberRoleSchema, refineEntity } from './schemas';
 
 // Setting a client up in one step (§8): the client record, its first business
 // with its branding and modules, and — optionally — the invitation that lets
@@ -32,7 +33,7 @@ const inviteSchema = z.object({
 
 const schema = z.object({
   client: z.object(clientFields),
-  business: z.object(entityConfigFields).superRefine(refineDba),
+  business: z.object(entityConfigFields).superRefine(refineEntity),
   invite: inviteSchema,
 });
 
@@ -41,8 +42,11 @@ export type ClientOnboardingInput = z.infer<typeof schema>;
 export type ClientOnboardingResult = {
   clientId: string;
   entityId: string;
-  /** Null when no email was given, or the (translated) reason it was not sent. */
-  inviteWarning: string | null;
+  /**
+   * Null when everything went through: otherwise the (translated) part of the
+   * setup that did not, with the client and the business already created.
+   */
+  warning: string | null;
   invitedEmail: string | null;
 };
 
@@ -51,10 +55,7 @@ export async function createClientWithBusiness(
 ): Promise<ActionResult<ClientOnboardingResult>> {
   const t = await getTranslations('Admin');
   const parsed = schema.safeParse(input);
-  if (!parsed.success) {
-    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
-    return { ok: false, error: t('errorInvalid') };
-  }
+  if (!parsed.success) return { ok: false, ...invalidEntity(parsed.error, t) };
   const { client, business, invite } = parsed.data;
 
   const firm = await requireFirmAdmin();
@@ -108,9 +109,16 @@ export async function createClientWithBusiness(
     businessEntityId: entityRow.id,
   });
 
-  const inviteWarning = invite.email
-    ? await inviteOwner(entityRow.id, invite, t)
-    : null;
+  const registered = await syncSalesTaxJurisdictions(
+    supabase,
+    entityRow.id,
+    business.salesTax,
+    business.salesTaxEnabled,
+  );
+  const inviteWarning = invite.email ? await inviteOwner(entityRow.id, invite, t) : null;
+  // The jurisdictions are named first: an invitation that went out is not what
+  // the firm needs to hear about while a sales-tax client has nowhere on file.
+  const warning = registered ? inviteWarning : t('salesTaxSaveFailed');
 
   revalidatePath('/admin/clients');
   revalidatePath(`/admin/clients/${clientRow.id}`);
@@ -119,7 +127,7 @@ export async function createClientWithBusiness(
     value: {
       clientId: clientRow.id,
       entityId: entityRow.id,
-      inviteWarning,
+      warning,
       invitedEmail: invite.email && !inviteWarning ? invite.email : null,
     },
   };

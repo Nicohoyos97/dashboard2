@@ -8,8 +8,9 @@ import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import { createClient } from '@/lib/supabase/server';
 
-import { entityConfigFields, isDbaIssue, refineDba } from './schemas';
-import type { ActionResult } from './result';
+import { syncSalesTaxJurisdictions } from './jurisdictions';
+import { entityConfigFields, refineEntity } from './schemas';
+import { type ActionResult, invalidEntity } from './result';
 
 // Business (entity) provisioning and configuration by the firm
 // (INITIAL_PROMPT.md §5, §8). The firm-controlled columns edited here are the
@@ -17,10 +18,10 @@ import type { ActionResult } from './result';
 // shared with the one-step client onboarding in ./onboarding.
 const createSchema = z
   .object({ clientId: z.string().uuid(), ...entityConfigFields })
-  .superRefine(refineDba);
+  .superRefine(refineEntity);
 const updateSchema = z
   .object({ id: z.string().uuid(), ...entityConfigFields })
-  .superRefine(refineDba);
+  .superRefine(refineEntity);
 const statusSchema = z.object({ id: z.string().uuid(), status: z.enum(['active', 'archived']) });
 const notesSchema = z.object({ entityId: z.string().uuid(), notes: z.string().trim().max(8000) });
 
@@ -29,10 +30,7 @@ export type EntityConfigInput = z.infer<typeof createSchema>;
 export async function createEntity(input: unknown): Promise<ActionResult<{ id: string }>> {
   const t = await getTranslations('Admin');
   const parsed = createSchema.safeParse(input);
-  if (!parsed.success) {
-    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
-    return { ok: false, error: t('errorInvalid') };
-  }
+  if (!parsed.success) return { ok: false, ...invalidEntity(parsed.error, t) };
 
   const firm = await requireFirmAdmin();
   const supabase = await createClient();
@@ -58,6 +56,17 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
     .single();
   if (error || !data) return { ok: false, error: t('errorSave') };
 
+  // Where the business collects sales tax, in its own table. The row exists by
+  // now, so a failure here is reported as what it is — the business was created
+  // and its jurisdictions were not — rather than as a failed save the firm
+  // would repeat and duplicate.
+  const registered = await syncSalesTaxJurisdictions(
+    supabase,
+    data.id,
+    parsed.data.salesTax,
+    parsed.data.salesTaxEnabled,
+  );
+
   await logAccess({
     action: 'entity.create',
     resourceType: 'business_entity',
@@ -65,16 +74,14 @@ export async function createEntity(input: unknown): Promise<ActionResult<{ id: s
     businessEntityId: data.id,
   });
   revalidatePath(`/admin/clients/${parsed.data.clientId}`);
+  if (!registered) return { ok: false, error: t('salesTaxSaveFailed') };
   return { ok: true, value: { id: data.id } };
 }
 
 export async function updateEntityConfig(input: unknown): Promise<ActionResult> {
   const t = await getTranslations('Admin');
   const parsed = updateSchema.safeParse(input);
-  if (!parsed.success) {
-    if (isDbaIssue(parsed.error)) return { ok: false, error: t('dbaRequired'), field: 'dbaName' };
-    return { ok: false, error: t('errorInvalid') };
-  }
+  if (!parsed.success) return { ok: false, ...invalidEntity(parsed.error, t) };
 
   await requireFirmAdmin();
   const supabase = await createClient();
@@ -99,6 +106,13 @@ export async function updateEntityConfig(input: unknown): Promise<ActionResult> 
   const row = data?.[0];
   if (error || !row) return { ok: false, error: t('errorSave') };
 
+  const registered = await syncSalesTaxJurisdictions(
+    supabase,
+    row.id,
+    parsed.data.salesTax,
+    parsed.data.salesTaxEnabled,
+  );
+
   await logAccess({
     action: 'entity.update_config',
     resourceType: 'business_entity',
@@ -107,6 +121,7 @@ export async function updateEntityConfig(input: unknown): Promise<ActionResult> 
   });
   revalidatePath(`/admin/entities/${row.id}`);
   revalidatePath(`/admin/clients/${row.client_id}`);
+  if (!registered) return { ok: false, error: t('salesTaxSaveFailed') };
   return { ok: true, value: undefined };
 }
 

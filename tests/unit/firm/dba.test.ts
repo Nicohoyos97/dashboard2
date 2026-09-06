@@ -20,6 +20,7 @@ const base = {
   currency: 'USD',
   timezone: 'UTC',
   salesTaxEnabled: false,
+  salesTax: { state: '', hasCityTax: false, cities: [] },
   enabledModules: { bookkeeping: true, income_taxes: true },
   industry: '',
   logoUrl: null,

@@ -12,6 +12,7 @@ import { supportedTimeZones } from '@/lib/utils/timezone';
 
 import { type EntityFormValues } from './business-form';
 import { LogoField } from './LogoField';
+import { SalesTaxFields } from './SalesTaxFields';
 import { inputClass, labelClass, selectClass } from './ui';
 
 // Suggestions only — the field is free text: a fixed list would not survive a
@@ -277,6 +278,16 @@ export function BusinessFields({
             checked={values.salesTaxEnabled}
             onChange={(checked) => set('salesTaxEnabled', checked)}
           />
+          {/* Selling the module and knowing where it is collected are one
+              decision, so the jurisdiction is asked here rather than on a
+              screen the firm has to remember to open. */}
+          {values.salesTaxEnabled && (
+            <SalesTaxFields
+              values={values.salesTax}
+              onChange={(salesTax) => set('salesTax', salesTax)}
+              idPrefix={idPrefix}
+            />
+          )}
           <Toggle label={t('moduleNick')} hint={t('moduleNickHint')} checked disabled />
         </div>
       </fieldset>

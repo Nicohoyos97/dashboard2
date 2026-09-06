@@ -85,8 +85,22 @@ test.describe('Firm portal: clients, businesses, people', () => {
     await expect(create).toBeEnabled();
 
     await page.selectOption('#onboarding-basis', 'accrual');
+
+    // Selling sales tax means saying where it is collected: the module holds
+    // the submit until a state is chosen, and the city question is its own.
     await page.getByLabel(/^Sales Taxes/).check();
-    await page.getByRole('button', { name: /^create$/i }).click();
+    await expect(create).toBeDisabled();
+    await page.selectOption('#onboarding-salesTaxState', 'IL');
+    await expect(create).toBeEnabled();
+    // The second yes/no on the form — the first is the DBA question above.
+    await page.locator('input[name="onboarding-hasCityTax"]').nth(1).check();
+    await expect(create).toBeDisabled();
+    await page.fill('#onboarding-salesTaxCity', 'City of Niles');
+    await page.getByRole('button', { name: /^add$/i }).click();
+    await expect(page.getByText('City of Niles')).toBeVisible();
+    await expect(create).toBeEnabled();
+
+    await create.click();
 
     // One submit lands on the business, ready to receive documents.
     await expect(page).toHaveURL(/\/admin\/entities\/[0-9a-f-]{36}$/);
@@ -94,6 +108,7 @@ test.describe('Firm portal: clients, businesses, people', () => {
     await expect(page.getByText('Accrual')).toBeVisible();
     await expect(page.getByText(/Sales Taxes/)).toBeVisible();
     await expect(page.getByText(`Acme Bakery Co ${stamp}`)).toBeVisible();
+    await expect(page.getByText('Illinois · City of Niles')).toBeVisible();
     const entityUrl = page.url();
 
     const { data: entityRow } = await fx.admin
@@ -103,6 +118,19 @@ test.describe('Firm portal: clients, businesses, people', () => {
       .single();
     expect(entityRow?.has_dba).toBe(true);
     expect(entityRow?.dba_name).toBe(`Acme Bakery Co ${stamp}`);
+
+    // The codes the CHECK constraint in 0024 accepts, derived from the state
+    // and the typed city name.
+    const { data: jurisdictions } = await fx.admin
+      .from('tax_jurisdictions')
+      .select('level, name, code')
+      .eq('business_entity_id', entityUrl.split('/').pop() ?? '')
+      .eq('tax_type', 'sales')
+      .order('level', { ascending: false });
+    expect(jurisdictions).toEqual([
+      { level: 'state', name: 'Illinois', code: 'US-IL' },
+      { level: 'local', name: 'City of Niles', code: 'US-IL-CITY-OF-NILES' },
+    ]);
 
     // ── The owner is invited in the language the firm chose ───────────────
     const { data: ownerProfile } = await fx.admin

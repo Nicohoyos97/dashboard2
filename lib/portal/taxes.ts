@@ -83,6 +83,34 @@ function jurisdictionOf(row: JurisdictionRow): TaxJurisdiction | null {
   return { name: row.name, level, code: row.code, filingFrequency: frequency };
 }
 
+export type SalesTaxJurisdiction = { name: string; level: 'state' | 'local' };
+
+/**
+ * Where the firm has registered this business to collect sales tax (0024).
+ *
+ * Named, not counted: the page used to print how many jurisdictions the
+ * obligations mentioned — a number that was always 0, because nothing had ever
+ * written one, and that told a client nothing they could check against their
+ * own registrations. State first, then the cities under it.
+ */
+export async function loadSalesTaxJurisdictions(
+  supabase: Db,
+  entityId: string,
+): Promise<SalesTaxJurisdiction[]> {
+  const { data, error } = await supabase
+    .from('tax_jurisdictions')
+    .select('name, level')
+    .eq('business_entity_id', entityId)
+    .eq('tax_type', 'sales')
+    .order('level', { ascending: false })
+    .order('name');
+  if (error) throw readError('portal_sales_tax_jurisdictions_read_failed');
+  return (data ?? []).map((row) => ({
+    name: row.name,
+    level: row.level === 'local' ? 'local' : 'state',
+  }));
+}
+
 /** Published obligations of one type, newest due date first, with their payments attached. */
 export async function loadTaxObligations(
   supabase: Db,

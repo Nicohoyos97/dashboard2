@@ -283,8 +283,8 @@ async function main(): Promise<void> {
   const { data: jurisdictions } = await admin
     .from('tax_jurisdictions')
     .insert([
-      { business_entity_id: entityId, level: 'federal', name: 'IRS (Demo)', code: 'US', filing_frequency: 'annual' },
-      { business_entity_id: entityId, level: 'state', name: 'Florida Department of Revenue (Demo)', code: 'US-FL', filing_frequency: 'quarterly' },
+      { business_entity_id: entityId, tax_type: 'income', level: 'federal', name: 'IRS (Demo)', code: 'US', filing_frequency: 'annual' },
+      { business_entity_id: entityId, tax_type: 'sales', level: 'state', name: 'Florida (Demo)', code: 'US-FL', filing_frequency: 'quarterly' },
     ])
     .select('id, code');
   const federal = jurisdictions?.find((j) => j.code === 'US')?.id ?? null;

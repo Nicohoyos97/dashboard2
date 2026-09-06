@@ -117,7 +117,7 @@ test.describe('RLS financials, taxes, reminders and AI tables', () => {
     const payrollId = await one(A.from('payroll_obligations').insert(payrollRow).select('id').single());
     const category = { ...be, name: 'Payroll' };
     await one(A.from('expense_categories').insert(category).select('id').single());
-    const jurisdiction = { ...be, level: 'state', name: 'Florida', code: 'US-FL' };
+    const jurisdiction = { ...be, tax_type: 'sales', level: 'state', name: 'Florida', code: 'US-FL' };
     await one(A.from('tax_jurisdictions').insert(jurisdiction).select('id').single());
     const rem = { ...be, reminder_type: 'custom', title: 'Sales tax', due_date: '2026-02-20' };
     const reminderId = await one(A.from('reminders').insert(rem).select('id').single());

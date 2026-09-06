@@ -10,6 +10,7 @@ import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
+import { JurisdictionPills } from '@/components/taxes/JurisdictionPills';
 import { ObligationList } from '@/components/taxes/ObligationList';
 import { SalesFromRegister } from '@/components/taxes/SalesFromRegister';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
@@ -18,7 +19,7 @@ import { formatCents } from '@/lib/money';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadPublishedSalesReports } from '@/lib/portal/load';
-import { loadTaxObligations } from '@/lib/portal/taxes';
+import { loadSalesTaxJurisdictions, loadTaxObligations } from '@/lib/portal/taxes';
 import { nextDueDate, salesTaxCardFigures, salesTaxSeries, taxAlerts } from '@/lib/reports/taxes';
 import { todayIn } from '@/lib/utils/timezone';
 import { createClient } from '@/lib/supabase/server';
@@ -40,11 +41,13 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const settings = await loadPortalEntitySettings(supabase, entity.id);
   if (!settings.salesTaxEnabled) notFound();
 
-  const [all, salesReports] = await Promise.all([
+  const [all, salesReports, registeredIn] = await Promise.all([
     loadTaxObligations(supabase, entity.id, 'sales'),
     // The client's own register. Read even when there are no filings yet: a
     // business that has sent us a month of sales should see it.
     loadPublishedSalesReports(supabase, entity.id, 1).catch(() => []),
+    // Where the firm registered this business — the pills under the title.
+    loadSalesTaxJurisdictions(supabase, entity.id),
   ]);
   const latestSales = salesReports[0] ?? null;
   const currency = settings.currency;
@@ -96,11 +99,6 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     },
     { label: t('cardTaxableSales'), value: format(figures.taxableSalesCents), unavailable: t('notPrinted') },
     { label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
-    {
-      label: t('cardJurisdictions'),
-      value: String(jurisdictions.length),
-      ...(selectedCode === '' && jurisdictions.length > 1 ? { detail: t('allJurisdictionsNote') } : {}),
-    },
   ];
 
   const series = salesTaxSeries(obligations, (o) =>
@@ -131,6 +129,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
           ) : null
         }
       >
+        <JurisdictionPills jurisdictions={registeredIn} />
         <p className="text-muted-foreground mt-3 text-[12.5px]">{t('salesSourceNote')}</p>
         {pendingReview > 0 && (
           <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-[13px]">{t('pendingReviewWarning', { count: pendingReview })}</p>

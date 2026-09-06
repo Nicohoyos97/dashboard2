@@ -17,7 +17,7 @@ import { useRouter } from '@/i18n/navigation';
 import { type ClientInput, updateFirmClient } from '@/lib/firm/clients';
 import { createClientWithBusiness } from '@/lib/firm/onboarding';
 
-import { EMPTY_BUSINESS, type EntityFormValues } from './business-form';
+import { businessIncomplete, EMPTY_BUSINESS, type EntityFormValues } from './business-form';
 import { ClientFields, type InviteValues } from './ClientFields';
 import { card, primaryButton, secondaryButton } from './ui';
 
@@ -93,8 +93,8 @@ export function ClientDialog({
       }
       const res = await createClientWithBusiness({ client, business, invite });
       if (!res.ok) return setError(res.error);
-      if (res.value.inviteWarning) {
-        return setWarning({ text: res.value.inviteWarning, entityId: res.value.entityId });
+      if (res.value.warning) {
+        return setWarning({ text: res.value.warning, entityId: res.value.entityId });
       }
       setOpen(false);
       router.push(`/admin/entities/${res.value.entityId}`);
@@ -102,13 +102,11 @@ export function ClientDialog({
   }
 
   const creating = mode === 'create';
-  // A DBA answered "yes" needs its name before this can be submitted; the
-  // Server Action and the database refuse it too, this only saves the trip.
+  // A DBA answered "yes" needs its name, and sales tax needs the state it is
+  // collected in, before this can be submitted; the Server Action and the
+  // database refuse them too, this only saves the trip.
   const incomplete =
-    client.name.trim().length === 0 ||
-    (creating &&
-      (business.name.trim().length === 0 ||
-        (business.hasDba && business.dbaName.trim().length === 0)));
+    client.name.trim().length === 0 || (creating && businessIncomplete(business));
 
   return (
     <Dialog

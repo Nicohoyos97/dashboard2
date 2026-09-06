@@ -16,7 +16,7 @@ import { useRouter } from '@/i18n/navigation';
 import { createEntity, updateEntityConfig } from '@/lib/firm/entities';
 
 import { BusinessFields } from './BusinessFields';
-import { EMPTY_BUSINESS, type EntityFormValues } from './business-form';
+import { businessIncomplete, EMPTY_BUSINESS, type EntityFormValues } from './business-form';
 import { primaryButton, secondaryButton } from './ui';
 
 export type { EntityFormValues };
@@ -88,7 +88,7 @@ export function EntityDialog({
             </button>
             <button
               type="submit"
-              disabled={isPending || values.name.trim().length === 0 || (values.hasDba && values.dbaName.trim().length === 0)}
+              disabled={isPending || businessIncomplete(values)}
               className={primaryButton}
             >
               {isPending
