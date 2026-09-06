@@ -268,7 +268,15 @@
     "preset_this_quarter": "Este trimestre",
     "preset_last_quarter": "Trimestre pasado",
     "preset_this_year": "Este año",
-    "preset_last_year": "Año pasado"
+    "preset_last_year": "Año pasado",
+    "netSalesLede": "Lo que registró su punto de venta, después de devoluciones y descuentos: sus ventas, no lo que se debía sobre ellas.",
+    "netSalesUnavailable": "Esta gráfica necesita al menos dos periodos de ventas publicados.",
+    "salesTaxPaidTitle": "Impuesto sobre ventas pagado",
+    "salesTaxPaidLede": "Lo que se ha pagado a las autoridades, por periodo de declaración.",
+    "salesTaxPaidSummary": "Impuesto sobre ventas pagado en {count, plural, one {# periodo de declaración} other {# periodos de declaración}}.",
+    "salesTaxPaidEmpty": "Todavía no se han publicado pagos de impuesto sobre ventas.",
+    "salesOnlyEmptyTitle": "Todavía no hay nada publicado",
+    "salesOnlyEmptyBody": "Su contador aún no ha publicado cifras de ventas ni declaraciones para {business}. Sus ventas netas y el impuesto sobre ventas pagado aparecerán aquí cuando lo haga."
   },
   "Nav": {
     "breadcrumbRoot": "Panel",
@@ -999,21 +1007,14 @@
     "topic_vehicle_title": "Uso del vehículo del negocio",
     "topic_vehicle_body": "Millaje o costos reales, lo que más te convenga — pero sólo con registros llevados durante el año. Pregunta: ¿anotamos los viajes lo bastante bien para reclamarlo?",
     "posTitle": "Ventas de tu punto de venta",
-    "posLede": "Lo que registró tu sistema de punto de venta en el periodo. Estas son tus ventas; las cifras de la declaración, más abajo, son lo que se debía sobre ellas.",
-    "posSource": "Origen",
-    "posOrders": "{count, plural, one {# orden} other {# órdenes}}",
-    "posGross": "Ventas brutas",
+    "registerPeriodLabel": "Periodo",
     "posNet": "Ventas netas",
-    "posRefunds": "Reembolsos",
-    "posDiscounts": "Descuentos",
     "posTips": "Propinas",
     "posTaxCollected": "Impuesto cobrado",
     "posCollected": "Total cobrado",
-    "posTenders": "Cómo se cobró",
     "netSalesTitle": "Ventas netas",
     "netSalesSummary": "Ventas netas de los últimos {count} periodos publicados.",
-    "salesNoFilingsYet": "Tu contador aún no ha publicado una declaración de impuestos sobre ventas para este periodo.",
-    "posSourceOther": "Punto de venta"
+    "salesNoFilingsYet": "Tu contador aún no ha publicado una declaración de impuestos sobre ventas para este periodo."
   },
   "Insights": {
     "marginGross": "bruto",

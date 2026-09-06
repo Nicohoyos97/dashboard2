@@ -39,3 +39,15 @@ export const MAX_CATEGORIES = CATEGORICAL.length;
  * import across that boundary would pull the whole library back into the page.
  */
 export const LIABILITY = CATEGORICAL[3];
+
+/**
+ * The three series on the Sales Taxes net-sales chart: what was sold, and the
+ * two amounts the register held on top of it. Named here so the legend can
+ * draw its swatches without importing the Recharts module that draws the
+ * chart — the same reason LIABILITY lives here.
+ */
+export const REGISTER_SERIES = {
+  net: SERIES.income,
+  tips: CATEGORICAL[0],
+  tax: CATEGORICAL[2],
+} as const;

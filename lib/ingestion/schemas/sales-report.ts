@@ -94,3 +94,49 @@ export function posSystemLabel(system: string, fallback: string): string {
   };
   return names[system] ?? fallback;
 }
+
+// How a tender is written in the client's portal.
+//
+// The extractor stores the label exactly as the report prints it, which is how
+// "DOORDASH" reaches us — right as a record of the document, wrong as the name
+// of a company. Known names are spelled the way their owners spell them; a
+// label the report shouted is otherwise title-cased; and anything the document
+// wrote in ordinary case is left exactly as it chose to write it, because a
+// tender name we do not recognise is a fact about the register, not ours to
+// rewrite.
+const TENDER_NAMES: Record<string, string> = {
+  doordash: 'DoorDash',
+  grubhub: 'Grubhub',
+  ubereats: 'Uber Eats',
+  postmates: 'Postmates',
+  seamless: 'Seamless',
+  caviar: 'Caviar',
+  chownow: 'ChowNow',
+  ezcater: 'ezCater',
+  toasttakeout: 'Toast Takeout',
+  applepay: 'Apple Pay',
+  googlepay: 'Google Pay',
+  cashapp: 'Cash App',
+  paypal: 'PayPal',
+  venmo: 'Venmo',
+  zelle: 'Zelle',
+};
+
+// Words that are acronyms rather than words, so title case would spoil them.
+const TENDER_ACRONYMS = new Set(['ach', 'ebt', 'pos', 'atm', 'eft', 'usd']);
+
+export function tenderLabel(printed: string): string {
+  const trimmed = printed.trim();
+  const known = TENDER_NAMES[trimmed.toLowerCase().replace(/[^a-z0-9]/gi, '')];
+  if (known) return known;
+  // Mixed case is a choice the document made; only a shout is corrected.
+  if (trimmed !== trimmed.toUpperCase()) return trimmed;
+  return trimmed
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => {
+      if (TENDER_ACRONYMS.has(word)) return word.toUpperCase();
+      return index === 0 && word.length > 0 ? word[0]!.toUpperCase() + word.slice(1) : word;
+    })
+    .join(' ');
+}

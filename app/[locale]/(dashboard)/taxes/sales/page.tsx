@@ -12,10 +12,11 @@ import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { JurisdictionPills } from '@/components/taxes/JurisdictionPills';
 import { ObligationList } from '@/components/taxes/ObligationList';
-import { SalesFromRegister } from '@/components/taxes/SalesFromRegister';
+import { RegisterTenders } from '@/components/taxes/RegisterTenders';
 import { TaxAlerts } from '@/components/taxes/TaxAlerts';
 import { logAccess } from '@/lib/audit/logAccess';
 import { formatCents } from '@/lib/money';
+import { tenderLabel } from '@/lib/ingestion/schemas/sales-report';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadPublishedSalesReports } from '@/lib/portal/load';
@@ -102,16 +103,29 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     { label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
   ];
 
-  // Net sales over the published register periods, oldest first. One series:
-  // the register is the only source of a sales figure in this portal, so there
-  // is no second opinion to plot beside it.
-  const netSeries = [...salesReports]
-    .reverse()
-    .map((report) => ({
-      label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),
-      netSalesCents: report.netSalesCents,
-    }));
+  // The register's own periods, oldest first: the month pills read left to
+  // right like the chart beside them. Everything here comes from one
+  // point-of-sale report per period, never from a filing.
+  const registerPeriods = [...salesReports].reverse();
+  const netSeries = registerPeriods.map((report) => ({
+    label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),
+    netSalesCents: report.netSalesCents,
+    tipsCents: report.tipsCents,
+    taxCollectedCents: report.taxCollectedCents,
+  }));
   const netTrend = netSeries.filter((point) => point.netSalesCents !== null).length >= 2 ? netSeries : null;
+  const tenderPeriods = registerPeriods.map((report) => ({
+    id: report.id,
+    label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),
+    collectedCents: report.amountCollectedCents,
+    // "DOORDASH" as the report prints it is a record of the document; the
+    // client's portal spells the company's name the way it is spelled.
+    tenders: report.tenders.map((tender) => ({
+      id: tender.id,
+      label: tenderLabel(tender.label),
+      cents: tender.amountCents,
+    })),
+  }));
 
   return (
     <>
@@ -139,13 +153,13 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
             month and are routinely confused for each other. */}
         {latestSales && (
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <SalesFromRegister report={latestSales} />
+            <RegisterTenders periods={tenderPeriods} currency={currency} />
             <Section title={t('netSalesTitle')}>
               {netTrend ? (
                 <NetSalesChart
                   points={netTrend}
                   currency={currency}
-                  seriesLabel={t('posNet')}
+                  labels={{ net: t('posNet'), tips: t('posTips'), tax: t('posTaxCollected') }}
                   summary={t('netSalesSummary', { count: netTrend.length })}
                 />
               ) : (

@@ -268,7 +268,15 @@
     "preset_this_quarter": "This quarter",
     "preset_last_quarter": "Last quarter",
     "preset_this_year": "This year",
-    "preset_last_year": "Last year"
+    "preset_last_year": "Last year",
+    "netSalesLede": "What your register rang up, after refunds and discounts — your sales, not what was owed on them.",
+    "netSalesUnavailable": "This chart needs at least two published sales periods.",
+    "salesTaxPaidTitle": "Sales tax paid",
+    "salesTaxPaidLede": "What has been paid to the authorities, by filing period.",
+    "salesTaxPaidSummary": "Sales tax paid across {count, plural, one {# filing period} other {# filing periods}}.",
+    "salesTaxPaidEmpty": "No sales tax payments have been published yet.",
+    "salesOnlyEmptyTitle": "Nothing published yet",
+    "salesOnlyEmptyBody": "Your accountant hasn't published sales figures or tax filings for {business}. Your net sales and the sales tax paid on them will appear here once they do."
   },
   "Nav": {
     "breadcrumbRoot": "Dashboard",
@@ -999,21 +1007,14 @@
     "topic_vehicle_title": "Business vehicle use",
     "topic_vehicle_body": "Mileage or actual costs, whichever serves you better — but only with records kept through the year. Ask: are we logging trips well enough to claim it?",
     "posTitle": "Sales from your register",
-    "posLede": "What your point-of-sale system recorded for the period. These are your sales; the filing figures below are what was owed on them.",
-    "posSource": "Source",
-    "posOrders": "{count, plural, one {# order} other {# orders}}",
-    "posGross": "Gross sales",
+    "registerPeriodLabel": "Period",
     "posNet": "Net sales",
-    "posRefunds": "Refunds",
-    "posDiscounts": "Discounts",
     "posTips": "Tips",
     "posTaxCollected": "Tax collected",
     "posCollected": "Amount collected",
-    "posTenders": "How it was paid",
     "netSalesTitle": "Net sales",
     "netSalesSummary": "Net sales across the last {count} published periods.",
-    "salesNoFilingsYet": "Your accountant hasn't published a sales tax filing for this period yet.",
-    "posSourceOther": "Point of sale"
+    "salesNoFilingsYet": "Your accountant hasn't published a sales tax filing for this period yet."
   },
   "Insights": {
     "marginGross": "gross",
