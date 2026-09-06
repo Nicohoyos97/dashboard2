@@ -46,6 +46,31 @@ describe('a real Clover sales report', () => {
     expect(result.passed).toBe(true);
     expect(result.checks.map((c) => c.key).sort()).toEqual(['amount_collected', 'net_sales']);
   });
+
+  it('counts discounts as the third term of net sales', () => {
+    // August 2026, the month that caught this: gross 13,227.31 − refunds 55.00
+    // − discounts 15.00 = net 13,157.31. Without the discounts the check was
+    // off by exactly $15 and blocked a report whose extraction was correct.
+    const august = SalesReportSchema.parse({
+      ...CLOVER,
+      period_start: '2026-08-01',
+      period_end: '2026-08-31',
+      gross_sales: '13227.31',
+      net_sales: '13157.31',
+      refunds: '55.00',
+      discounts: '15.00',
+      amount_collected: '15881.93',
+      tenders: [{ label: 'Credit and debit cards', amount: '15881.93' }],
+    });
+    const result = reconcileSalesReport(august, august.tenders ?? []);
+    expect(result.checks.find((c) => c.key === 'net_sales')?.ok).toBe(true);
+    expect(result.passed).toBe(true);
+  });
+
+  it('still fails when the figures genuinely disagree', () => {
+    const wrong = SalesReportSchema.parse({ ...CLOVER, net_sales: '13000.00' });
+    expect(reconcileSalesReport(wrong, wrong.tenders ?? []).passed).toBe(false);
+  });
 });
 
 describe('the sales report against the filing', () => {

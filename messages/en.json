@@ -677,7 +677,13 @@
     "crossCheckTax": "The sales report shows {collected} of tax collected; the filing pays {payable} — a difference of {difference}.",
     "crossCheckOk": "The filing agrees with the sales report for this period.",
     "crossCheckNoPair": "No sales report published for this period, so there is nothing to compare the filing against.",
-    "salesSourceOther": "Point of sale"
+    "salesSourceOther": "Point of sale",
+    "correctionTitle": "Correct the figures",
+    "correctionLede": "Type what the report prints. Leave a box empty for a figure the report does not show — it is stored as “not printed”, never as zero. Saving re-checks the totals.",
+    "correctionSave": "Save corrections",
+    "correctionSaved": "Saved and re-checked",
+    "correctionNotANumber": "Use plain numbers like 1234.56 — no symbols or thousands separators.",
+    "correctionBlockedPublished": "This report is published. Withdraw the document first to correct it."
   },
   "Mfa": {
     "eyebrow": "Firm portal",

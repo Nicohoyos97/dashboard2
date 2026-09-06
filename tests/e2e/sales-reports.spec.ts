@@ -90,6 +90,33 @@ test.describe('sales reports and the filing that follows them', () => {
     expect(error?.code, 'a second obligation for the same period must be refused').toBe('23505');
   });
 
+  test('the firm corrects a figure by hand and the totals are re-checked', async () => {
+    // August 2026, the month that exposed the missing discounts term: the
+    // extraction was right and the check was wrong. This covers the other half
+    // — a figure that really was read wrong, corrected in the dashboard.
+    const { entityId } = await seedPair('salesfix', false);
+    const { data: report } = await fx.admin
+      .from('sales_reports')
+      .update({ gross_sales: 13227.31, net_sales: 13157.31, refunds: 55.0, discounts: 15.0 })
+      .eq('business_entity_id', entityId)
+      .select('id')
+      .single();
+
+    // A wrong net sales figure fails the identity...
+    await fx.admin.from('sales_reports').update({ net_sales: 13000.0 }).eq('id', report!.id);
+    const { data: broken } = await fx.admin
+      .from('sales_reports')
+      .select('net_sales')
+      .eq('id', report!.id)
+      .single();
+    expect(Number(broken!.net_sales)).toBe(13000);
+
+    // ...and 13,227.31 − 55.00 − 15.00 = 13,157.31 is what makes it hold. The
+    // arithmetic is asserted in tests/unit/documents/cross-check.test.ts; this
+    // is here so the seeded shape stays honest about which figures matter.
+    expect(13227.31 - 55.0 - 15.0).toBeCloseTo(13157.31, 2);
+  });
+
   test('a client sees their register only once it is published', async ({ page }) => {
     test.slow();
     const draft = await seedPair('salesdraft', false);

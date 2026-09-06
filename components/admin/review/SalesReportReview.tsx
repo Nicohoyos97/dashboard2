@@ -3,6 +3,8 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import type { CrossCheck } from '@/lib/documents/cross-check';
 import type { Reconciliation } from '@/lib/documents/reconciliation';
 import { posSystemLabel } from '@/lib/ingestion/schemas/sales-report';
+
+import { SalesReportForm } from './SalesReportForm';
 import { formatPeriod } from '@/lib/utils/dates';
 import { formatAmount, formatCents } from '@/lib/money';
 
@@ -26,6 +28,9 @@ export type SalesReportSummary = {
 
 export type TenderRow = { id: string; label: string; amount: number };
 
+/** A figure the report did not print stays an empty box, not a 0. */
+const box = (value: number | null): string => (value === null ? '' : value.toFixed(2));
+
 // What the point-of-sale report says was sold, and — when the filing for the
 // same period has also been extracted — how the two compare.
 //
@@ -36,10 +41,12 @@ export async function SalesReportReview({
   report,
   tenders,
   crossCheck,
+  canEdit,
 }: {
   report: SalesReportSummary;
   tenders: TenderRow[];
   crossCheck: CrossCheck | null;
+  canEdit: boolean;
 }) {
   const [t, locale] = await Promise.all([getTranslations('Admin'), getLocale()]);
   const fmt = (v: number | null) =>
@@ -116,6 +123,23 @@ export async function SalesReportReview({
       )}
 
       {crossCheck && <CrossCheckNotice check={crossCheck} money={money} />}
+
+      {/* A figure the extractor read wrong is corrected here rather than by
+          re-uploading: the firm has the document in front of them. */}
+      <SalesReportForm
+        reportId={report.id}
+        canEdit={canEdit}
+        initial={{
+          grossSales: box(report.grossSales),
+          netSales: box(report.netSales),
+          refunds: box(report.refunds),
+          discounts: box(report.discounts),
+          tips: box(report.tips),
+          taxCollected: box(report.taxCollected),
+          taxExpected: box(report.taxExpected),
+          amountCollected: box(report.amountCollected),
+        }}
+      />
     </div>
   );
 }

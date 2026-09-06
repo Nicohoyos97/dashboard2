@@ -100,16 +100,32 @@ export function reconcileSalesTax(record: TaxRecord): Reconciliation {
  * report that omits a figure is normal, and inventing a zero to make an
  * equation balance would turn a missing number into a passing check.
  */
-export function reconcileSalesReport(report: SalesReport, tenders: readonly { amount: string }[]): Reconciliation {
+type SalesFigures = Pick<
+  SalesReport,
+  'gross_sales' | 'net_sales' | 'refunds' | 'discounts' | 'amount_collected' | 'confidence'
+>;
+
+export function reconcileSalesReport(report: SalesFigures, tenders: readonly { amount: string }[]): Reconciliation {
   const checks: ReconciliationCheck[] = [];
   // Amounts arrive as decimal strings, never floats (schemas/common.ts).
   const cents = (value: string | null | undefined) => (value === null || value === undefined ? null : toCents(value));
 
   const gross = cents(report.gross_sales);
   const refunds = cents(report.refunds);
+  const discounts = cents(report.discounts);
   const net = cents(report.net_sales);
   if (gross !== null && refunds !== null && net !== null) {
-    checks.push(makeCheck('net_sales', 'Gross sales − refunds = net sales', gross - refunds, net));
+    // Discounts are the third term and were missing: a month with none passed,
+    // and the first month with a $15 discount failed by exactly $15 while the
+    // extraction had been right all along.
+    //
+    // A discount the report did not print counts as zero here, which is the
+    // safe direction: it can only turn a pass into a failure the firm looks
+    // at, never a failure into a false pass.
+    const deductions = refunds + (discounts ?? 0);
+    checks.push(
+      makeCheck('net_sales', 'Gross sales − refunds − discounts = net sales', gross - deductions, net),
+    );
   }
 
   // What the tender lines add up to is what was actually taken in. This is the

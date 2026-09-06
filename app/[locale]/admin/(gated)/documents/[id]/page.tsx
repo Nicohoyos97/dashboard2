@@ -250,6 +250,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
                 tenders={[...report.sales_report_tenders]
                   .sort((a, b) => a.position - b.position)
                   .map((tender) => ({ id: tender.id, label: tender.label, amount: tender.amount }))}
+                canEdit={canEdit}
                 crossCheck={
                   filing
                     ? crossCheckSalesTax(
