@@ -255,6 +255,33 @@ test.describe('Phase 6: accessibility and mobile', () => {
     expect(controls[2]).toMatch(/theme/i);
     expect(controls[3]).toBe('Reports');
 
+    // Notifications open as a bar out of the header, spanning it: on a phone
+    // there is no room for a card floating under the bell, and a panel aligned
+    // to a bell that sits 56px from the right edge is a panel hanging off it.
+    await page.getByRole('button', { name: /notification/i }).click();
+    const panel = page.locator('[data-radix-popper-content-wrapper] > *').first();
+    await expect(panel).toBeVisible();
+    const bar = await panel.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const header = document.querySelector('header')!.getBoundingClientRect();
+      return {
+        x: box.x,
+        width: box.width,
+        top: box.y,
+        headerBottom: header.bottom,
+        viewport: window.innerWidth,
+      };
+    });
+    expect(bar.x).toBe(0);
+    expect(bar.width).toBe(bar.viewport);
+    expect(Math.abs(bar.top - bar.headerBottom)).toBeLessThanOrEqual(1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+    await page.keyboard.press('Escape');
+
     // The drawer opens, traps focus in a dialog, and closes on Escape.
     await page
       .getByRole('button', { name: /open menu|menu/i })
@@ -265,5 +292,20 @@ test.describe('Phase 6: accessibility and mobile', () => {
     await expect(drawer.getByRole('link', { name: /expenses/i })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
+
+    // On a desktop it is the anchored card it has always been: narrower than
+    // the window, and aligned to the bell rather than to the left edge.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
+    await page.getByRole('button', { name: /notification/i }).click();
+    const card = await page
+      .locator('[data-radix-popper-content-wrapper] > *')
+      .first()
+      .evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { x: box.x, width: box.width, viewport: window.innerWidth };
+      });
+    expect(card.width).toBeLessThan(card.viewport);
+    expect(card.x).toBeGreaterThan(0);
   });
 });

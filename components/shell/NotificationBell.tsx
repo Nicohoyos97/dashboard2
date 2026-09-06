@@ -42,10 +42,17 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
         </button>
       </Popover.Trigger>
       <Popover.Portal>
+        {/* On a phone the panel is a bar that drops out of the header and spans
+            it: the bell sits 8px above the header's bottom edge, so the offset
+            that floats a card on a desktop lands this flush against it, and
+            `collisionPadding={0}` lets a full-width panel clamp to x=0 instead
+            of hanging off the side it is aligned to. Above `sm` it is the
+            anchored card it has always been. */}
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="border-line bg-card z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border p-2 shadow-[0_12px_32px_rgba(15,23,42,0.16)]"
+          collisionPadding={0}
+          className="border-line bg-card z-50 w-screen rounded-t-none rounded-b-2xl border border-x-0 border-t-0 p-2 shadow-[0_12px_32px_rgba(15,23,42,0.16)] outline-none sm:w-[min(360px,calc(100vw-2rem))] sm:rounded-2xl sm:border-x sm:border-t"
         >
           <p className="text-ink px-3 py-2 text-[13px] font-semibold">{t('title')}</p>
           {notifications.length === 0 ? (
