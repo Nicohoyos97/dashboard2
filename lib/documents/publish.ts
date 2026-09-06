@@ -89,8 +89,11 @@ export async function publishBlockers(
   // Everything a version can produce. Tax filings and payroll summaries are as
   // publishable as a statement — leaving them out meant a document that yields
   // only tax rows looked empty, so it could never be published and the client's
-  // Taxes pages could only ever show seed data.
-  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }] =
+  // Taxes pages could only ever show seed data. Point-of-sale reports were left
+  // out the same way and it bit the same way: a sales report's own passing
+  // reconciliation was never read, and once the obligation stopped carrying its
+  // version (see persistSalesReport) the document had nothing derived at all.
+  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }, { data: sales }] =
     await Promise.all([
       supabase
         .from('financial_reports')
@@ -108,8 +111,18 @@ export async function publishBlockers(
         .from('payroll_obligations')
         .select('id, reconciliation')
         .eq('document_version_id', reviewVersionId),
+      supabase
+        .from('sales_reports')
+        .select('id, reconciliation')
+        .eq('document_version_id', reviewVersionId),
     ]);
-  const derived = [...(reports ?? []), ...(statements ?? []), ...(taxes ?? []), ...(payroll ?? [])];
+  const derived = [
+    ...(reports ?? []),
+    ...(statements ?? []),
+    ...(taxes ?? []),
+    ...(payroll ?? []),
+    ...(sales ?? []),
+  ];
   if (derived.length === 0) blockers.add('publishBlockedNoData');
 
   for (const row of derived) {

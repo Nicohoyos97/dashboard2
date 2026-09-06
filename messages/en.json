@@ -673,7 +673,6 @@
     "salesOrders": "Orders",
     "salesTenders": "Tender types",
     "crossCheckTitle": "Sales report vs filing",
-    "crossCheckSales": "The filing reports {filed} of receipts where the sales report shows {sold} sold — a difference of {difference}.",
     "crossCheckTax": "The sales report shows {collected} of tax collected; the filing pays {payable} — a difference of {difference}.",
     "crossCheckOk": "The filing agrees with the sales report for this period.",
     "crossCheckNoPair": "No sales report published for this period, so there is nothing to compare the filing against.",

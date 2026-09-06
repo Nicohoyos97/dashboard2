@@ -228,6 +228,60 @@ test.describe('Firm portal: review, corrections, publish', () => {
     expect(lineCount).toBeGreaterThan(10);
   });
 
+  test('a sales report with refunds and discounts can be published', async ({ browser }) => {
+    test.slow();
+    // What was actually blocking August, driven the way it was hit. Three
+    // things had to be true and none of them were: publishBlockers never looked
+    // at sales_reports, so the report's own passing reconciliation went unread;
+    // the obligation a sales report opens carried no reconciliation, which
+    // blocks anything pointing at it; and the cross-check compared the report
+    // to its own net sales and called refunds + discounts a discrepancy.
+    const entityId = (await fx.makeTenant('rpub')).entityId;
+    const { data: doc } = await fx.admin
+      .from('documents')
+      .insert({
+        business_entity_id: entityId, document_type: 'sales_report',
+        title: 'August sales', status: 'reconciled',
+        period_start: '2026-08-01', period_end: '2026-08-31',
+      })
+      .select('id')
+      .single();
+    const { data: version } = await fx.admin
+      .from('document_versions')
+      .insert({
+        document_id: doc!.id, business_entity_id: entityId, version_no: 1,
+        storage_path: `${entityId}/${doc!.id}/v1/aug.pdf`, original_filename: 'aug.pdf',
+        mime_type: 'application/pdf', size_bytes: 10, sha256: randomUUID().replace(/-/g, ''),
+        upload_status: 'uploaded',
+      })
+      .select('id')
+      .single();
+    await fx.admin.from('documents').update({ current_version_id: version!.id }).eq('id', doc!.id);
+
+    const passing = { passed: true, checks: [], lowConfidence: { count: 0, refs: [] } };
+    await fx.admin.from('sales_reports').insert({
+      business_entity_id: entityId, source_system: 'clover',
+      period_start: '2026-08-01', period_end: '2026-08-31', currency: 'USD',
+      gross_sales: 13227.31, net_sales: 13157.31, refunds: 55.0, discounts: 15.0,
+      tax_collected: 1401.07, amount_collected: 15881.93, order_count: 478,
+      source: 'firm_document', document_version_id: version!.id,
+      status: 'reconciled', reconciliation: passing,
+    });
+    // The obligation a sales report opens: its own two columns, no filing yet.
+    await fx.admin.from('tax_obligations').insert({
+      business_entity_id: entityId, tax_type: 'sales',
+      period_start: '2026-08-01', period_end: '2026-08-31',
+      taxable_sales: 13157.31, tax_collected: 1401.07,
+      status: 'pending_review', source: 'firm_document', reconciliation: passing,
+    });
+
+    const page = await adminPage(browser, 'salespub');
+    await page.goto(`/admin/documents/${doc!.id}`);
+    await expect(page.getByRole('button', { name: /publish to client/i })).toBeEnabled();
+    // And no invented discrepancy: refunds + discounts is not a finding.
+    await expect(page.getByText(/difference of \$70/i)).toHaveCount(0);
+  });
+
   test('deleting a document from the review page: refused while published, then it and its bytes go', async ({ browser }) => {
     test.slow();
     const entityId = (await fx.makeTenant('rdel')).entityId;

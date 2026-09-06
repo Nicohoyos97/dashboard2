@@ -219,7 +219,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
         (salesReports ?? []).map(async (report) => {
           const { data: filing } = await supabase
             .from('tax_obligations')
-            .select('taxable_sales, amount_payable')
+            .select('amount_payable')
             .eq('business_entity_id', doc.business_entity_id)
             .eq('tax_type', 'sales')
             .eq('period_start', report.period_start)
@@ -254,12 +254,8 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
                 crossCheck={
                   filing
                     ? crossCheckSalesTax(
-                        {
-                          grossSales: report.gross_sales,
-                          netSales: report.net_sales,
-                          taxCollected: report.tax_collected,
-                        },
-                        { taxableSales: filing.taxable_sales, amountPayable: filing.amount_payable },
+                        { taxCollected: report.tax_collected },
+                        { amountPayable: filing.amount_payable },
                       )
                     : null
                 }

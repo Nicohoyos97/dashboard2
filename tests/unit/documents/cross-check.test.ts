@@ -74,39 +74,39 @@ describe('a real Clover sales report', () => {
 });
 
 describe('the sales report against the filing', () => {
-  it('reports the July gap that started all of this', () => {
-    // The ST-1 filed $12,955.00 of receipts and paid $1,328.00. The POS says
-    // $14,119.36 was sold and $1,504.59 collected. The filed receipts match one
-    // tender line — cards, $12,955.46 — with the cash left out.
-    const result = crossCheckSalesTax(
-      { grossSales: '14119.36', netSales: '14073.36', taxCollected: '1504.59' },
-      { taxableSales: '12955.00', amountPayable: '1328.00' },
-    );
+  it('reports the July gap between tax collected and tax paid', () => {
+    // The POS collected $1,504.59 of sales tax in July; the ST-1 paid
+    // $1,328.00. That gap is the firm's to explain — marketplace facilitators
+    // remit their own, some sales are exempt, timing differs — so it is stated
+    // and not blocked.
+    const result = crossCheckSalesTax({ taxCollected: '1504.59' }, { amountPayable: '1328.00' });
     expect(result.kind).toBe('difference');
     if (result.kind !== 'difference') return;
-    expect(result.sales?.differenceCents).toBe(116436);
-    expect(result.tax?.differenceCents).toBe(17659);
+    expect(result.tax.differenceCents).toBe(17659);
+  });
+
+  it('no longer compares sales, because there is no second opinion on them', () => {
+    // It used to compare what the POS sold against the receipts the filing
+    // declared. Once the filing stopped supplying sales figures, the
+    // obligation's taxable_sales came from the POS report itself — so the
+    // check compared a report to its own net sales and reported a difference
+    // of exactly refunds plus discounts every month that had any. August:
+    // gross 13,227.31, net 13,157.31, and a "$70.00 discrepancy" that was
+    // simply $55 of refunds and $15 of discounts.
+    expect(crossCheckSalesTax({ taxCollected: '1401.07' }, { amountPayable: '1401.07' }).kind).toBe('ok');
   });
 
   it('says nothing when the two agree', () => {
-    expect(
-      crossCheckSalesTax(
-        { grossSales: '14119.36', netSales: null, taxCollected: '1328.00' },
-        { taxableSales: '14119.36', amountPayable: '1328.00' },
-      ).kind,
-    ).toBe('ok');
+    expect(crossCheckSalesTax({ taxCollected: '1328.00' }, { amountPayable: '1328.00' }).kind).toBe('ok');
   });
 
   it('ignores sub-dollar rounding, because filings round to whole dollars', () => {
-    expect(
-      crossCheckSalesTax(
-        { grossSales: '12955.46', netSales: null, taxCollected: null },
-        { taxableSales: '12955.00', amountPayable: '1328.00' },
-      ).kind,
-    ).toBe('ok');
+    expect(crossCheckSalesTax({ taxCollected: '1328.46' }, { amountPayable: '1328.00' }).kind).toBe('ok');
   });
 
-  it('has nothing to say without a sales report for the period', () => {
-    expect(crossCheckSalesTax(null, { taxableSales: '12955.00', amountPayable: '1328.00' }).kind).toBe('no_pair');
+  it('has nothing to say without both sides', () => {
+    expect(crossCheckSalesTax(null, { amountPayable: '1328.00' }).kind).toBe('no_pair');
+    // A period the firm has not filed yet is not a discrepancy.
+    expect(crossCheckSalesTax({ taxCollected: '1401.07' }, { amountPayable: null }).kind).toBe('no_pair');
   });
 });

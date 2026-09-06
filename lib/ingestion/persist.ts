@@ -448,7 +448,15 @@ async function persistSalesReport(
       { taxable_sales: taxableSales, tax_collected: taxCollected },
       // A sales report can arrive before any filing; the row still needs a
       // status, and "nobody has filed yet" is pending_review.
-      { status: 'pending_review' },
+      //
+      // It also needs a reconciliation, because publishBlockers refuses a
+      // derived row that has none — and a row with no filing on it has nothing
+      // to reconcile, which is an empty passing result, not a missing one.
+      // Left null, this row blocked the very report that opened it.
+      {
+        status: 'pending_review',
+        reconciliation: { passed: true, checks: [], lowConfidence: { count: 0, refs: [] } } as unknown as Json,
+      },
     );
   }
 }

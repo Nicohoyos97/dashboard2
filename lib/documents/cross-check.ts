@@ -13,19 +13,14 @@ export type CrossCheck =
   | { kind: 'ok' }
   | {
       kind: 'difference';
-      /** Present only when both sides printed the figure. */
-      sales?: { soldCents: number; filedCents: number; differenceCents: number };
-      tax?: { collectedCents: number; payableCents: number; differenceCents: number };
+      tax: { collectedCents: number; payableCents: number; differenceCents: number };
     };
 
 export type SalesSide = {
-  netSales: string | number | null;
-  grossSales: string | number | null;
   taxCollected: string | number | null;
 };
 
 export type FilingSide = {
-  taxableSales: string | number | null;
   amountPayable: string | number | null;
 };
 
@@ -38,20 +33,27 @@ const cents = (value: string | number | null | undefined): number | null =>
  */
 const MATERIAL_CENTS = 100;
 
+/**
+ * Tax collected against tax paid, and nothing else.
+ *
+ * There used to be a sales comparison here too: what the POS sold against the
+ * receipts the filing declared. It stopped meaning anything the moment the
+ * filing stopped supplying sales figures — `taxable_sales` on the obligation is
+ * now written by the POS report itself, so the comparison was the report
+ * against its own net sales, and it reported a "difference" of exactly refunds
+ * plus discounts on every month that had any. There is no second opinion on
+ * sales to have, by design: the register is the only source.
+ */
 export function crossCheckSalesTax(sales: SalesSide | null, filing: FilingSide): CrossCheck {
   if (sales === null) return { kind: 'no_pair' };
 
-  const sold = cents(sales.grossSales) ?? cents(sales.netSales);
-  const filed = cents(filing.taxableSales);
   const collected = cents(sales.taxCollected);
   const payable = cents(filing.amountPayable);
+  if (collected === null || payable === null) return { kind: 'no_pair' };
+  if (Math.abs(collected - payable) < MATERIAL_CENTS) return { kind: 'ok' };
 
-  const result: Extract<CrossCheck, { kind: 'difference' }> = { kind: 'difference' };
-  if (sold !== null && filed !== null && Math.abs(sold - filed) >= MATERIAL_CENTS) {
-    result.sales = { soldCents: sold, filedCents: filed, differenceCents: sold - filed };
-  }
-  if (collected !== null && payable !== null && Math.abs(collected - payable) >= MATERIAL_CENTS) {
-    result.tax = { collectedCents: collected, payableCents: payable, differenceCents: collected - payable };
-  }
-  return result.sales || result.tax ? result : { kind: 'ok' };
+  return {
+    kind: 'difference',
+    tax: { collectedCents: collected, payableCents: payable, differenceCents: collected - payable },
+  };
 }

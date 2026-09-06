@@ -165,26 +165,13 @@ async function CrossCheckNotice({
       {check.kind === 'ok' ? (
         <p className="text-muted-foreground mt-1.5 text-[13.5px]">{t('crossCheckOk')}</p>
       ) : (
-        <ul className="text-ink mt-1.5 flex flex-col gap-1.5 text-[13.5px]">
-          {check.sales && (
-            <li>
-              {t('crossCheckSales', {
-                filed: money(check.sales.filedCents),
-                sold: money(check.sales.soldCents),
-                difference: money(check.sales.differenceCents),
-              })}
-            </li>
-          )}
-          {check.tax && (
-            <li>
-              {t('crossCheckTax', {
-                collected: money(check.tax.collectedCents),
-                payable: money(check.tax.payableCents),
-                difference: money(check.tax.differenceCents),
-              })}
-            </li>
-          )}
-        </ul>
+        <p className="text-ink mt-1.5 text-[13.5px]">
+          {t('crossCheckTax', {
+            collected: money(check.tax.collectedCents),
+            payable: money(check.tax.payableCents),
+            difference: money(check.tax.differenceCents),
+          })}
+        </p>
       )}
     </section>
   );
