@@ -33,6 +33,7 @@ import {
   loadReminders,
   loadReportLinesFor,
 } from '@/lib/portal/load';
+import { downloadItemsFor } from '@/lib/portal/downloads';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
 import { leafItems } from '@/lib/portal/statement-page';
@@ -140,11 +141,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
   const requested = parsePeriodParam(params.period);
   const selected = (requested && periods.find((period) => period.start === requested.start && period.end === requested.end)) ?? periods[0] ?? null;
-  const downloadItems = documents.flatMap((document) => document.currentVersionId ? [{
-    versionId: document.currentVersionId,
-    title: document.title,
-    subtitle: document.periodStart && document.periodEnd ? formatPeriod(document.periodStart, document.periodEnd, locale) : '',
-  }] : []);
+  const downloadItems = downloadItemsFor(documents, locale);
 
   if (!selected) {
     await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });

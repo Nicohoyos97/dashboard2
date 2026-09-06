@@ -192,6 +192,26 @@ test.describe('Phase 6: accessibility and mobile', () => {
       expect(overflow, `${route} scrolls horizontally by ${overflow}px`).toBeLessThanOrEqual(1);
     }
 
+    // Back on the Overview: the desktop top bar is `hidden` at this width, so
+    // the controls that live in it ride the compact bar instead — the bell
+    // keeping its place at the theme toggle's left — and the Overview's own
+    // Download Reports action becomes the right-aligned "Reports" button.
+    // Exactly one of the two variants is on screen at any width.
+    await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
+    await expect(page.getByRole('button', { name: 'Download Reports' })).toBeHidden();
+    const controls = await page
+      .locator('header')
+      .first()
+      .evaluate((bar) =>
+        [...bar.querySelectorAll('button')].map(
+          (button) => button.getAttribute('aria-label') ?? button.textContent?.trim() ?? '',
+        ),
+      );
+    expect(controls).toHaveLength(4);
+    expect(controls[1]).toMatch(/notification/i);
+    expect(controls[2]).toMatch(/theme/i);
+    expect(controls[3]).toBe('Reports');
+
     // The drawer opens, traps focus in a dialog, and closes on Escape.
     await page
       .getByRole('button', { name: /open menu|menu/i })

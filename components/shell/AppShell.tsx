@@ -6,6 +6,12 @@
 // below `md`, and the same sidebar content inside an accessible drawer
 // (Radix Dialog: focus trap, Escape, overlay click). The drawer closes on
 // navigation.
+//
+// The desktop top bar is `hidden` below `md`, so anything living in it — the
+// notification bell — would be unreachable on a phone. The compact bar takes
+// those controls instead: `mobileBell` keeps its desktop place at the theme
+// toggle's left, and `mobilePrimaryAction` is the page's own primary action,
+// last and hard against the right edge.
 import { Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
@@ -21,12 +27,18 @@ export function AppShell({
   topBar,
   brandHref,
   brandBadge,
+  mobileBell,
+  mobilePrimaryAction,
   children,
 }: {
   sidebar: React.ReactNode;
   topBar?: React.ReactNode;
   brandHref: string;
   brandBadge?: string;
+  /** Below `md` only: sits left of the theme toggle, as it does on desktop. */
+  mobileBell?: React.ReactNode;
+  /** Below `md` only: the right-aligned primary action. */
+  mobilePrimaryAction?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useTranslations('Shell');
@@ -51,7 +63,7 @@ export function AppShell({
         {sidebar}
       </aside>
 
-      <header className="border-line bg-card sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-3 md:hidden">
+      <header className="border-line bg-card sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-3 md:hidden">
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger asChild>
             <button
@@ -83,8 +95,10 @@ export function AppShell({
           </Dialog.Portal>
         </Dialog.Root>
         <Brand {...brandProps} compact />
-        <div className="ml-auto">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {mobileBell}
           <ThemeToggle variant="icon" />
+          {mobilePrimaryAction}
         </div>
       </header>
 

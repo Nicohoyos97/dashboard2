@@ -8,15 +8,18 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
+import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
+import { NotificationBell } from '@/components/shell/NotificationBell';
 import { TopBar } from '@/components/shell/TopBar';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
 import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
+import { downloadItemsFor } from '@/lib/portal/downloads';
 import { PACKAGE_MODULES } from '@/lib/portal/modules';
-import { loadPortalEntitySettings } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedDocuments } from '@/lib/portal/load';
 import { loadNotifications } from '@/lib/portal/notifications';
 import { createClient } from '@/lib/supabase/server';
 
@@ -30,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient();
   const currentEntity = await getCurrentEntity();
   const preview = currentEntity?.role === 'firm_preview' ? currentEntity : null;
-  const [entities, { data: profile }, settings, notifications, t] = await Promise.all([
+  const [entities, { data: profile }, settings, notifications, documents, locale, t] = await Promise.all([
     listEntities(),
     supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
     // Sales Taxes is hidden for a business the firm has not enabled it for; the
@@ -41,6 +44,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // A firm user previewing the portal sees the client's chrome but their own
     // notifications would be noise here, so the bell is client-side only.
     preview ? Promise.resolve([]) : loadNotifications(user.id, currentEntity?.id ?? null).catch(() => []),
+    // The Download Reports menu is the Overview's action on desktop; below `md`
+    // it rides the shell's compact bar, so the shell needs the documents on
+    // every route. The Overview asks for the same rows, and Next memoizes the
+    // GET for the render, so this costs the layout no extra round trip there.
+    currentEntity ? loadPublishedDocuments(supabase, currentEntity.id).catch(() => []) : Promise.resolve([]),
+    getLocale(),
     preview ? getTranslations('Overview') : Promise.resolve(null),
   ]);
   // Everything the firm sold this business, and nothing else. Before this the
@@ -51,6 +60,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <AppShell
       brandHref="/dashboard"
+      mobileBell={<NotificationBell notifications={notifications} />}
+      mobilePrimaryAction={<DownloadReportsMenu items={downloadItemsFor(documents, locale)} variant="compact" />}
       topBar={
         <TopBar
           items={[...navItems, ...BOTTOM_NAV_ITEMS]}

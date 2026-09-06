@@ -4,11 +4,12 @@ import { NetSalesChart } from '@/components/charts/NetSalesChart';
 import { TrendBars } from '@/components/charts/TrendBars';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { logAccess } from '@/lib/audit/logAccess';
+import { downloadItemsFor } from '@/lib/portal/downloads';
 import { loadPublishedDocuments, loadPublishedSalesReports, loadReminders, type PortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { taxPaidSeries } from '@/lib/reports/taxes';
 import { createClient } from '@/lib/supabase/server';
-import { formatPeriod, formatPeriodCompact } from '@/lib/utils/dates';
+import { formatPeriodCompact } from '@/lib/utils/dates';
 import { todayIn } from '@/lib/utils/timezone';
 
 import { DownloadReportsMenu } from './DownloadReportsMenu';
@@ -66,18 +67,7 @@ export async function SalesTaxOverview({
 
   const currency = settings.currency;
   const today = todayIn(settings.timezone);
-  const downloadItems = documents.flatMap((document) =>
-    document.currentVersionId
-      ? [{
-          versionId: document.currentVersionId,
-          title: document.title,
-          subtitle:
-            document.periodStart && document.periodEnd
-              ? formatPeriod(document.periodStart, document.periodEnd, locale)
-              : '',
-        }]
-      : [],
-  );
+  const downloadItems = downloadItemsFor(documents, locale);
 
   // Oldest first: the loader returns the newest period first, which would draw
   // time running backwards.

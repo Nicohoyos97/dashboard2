@@ -24,7 +24,11 @@ export function Brand({
   badge?: string;
   compact?: boolean;
 }) {
-  const height = compact ? 'h-6 w-auto' : 'h-8 w-auto';
+  // `object-contain` only matters compact: the mobile bar now also carries the
+  // bell, the theme toggle and the Reports action, so at 320 px — the width
+  // WCAG reflow is measured at — the lockup is the flex item that gives, and
+  // without it a shrunk width would squash the artwork rather than scale it.
+  const height = compact ? 'h-6 w-auto object-contain' : 'h-8 w-auto';
   // Full variant stacks the badge under the lockup, where the sidebar has the
   // vertical room and the pair reads as one title block. The compact variant
   // shares the mobile top bar with a 40 px menu button, so it stays on one line
