@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { clearDerived } from '@/lib/ingestion/persist';
+
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
 
 // The rule this feature exists for (0022): a point-of-sale report says what
@@ -91,7 +93,7 @@ test.describe('sales reports and the filing that follows them', () => {
       published_at: stamp,
     });
 
-    return { user, entityId, reportId: report.id };
+    return { user, entityId, reportId: report.id, filingVersionId };
   }
 
   test('one sales-tax obligation per period, whatever arrives twice', async () => {
@@ -145,6 +147,48 @@ test.describe('sales reports and the filing that follows them', () => {
     expect(Number(after!.amount_payable)).toBe(1328);
     expect(Number(after!.taxable_sales)).toBe(14073.36);
     expect(Number(after!.tax_collected)).toBe(1504.59);
+  });
+
+  test('reprocessing a filing clears its own half and leaves the sales figures', async () => {
+    // clearDerived used to delete the whole obligation, which was right while a
+    // filing was the only thing that could create one. Once a POS report writes
+    // to the same row, deleting it loses a month of sales figures that came
+    // from a document nobody reprocessed.
+    const { entityId, filingVersionId } = await seedPair('salesclear', false);
+    const { data: row } = await fx.admin
+      .from('tax_obligations')
+      .update({ taxable_sales: 14073.36, tax_collected: 1504.59 })
+      .eq('business_entity_id', entityId)
+      .select('id')
+      .single();
+
+    await clearDerived(fx.admin as never, filingVersionId);
+
+    const { data: after } = await fx.admin
+      .from('tax_obligations')
+      .select('id, amount_payable, due_date, document_version_id, status, taxable_sales, tax_collected')
+      .eq('id', row!.id)
+      .maybeSingle();
+
+    expect(after, 'the shared row survives').not.toBeNull();
+    // The filing's half is gone, ready to be written again...
+    expect(after!.amount_payable).toBeNull();
+    expect(after!.due_date).toBeNull();
+    expect(after!.document_version_id).toBeNull();
+    expect(after!.status).toBe('pending_review');
+    // ...and the sales report's half is untouched.
+    expect(Number(after!.taxable_sales)).toBe(14073.36);
+    expect(Number(after!.tax_collected)).toBe(1504.59);
+  });
+
+  test('a filing that produced the row alone is still deleted outright', async () => {
+    const { entityId, filingVersionId } = await seedPair('salesalone', false);
+    await clearDerived(fx.admin as never, filingVersionId);
+    const { data } = await fx.admin
+      .from('tax_obligations')
+      .select('id')
+      .eq('business_entity_id', entityId);
+    expect(data ?? [], 'nothing shared it, so nothing is left behind').toHaveLength(0);
   });
 
   test('the firm corrects a figure by hand and the totals are re-checked', async () => {

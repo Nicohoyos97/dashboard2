@@ -47,7 +47,50 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
   await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published');
   // Tenders cascade with their report.
   await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
-  await admin.from('tax_obligations').delete().eq('document_version_id', versionId).is('published_at', null);
+  await clearFilingHalf(admin, versionId);
+}
+
+/**
+ * Undo a filing's contribution to its sales-tax obligations without taking the
+ * sales report's contribution with it.
+ *
+ * A sales-tax obligation is shared: the filing writes what is owed, the
+ * point-of-sale report writes what was sold. Deleting the row outright — which
+ * is what this used to do — was right while a filing was the only thing that
+ * could create one, and became a way to lose a month of sales figures the
+ * moment reprocessing a filing met a row a POS report had also written to.
+ *
+ * So: a row this filing alone produced is deleted, and a shared one keeps its
+ * sales columns and loses only the filing's, ready to be filled again.
+ */
+async function clearFilingHalf(admin: Admin, versionId: string): Promise<void> {
+  await admin
+    .from('tax_obligations')
+    .delete()
+    .eq('document_version_id', versionId)
+    .is('published_at', null)
+    .is('taxable_sales', null)
+    .is('tax_collected', null);
+
+  await admin
+    .from('tax_obligations')
+    .update({
+      tax_year: null,
+      due_date: null,
+      amount_paid: null,
+      amount_payable: null,
+      confirmation_number: null,
+      notes: null,
+      page_number: null,
+      confidence: null,
+      reconciliation: null,
+      document_version_id: null,
+      // Nothing is filed for this period any more, which is what
+      // pending_review means on an obligation.
+      status: 'pending_review',
+    })
+    .eq('document_version_id', versionId)
+    .is('published_at', null);
 }
 
 export async function persistPages(admin: Admin, ctx: PersistContext, pages: readonly ClassifiedPage[]): Promise<void> {
