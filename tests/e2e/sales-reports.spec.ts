@@ -21,6 +21,24 @@ test.describe('sales reports and the filing that follows them', () => {
     await fx.admin.from('business_entities').update({ sales_tax_enabled: true }).eq('id', entityId);
 
     const stamp = publish ? new Date().toISOString() : null;
+
+    // A document + version for the filing, so its obligation has real
+    // provenance to defend.
+    const { data: filingDoc } = await fx.admin
+      .from('documents')
+      .insert({ business_entity_id: entityId, document_type: 'sales_tax_filing', title: `${label} ST-1`, status: 'reconciled' })
+      .select('id')
+      .single();
+    const { data: filingVersion } = await fx.admin
+      .from('document_versions')
+      .insert({
+        document_id: filingDoc!.id, business_entity_id: entityId, version_no: 1,
+        storage_path: `${entityId}/${filingDoc!.id}/v1/st1.pdf`, original_filename: 'st1.pdf',
+        mime_type: 'application/pdf', size_bytes: 10, sha256: 'b'.repeat(64), upload_status: 'uploaded',
+      })
+      .select('id')
+      .single();
+    const filingVersionId = filingVersion!.id;
     const { data: report, error } = await fx.admin
       .from('sales_reports')
       .insert({
@@ -59,6 +77,7 @@ test.describe('sales reports and the filing that follows them', () => {
     );
 
     // The filing for the same month: what was owed, and nothing about sales.
+    // It owns document_version_id, the way persistTax writes it.
     await fx.admin.from('tax_obligations').insert({
       business_entity_id: entityId,
       tax_type: 'sales',
@@ -68,6 +87,7 @@ test.describe('sales reports and the filing that follows them', () => {
       amount_payable: 1328.0,
       status: 'payable',
       source: 'firm_document',
+      document_version_id: filingVersionId,
       published_at: stamp,
     });
 
@@ -88,6 +108,43 @@ test.describe('sales reports and the filing that follows them', () => {
       source: 'firm_document',
     });
     expect(error?.code, 'a second obligation for the same period must be refused').toBe('23505');
+  });
+
+  test('each document owns its half of the obligation, and neither claims the other', async () => {
+    // The bug this fixes: one obligation row carries a single
+    // document_version_id, and the sales report used to overwrite it. Whichever
+    // document processed last claimed the row, and the other read "nothing was
+    // extracted from this version" — unpublishable, with its own figures
+    // sitting in the row the whole time.
+    const { entityId } = await seedPair('salesown', false);
+    const { data: obligation } = await fx.admin
+      .from('tax_obligations')
+      .select('id, document_version_id, amount_payable, status')
+      .eq('business_entity_id', entityId)
+      .single();
+
+    // The filing's half, written by the seed as persistTax writes it.
+    expect(Number(obligation!.amount_payable)).toBe(1328);
+    expect(obligation!.status).toBe('payable');
+
+    // Now the sales half lands on the same row. It may fill its two columns
+    // and must leave the filing's pointer and status exactly as they were.
+    const filingVersion = obligation!.document_version_id;
+    await fx.admin
+      .from('tax_obligations')
+      .update({ taxable_sales: 14073.36, tax_collected: 1504.59 })
+      .eq('id', obligation!.id);
+
+    const { data: after } = await fx.admin
+      .from('tax_obligations')
+      .select('document_version_id, status, amount_payable, taxable_sales, tax_collected')
+      .eq('id', obligation!.id)
+      .single();
+    expect(after!.document_version_id, 'the filing keeps the pointer').toBe(filingVersion);
+    expect(after!.status, 'the filing keeps the status').toBe('payable');
+    expect(Number(after!.amount_payable)).toBe(1328);
+    expect(Number(after!.taxable_sales)).toBe(14073.36);
+    expect(Number(after!.tax_collected)).toBe(1504.59);
   });
 
   test('the firm corrects a figure by hand and the totals are re-checked', async () => {

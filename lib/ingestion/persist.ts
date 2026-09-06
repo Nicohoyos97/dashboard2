@@ -291,6 +291,8 @@ async function upsertObligation(
   ctx: PersistContext,
   key: { taxType: string; periodStart: string | null; periodEnd: string | null },
   patch: Database['public']['Tables']['tax_obligations']['Update'],
+  /** Only applied when the row is created, never when it already exists. */
+  onInsert: Partial<Database['public']['Tables']['tax_obligations']['Insert']> = {},
 ): Promise<string> {
   const existing = key.periodStart
     ? await admin
@@ -318,6 +320,7 @@ async function upsertObligation(
       period_start: key.periodStart,
       period_end: key.periodEnd,
       source: 'firm_document',
+      ...onInsert,
       ...patch,
     })
     .select('id')
@@ -386,17 +389,23 @@ async function persistSalesReport(
   const taxableSales = money(centsOf(data.net_sales ?? data.gross_sales));
   const taxCollected = money(centsOf(data.tax_collected));
   if (taxableSales !== null || taxCollected !== null) {
+    // Its own two columns and nothing else.
+    //
+    // `document_version_id` and `status` belong to the FILING — the document
+    // that states what is owed — and this row carries only one of each. Writing
+    // them here made whichever document processed last claim the row, and left
+    // the other one reading "nothing was extracted from this version", unable
+    // to be published, with its figures sitting in the row all along. The
+    // provenance of these two numbers is the sales_reports row, which has its
+    // own document_version_id.
     await upsertObligation(
       admin,
       ctx,
       { taxType: 'sales', periodStart: data.period_start, periodEnd: data.period_end },
-      {
-        taxable_sales: taxableSales,
-        tax_collected: taxCollected,
-        status: 'pending_review',
-        document_version_id: ctx.versionId,
-        confidence: data.confidence,
-      },
+      { taxable_sales: taxableSales, tax_collected: taxCollected },
+      // A sales report can arrive before any filing; the row still needs a
+      // status, and "nobody has filed yet" is pending_review.
+      { status: 'pending_review' },
     );
   }
 }
