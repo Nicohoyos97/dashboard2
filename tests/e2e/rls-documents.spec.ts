@@ -16,6 +16,13 @@ const FAR_FUTURE = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
 type Seeded = { docId: string; versionId: string; path: string; jobId: string };
 
+// document_versions_entity_sha_idx refuses two versions of one business with
+// the same bytes, so a tenant seeded with more than one document needs more
+// than one file. The default type keeps PDF exactly: the storage test downloads
+// it and compares.
+const bytesFor = (documentType: string): Buffer =>
+  documentType === 'profit_and_loss' ? PDF : Buffer.concat([PDF, Buffer.from(`%${documentType}\n`)]);
+
 test.describe('RLS documents and storage', () => {
   test.skip(!supabaseEnv(), 'Supabase env not available');
 
@@ -30,18 +37,23 @@ test.describe('RLS documents and storage', () => {
   // A draft P&L for `entityId`: one version (bytes uploaded), one classified
   // page, one queued job. Jobs are scheduled far in the future unless
   // `claimable`, so parallel tests never claim each other's queue rows.
-  async function seedDocument(entityId: string, claimable = false): Promise<Seeded> {
+  async function seedDocument(
+    entityId: string,
+    claimable = false,
+    documentType = 'profit_and_loss',
+  ): Promise<Seeded> {
     const doc = await fx.admin
       .from('documents')
       .insert({
         business_entity_id: entityId,
-        document_type: 'profit_and_loss',
-        title: 'P&L Jan 2026',
+        document_type: documentType,
+        title: documentType === 'profit_and_loss' ? 'P&L Jan 2026' : 'Clover Jan 2026',
         status: 'needs_review',
       })
       .select('id')
       .single();
     if (doc.error || !doc.data) throw new Error(`seed document: ${doc.error?.message}`);
+    const bytes = bytesFor(documentType);
     const path = `${entityId}/${doc.data.id}/v1/report.pdf`;
     const version = await fx.admin
       .from('document_versions')
@@ -52,8 +64,8 @@ test.describe('RLS documents and storage', () => {
         storage_path: path,
         original_filename: 'report.pdf',
         mime_type: 'application/pdf',
-        size_bytes: PDF.length,
-        sha256: createHash('sha256').update(PDF).digest('hex'),
+        size_bytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
         upload_status: 'uploaded',
       })
       .select('id')
@@ -81,7 +93,7 @@ test.describe('RLS documents and storage', () => {
       .single();
     if (job.error || !job.data) throw new Error(`seed job: ${job.error?.message}`);
     uploaded.push(path);
-    const up = await fx.admin.storage.from('documents').upload(path, PDF, PDF_OPTS);
+    const up = await fx.admin.storage.from('documents').upload(path, bytes, PDF_OPTS);
     if (up.error) throw new Error(`seed upload: ${up.error.message}`);
     return { docId: doc.data.id, versionId: version.data.id, path, jobId: job.data.id };
   }
@@ -207,6 +219,43 @@ test.describe('RLS documents and storage', () => {
     expect(
       (await fx.admin.from('document_versions').select('id').eq('document_id', own.docId)).data ?? [],
     ).toHaveLength(0);
+  });
+
+  test('a point-of-sale report stays with the firm even once published', async () => {
+    // 0025. Publishing a sales report is what makes the client's register
+    // figures visible — net sales, tips, tax collected — but the file itself is
+    // their own Clover/Toast export sent to us, and it is not a deliverable the
+    // firm publishes back. Three ways in, all closed: the row, its bytes, and
+    // the storage object the download route signs.
+    const b = await fx.makeTenant('dpos');
+    const admin = await fx.makeFirmUser('dpos-admin');
+    await elevateToAal2(admin.client);
+    const pos = await seedDocument(b.entityId, false, 'sales_report');
+    const pnl = await seedDocument(b.entityId);
+    await publish(pos.docId);
+    await publish(pnl.docId);
+
+    const docs = (db: Db, id: string) => db.from('documents').select('id').eq('id', id);
+    const versions = (db: Db, id: string) =>
+      db.from('document_versions').select('id').eq('document_id', id);
+    const sign = async (db: Db, path: string) =>
+      (await db.storage.from('documents').createSignedUrl(path, 60)).error;
+
+    // Positive control: a published P&L in the same business is theirs.
+    expect((await docs(b.client, pnl.docId)).data).toHaveLength(1);
+    expect((await versions(b.client, pnl.docId)).data).toHaveLength(1);
+    expect(await sign(b.client, pnl.path)).toBeNull();
+
+    // The sales report, published exactly the same way, is not.
+    expect((await docs(b.client, pos.docId)).data ?? []).toHaveLength(0);
+    expect((await versions(b.client, pos.docId)).data ?? []).toHaveLength(0);
+    expect(await sign(b.client, pos.path)).not.toBeNull();
+
+    // The firm still has all of it — this is a client-visibility rule, not a
+    // retention one.
+    expect((await docs(admin.client, pos.docId)).data).toHaveLength(1);
+    expect((await versions(admin.client, pos.docId)).data).toHaveLength(1);
+    expect(await sign(admin.client, pos.path)).toBeNull();
   });
 
   test('clients cannot create or edit documents, versions or jobs', async () => {

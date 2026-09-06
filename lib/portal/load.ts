@@ -6,6 +6,7 @@ import 'server-only';
 
 import { cache } from 'react';
 
+import { FIRM_ONLY_DOCUMENT_TYPES } from '@/lib/documents/types';
 import { insightKey } from '@/lib/insights/periods';
 import type { LineRow, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
@@ -246,6 +247,13 @@ export type PublishedDocument = {
   currentVersionId: string | null;
 };
 
+/**
+ * The published documents the client may open and download.
+ *
+ * Firm-only types are excluded here as well as in RLS (0025): a firm user
+ * previewing the portal reads through `is_firm_member()` and would otherwise be
+ * shown a tile the client does not have.
+ */
 export async function loadPublishedDocuments(supabase: Db, entityId: string): Promise<PublishedDocument[]> {
   const rows: {
     id: string;
@@ -262,6 +270,7 @@ export async function loadPublishedDocuments(supabase: Db, entityId: string): Pr
       .select('id, title, document_type, period_start, period_end, published_at, current_version_id')
       .eq('business_entity_id', entityId)
       .eq('status', 'published')
+      .not('document_type', 'in', `(${FIRM_ONLY_DOCUMENT_TYPES.join(',')})`)
       .order('period_end', { ascending: false, nullsFirst: false })
       .order('id')
       .range(from, from + PAGE_SIZE - 1);
@@ -337,9 +346,6 @@ export type PortalSalesReport = {
   grossSalesCents: number | null;
   netSalesCents: number | null;
   refundsCents: number | null;
-  // The third term of net sales (gross − refunds − discounts), read by the
-  // portal since the client's own breakdown started showing it.
-  discountsCents: number | null;
   tipsCents: number | null;
   taxCollectedCents: number | null;
   amountCollectedCents: number | null;
@@ -363,7 +369,7 @@ export async function loadPublishedSalesReports(
   const { data, error } = await supabase
     .from('sales_reports')
     .select(
-      'id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, discounts, tips, tax_collected, amount_collected, order_count, sales_report_tenders ( id, label, amount, position )',
+      'id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, tips, tax_collected, amount_collected, order_count, sales_report_tenders ( id, label, amount, position )',
     )
     .eq('business_entity_id', entityId)
     .eq('status', 'published')
@@ -380,7 +386,6 @@ export async function loadPublishedSalesReports(
     grossSalesCents: cents(row.gross_sales),
     netSalesCents: cents(row.net_sales),
     refundsCents: cents(row.refunds),
-    discountsCents: cents(row.discounts),
     tipsCents: cents(row.tips),
     taxCollectedCents: cents(row.tax_collected),
     amountCollectedCents: cents(row.amount_collected),

@@ -19,6 +19,19 @@ export const DOCUMENT_TYPES = [
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
+// Types the client never sees in their portal. A point-of-sale report is the
+// firm's working paper: it is the client's own register export, sent to us so
+// the books can be built from it, and what belongs back in their portal is the
+// figures — net sales, tips, tax collected — not the file. Publishing it is
+// still what makes those figures visible, so this is a visibility rule on the
+// document row alone, enforced in the database by 0025 and mirrored here so
+// the firm's "preview as client" shows what the client actually has.
+export const FIRM_ONLY_DOCUMENT_TYPES: readonly DocumentType[] = ['sales_report'];
+
+export function isClientVisibleDocumentType(documentType: string): boolean {
+  return !(FIRM_ONLY_DOCUMENT_TYPES as readonly string[]).includes(documentType);
+}
+
 export const DOCUMENT_STATUSES = [
   'uploaded',
   'processing',

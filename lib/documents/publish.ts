@@ -10,7 +10,7 @@ import type { ActionResult } from '@/lib/firm/result';
 import { notifyEntityMembers } from '@/lib/notifications/notify';
 import { createClient } from '@/lib/supabase/server';
 
-import { DOCUMENT_TYPES } from './types';
+import { DOCUMENT_TYPES, isClientVisibleDocumentType } from './types';
 import { CONFIDENCE_THRESHOLD, parseReconciliation } from './reconciliation';
 
 // Publication (INITIAL_PROMPT.md §8 statuses, §3 financial integrity).
@@ -210,10 +210,13 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     .from('documents')
     .update({ ...publishRow, current_version_id: versionId })
     .eq('id', parsed.data.documentId)
-    .select('title');
+    .select('title, document_type');
   if (error || !published?.[0]) return { ok: false, error: t('errorSave') };
 
-  if (entityId) {
+  // A firm-only document (0025) has no tile and no download for the client, so
+  // the bell must not name it either — its figures reach them silently, the way
+  // the register numbers on their Sales Taxes page always have.
+  if (entityId && isClientVisibleDocumentType(published[0].document_type)) {
     // A republish is still a publication for the client — same channel, but the
     // bell says "updated" so a corrected statement does not read as a new one.
     await notifyEntityMembers({
@@ -246,7 +249,7 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
 
   const { data: doc } = await supabase
     .from('documents')
-    .select('id, status, current_version_id, business_entity_id')
+    .select('id, status, current_version_id, business_entity_id, document_type')
     .eq('id', parsed.data.documentId)
     .maybeSingle();
   if (!doc || doc.status !== 'published') return { ok: false, error: t('errorInvalid') };
@@ -279,8 +282,10 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
   if (error) return { ok: false, error: t('errorSave') };
 
   // The client had this report and no longer does; that belongs on the document
-  // activity channel they opted into, not silently in the background.
-  if (doc.business_entity_id && withdrawn?.[0]) {
+  // activity channel they opted into, not silently in the background. A
+  // firm-only document (0025) was never in their portal, so there is nothing to
+  // tell them it has left.
+  if (doc.business_entity_id && withdrawn?.[0] && isClientVisibleDocumentType(doc.document_type)) {
     await notifyEntityMembers({
       entityId: doc.business_entity_id,
       kind: 'document.unpublished',
