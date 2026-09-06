@@ -282,12 +282,14 @@ test.describe('Phase 6: accessibility and mobile', () => {
     ).toBeLessThanOrEqual(1);
     await page.keyboard.press('Escape');
 
-    // Nick's composer opens without its placeholder on a phone: at the 16px iOS
-    // demands, "Ask Nick about your finances…" reaches the edge of the box at
-    // 390px and is cut on anything narrower.
+    // Nick's panel opens whole on a phone, and quiet: nothing takes the focus,
+    // so the keyboard stays down until the reader taps the field. And no
+    // placeholder — at the 16px iOS demands, "Ask Nick about your finances…"
+    // reaches the edge of the box at 390px and is cut on anything narrower.
     await page.getByRole('button', { name: /ask nick/i }).click();
     const composer = page.locator('#nick-composer');
     await expect(composer).toBeVisible();
+    expect(await composer.evaluate((el) => el === document.activeElement)).toBe(false);
     expect(await composer.evaluate((el) => getComputedStyle(el, '::placeholder').color)).toBe(
       'rgba(0, 0, 0, 0)',
     );
@@ -320,15 +322,16 @@ test.describe('Phase 6: accessibility and mobile', () => {
     expect(card.x).toBeGreaterThan(0);
     await page.keyboard.press('Escape');
 
-    // …and the composer's placeholder is back, where there is room for it.
+    // …and with a keyboard in front of the reader the composer takes the focus
+    // on open and shows its placeholder again, where there is room for it.
     await page
       .getByRole('button', { name: /ask nick/i })
       .first()
       .click();
-    expect(
-      await page
-        .locator('#nick-composer')
-        .evaluate((el) => getComputedStyle(el, '::placeholder').color),
-    ).not.toBe('rgba(0, 0, 0, 0)');
+    const wide = page.locator('#nick-composer');
+    await expect(wide).toBeFocused();
+    expect(await wide.evaluate((el) => getComputedStyle(el, '::placeholder').color)).not.toBe(
+      'rgba(0, 0, 0, 0)',
+    );
   });
 });

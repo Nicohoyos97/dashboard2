@@ -2,7 +2,7 @@
 
 import { ArrowUp, SendHorizontal } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { NICK_LIMITS } from '@/lib/ai/nick/config';
 import { cn } from '@/lib/utils/cn';
@@ -26,6 +26,19 @@ export function Composer({
   const ref = useRef<HTMLTextAreaElement>(null);
   const hero = size === 'hero';
 
+  // `autoFocus` is honoured with a keyboard, and refused on a phone. Focusing a
+  // field there raises the keyboard over the panel the reader has just opened —
+  // they asked to see Nick, not to type — so the panel opens whole and the
+  // keyboard waits for a tap on the field. Done in an effect rather than with
+  // the DOM attribute because the width is only known in the browser, and a
+  // server render that guessed would either mismatch on hydration or focus and
+  // then let go.
+  useEffect(() => {
+    if (!autoFocus) return;
+    if (!window.matchMedia('(min-width: 40rem)').matches) return;
+    ref.current?.focus();
+  }, [autoFocus]);
+
   function submit() {
     const text = value.trim();
     if (!text || disabled) return;
@@ -41,7 +54,6 @@ export function Composer({
       value={value}
       rows={hero ? 3 : 1}
       maxLength={NICK_LIMITS.maxMessageChars}
-      autoFocus={autoFocus}
       placeholder={t('placeholder')}
       disabled={disabled}
       onChange={(event) => setValue(event.target.value)}
