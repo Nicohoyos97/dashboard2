@@ -2,7 +2,7 @@
 
 // The Recharts drawing for IncomeExpenseChart; the figure and its caption stay
 // in the wrapper so the screen-reader reading never waits on the chart bundle.
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { SERIES } from '@/lib/charts/palette';
@@ -13,7 +13,6 @@ export type IncomeExpensePoint = { label: string; incomeCents: number | null; ex
 
 export function IncomeExpensePlot({ points, currency }: { points: IncomeExpensePoint[]; currency: string }) {
   const t = useTranslations('Overview');
-  const locale = useLocale();
   const data = points.map((point) => ({
     label: point.label,
     income: point.incomeCents,
@@ -41,9 +40,9 @@ export function IncomeExpensePlot({ points, currency }: { points: IncomeExpenseP
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={moneyAxisWidth(points.flatMap((p) => [p.incomeCents, p.expenseCents]), currency, locale)}
+          width={moneyAxisWidth(points.flatMap((p) => [p.incomeCents, p.expenseCents]), currency)}
           tick={{ fill: 'var(--chart-axis)', fontSize: 12 }}
-          tickFormatter={(value: number) => compactMoney(value, currency, locale)}
+          tickFormatter={(value: number) => compactMoney(value, currency)}
         />
         <Tooltip
           cursor={{ stroke: 'var(--chart-axis)', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -56,7 +55,7 @@ export function IncomeExpensePlot({ points, currency }: { points: IncomeExpenseP
                   <p key={String(entry.name)} className="not-first:mt-2">
                     <span className="block text-[11.5px] text-white/70">{String(entry.name)}</span>
                     <span className="block text-[18px] leading-tight font-bold tabular-nums">
-                      {fullMoney(Number(entry.value), currency, locale)}
+                      {fullMoney(Number(entry.value), currency)}
                     </span>
                   </p>
                 ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 
 import { ChartSkeleton } from './ChartSkeleton';
@@ -33,7 +33,6 @@ export function IncomeExpenseChart({
   summary: string;
 }) {
   const t = useTranslations('Overview');
-  const locale = useLocale();
 
   return (
     <figure>
@@ -47,7 +46,7 @@ export function IncomeExpenseChart({
           {points
             .map(
               (point) =>
-                `${point.label}: ${t('seriesIncome')} ${point.incomeCents === null ? '—' : fullMoney(point.incomeCents, currency, locale)}, ${t('seriesExpense')} ${point.expenseCents === null ? '—' : fullMoney(point.expenseCents, currency, locale)}`,
+                `${point.label}: ${t('seriesIncome')} ${point.incomeCents === null ? '—' : fullMoney(point.incomeCents, currency)}, ${t('seriesExpense')} ${point.expenseCents === null ? '—' : fullMoney(point.expenseCents, currency)}`,
             )
             .join('. ')}
         </span>

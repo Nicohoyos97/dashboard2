@@ -2,7 +2,7 @@
 
 // The Recharts drawing for TaxYearChart; the legend and the text equivalent
 // stay in the wrapper so neither waits on the chart bundle.
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import {
   Bar,
   CartesianGrid,
@@ -27,7 +27,6 @@ export type TaxYearChartPoint = {
 };
 
 export function TaxYearPlot({ points, currency }: { points: TaxYearChartPoint[]; currency: string }) {
-  const locale = useLocale();
   const t = useTranslations('Taxes');
   const data = points.map((point) => ({
     label: String(point.year),
@@ -51,9 +50,9 @@ export function TaxYearPlot({ points, currency }: { points: TaxYearChartPoint[];
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={moneyAxisWidth(points.flatMap((p) => [p.projectedCents, p.paidCents]), currency, locale)}
+          width={moneyAxisWidth(points.flatMap((p) => [p.projectedCents, p.paidCents]), currency)}
           tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
-          tickFormatter={(value: number) => compactMoney(value, currency, locale)}
+          tickFormatter={(value: number) => compactMoney(value, currency)}
         />
         <Tooltip
           cursor={{ fill: 'var(--chart-cursor)' }}
@@ -62,7 +61,6 @@ export function TaxYearPlot({ points, currency }: { points: TaxYearChartPoint[];
               active={active}
               label={typeof label === 'string' ? label : undefined}
               currency={currency}
-              locale={locale}
               rows={(payload ?? []).map((entry) => ({
                 name: String(entry.name),
                 value: Number(entry.value),

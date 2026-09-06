@@ -70,7 +70,7 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
   const obligations = year === null ? all : all.filter((o) => o.taxYear === year || o.taxYear === null);
 
   const today = todayIn(settings.timezone);
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const remaining = remainingOwed(obligations);
   const due = nextDueDate(obligations, today);

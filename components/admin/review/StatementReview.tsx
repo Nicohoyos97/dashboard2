@@ -9,6 +9,7 @@ import { CONFIDENCE_THRESHOLD, type Reconciliation } from '@/lib/documents/recon
 import { formatPeriod } from '@/lib/utils/dates';
 
 import { inputClass } from '../ui';
+import { formatAmount } from '@/lib/money';
 
 export type LineRow = {
   id: string;
@@ -38,7 +39,7 @@ export type ReportSummary = {
 
 function money(value: number | null, locale: string, currency: string): string {
   if (value === null) return '';
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
+  return formatAmount(value, currency);
 }
 
 // The extracted statement with its hierarchy, low-confidence flags, inline

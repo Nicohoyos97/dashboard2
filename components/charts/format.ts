@@ -1,6 +1,12 @@
 // Number formatting shared by the chart components (client side).
-export function compactMoney(cents: number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale, {
+//
+// Money follows MONEY_LOCALE, not the reader's language: an axis that said
+// "60 mil US$" in Spanish and "$60K" in English would disagree with every
+// other figure on the page. Month labels below still follow the reader.
+import { MONEY_LOCALE } from '@/lib/money';
+
+export function compactMoney(cents: number, currency: string): string {
+  return new Intl.NumberFormat(MONEY_LOCALE, {
     style: 'currency',
     currency,
     notation: 'compact',
@@ -8,8 +14,8 @@ export function compactMoney(cents: number, currency: string, locale: string): s
   }).format(cents / 100);
 }
 
-export function fullMoney(cents: number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+export function fullMoney(cents: number, currency: string): string {
+  return new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency }).format(cents / 100);
 }
 
 export function monthLabel(month: string, locale: string): string {
@@ -38,12 +44,12 @@ export function monthLabel(month: string, locale: string): string {
 const AXIS_CHAR_PX = 6.6;
 const AXIS_TICK_MARGIN_PX = 14;
 
-export function moneyAxisWidth(values: readonly (number | null)[], currency: string, locale: string): number {
+export function moneyAxisWidth(values: readonly (number | null)[], currency: string): number {
   const magnitudes = values.filter((v): v is number => v !== null && Number.isFinite(v)).map(Math.abs);
   const peak = magnitudes.length > 0 ? Math.max(...magnitudes) : 0;
   // The top tick sits on a round number above the data, not on the data.
   const longest = Math.max(
-    ...[0, peak, peak * 1.3].map((v) => compactMoney(v, currency, locale).length),
+    ...[0, peak, peak * 1.3].map((v) => compactMoney(v, currency).length),
   );
   return Math.min(120, Math.max(64, Math.ceil(longest * AXIS_CHAR_PX) + AXIS_TICK_MARGIN_PX));
 }

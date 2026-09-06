@@ -29,7 +29,7 @@ export async function IncomeTaxCard({
     getTranslations('Taxes'),
     getLocale(),
   ]);
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
 
   const years = [...new Set(obligations.flatMap((o) => (o.taxYear === null ? [] : [o.taxYear])))].sort((a, b) => a - b);
   const latest = years[years.length - 1] ?? null;

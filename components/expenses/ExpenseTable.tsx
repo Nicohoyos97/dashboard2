@@ -34,7 +34,7 @@ export async function ExpenseTable({
   accountLabels: ReadonlyMap<string, string>;
 }) {
   const [t, locale] = await Promise.all([getTranslations('Expenses'), getLocale()]);
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);

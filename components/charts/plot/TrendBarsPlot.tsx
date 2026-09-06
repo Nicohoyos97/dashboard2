@@ -4,7 +4,7 @@
 // loaded on demand: Recharts is ~104 KB transferred and every chart route was
 // paying it up front. The legend and the caption stay in the wrapper, which is
 // server-rendered.
-import { useLocale } from 'next-intl';
+import {  } from 'next-intl';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { CHART_CHROME, SERIES } from '@/lib/charts/palette';
@@ -25,7 +25,6 @@ export function TrendBarsPlot({
   seriesA: string;
   seriesB?: string;
 }) {
-  const locale = useLocale();
   // Null stays null: a figure the statement does not print must not become a
   // zero bar, which would read as "nothing" rather than "not stated". Recharts
   // simply draws no bar for it.
@@ -40,9 +39,9 @@ export function TrendBarsPlot({
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={moneyAxisWidth(points.flatMap((p) => [p.a, p.b]), currency, locale)}
+          width={moneyAxisWidth(points.flatMap((p) => [p.a, p.b]), currency)}
           tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
-          tickFormatter={(v: number) => compactMoney(v, currency, locale)}
+          tickFormatter={(v: number) => compactMoney(v, currency)}
         />
         <Tooltip
           cursor={{ fill: 'var(--chart-cursor)' }}
@@ -51,7 +50,6 @@ export function TrendBarsPlot({
               active={active}
               label={typeof label === 'string' ? label : undefined}
               currency={currency}
-              locale={locale}
               rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.primary) }))}
             />
           )}

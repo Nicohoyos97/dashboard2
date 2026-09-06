@@ -1,12 +1,13 @@
 'use client';
 
 import { Sparkles, X } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
 
 import { useNickSelection } from '@/components/chat/NickContext';
 
 import type { StatementMeta, StatementNode } from './StatementTable';
+import { formatCents } from '@/lib/money';
 
 // Side drawer for a statement line (§7): explanation, current vs prior,
 // where it sits in the hierarchy and the source page of the published PDF.
@@ -23,14 +24,11 @@ export function LineDrawer({
 }) {
   const t = useTranslations('Statements');
   const tNick = useTranslations('Nick');
-  const locale = useLocale();
   const nick = useNickSelection();
   const money = (cents: number | null) =>
     cents === null
       ? '—'
-      : new Intl.NumberFormat(locale, { style: 'currency', currency: meta.currency }).format(
-          cents / 100,
-        );
+      : formatCents(cents, meta.currency);
   const node = selected;
 
   return (

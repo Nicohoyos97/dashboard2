@@ -40,7 +40,7 @@ export function MonthlySpendChart({
         {summary}
         <span className="sr-only">
           {' '}
-          {months.map((m) => `${monthLabel(m.month, locale)}: ${fullMoney(m.cents, currency, locale)}`).join('. ')}
+          {months.map((m) => `${monthLabel(m.month, locale)}: ${fullMoney(m.cents, currency)}`).join('. ')}
         </span>
       </figcaption>
     </figure>

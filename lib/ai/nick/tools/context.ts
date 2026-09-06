@@ -75,8 +75,11 @@ export function periodText(start: string, end: string, locale: NickLocale): stri
   return periodLabel(start, end, periodKind(start, end), locale);
 }
 
-export function money(ctx: ShapeContext, cents: number, currency = ctx.currency): string {
-  return formatCents(cents, currency, ctx.locale === 'es' ? 'es-US' : 'en-US');
+// Nick answers in the reader's language but writes money the same way the
+// portal does — $1,200.00 — so a figure he quotes matches the screen it came
+// from character for character. See MONEY_LOCALE.
+export function money(_ctx: ShapeContext, cents: number, currency = _ctx.currency): string {
+  return formatCents(cents, currency);
 }
 
 export const STATEMENT_PATHS: Record<ReportType, string> = {

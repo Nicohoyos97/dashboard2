@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { formatIsoDate } from '@/lib/utils/dates';
 
 import { DismissInsight } from './DismissInsight';
+import { formatCents } from '@/lib/money';
 
 export type InsightView = {
   ruleKey: string;
@@ -30,7 +31,7 @@ export async function InsightsCard({ insights, currency }: { insights: InsightVi
     getTranslations('Reminders'),
     getLocale(),
   ]);
-  const money = (value: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value / 100);
+  const money = (value: number) => formatCents(value, currency);
   const value = (params: InsightView['params'], key: string): number => {
     const item = params[key];
     return typeof item === 'number' ? item : 0;

@@ -261,7 +261,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   });
   const netForPeriod = revenue.cents !== null && operatingExpenses.cents !== null ? revenue.cents - operatingExpenses.cents : null;
 
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
 
   await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
 

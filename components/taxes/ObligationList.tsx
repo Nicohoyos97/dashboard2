@@ -21,7 +21,7 @@ export async function ObligationList({
   kind: 'income' | 'sales';
 }) {
   const [t, locale] = await Promise.all([getTranslations('Taxes'), getLocale()]);
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
 
   if (obligations.length === 0) return <p className="text-muted-foreground text-[14px]">{t('noObligations')}</p>;
 

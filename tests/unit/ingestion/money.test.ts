@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { MoneyParseError, formatCents, fromCents, sumCents, toCents, variance } from '@/lib/money';
+import { MONEY_LOCALE, MoneyParseError, formatAmount, formatCents, fromCents, sumCents, toCents, variance } from '@/lib/money';
 
 describe('toCents', () => {
   it.each([
@@ -67,7 +67,17 @@ describe('formatCents', () => {
   it('uses Intl currency formatting', () => {
     expect(formatCents(123456)).toBe('$1,234.56');
     expect(formatCents(-5, 'USD')).toBe('-$0.05');
-    expect(formatCents(100000, 'EUR', 'de-DE')).toContain('1.000,00');
+    expect(formatCents(100000, 'EUR')).toBe('€1,000.00');
+  });
+
+  it('writes money the American way, whatever language the portal is in', () => {
+    // A US firm with US clients: a Spanish-speaking owner reads $1,200.00 on
+    // their bank statement and their POS report, so the portal says the same.
+    // There is deliberately no locale argument to get this wrong with.
+    expect(MONEY_LOCALE).toBe('en-US');
+    expect(formatCents(120000)).toBe('$1,200.00');
+    expect(formatCents(120000)).not.toContain('US$');
+    expect(formatAmount(1200, 'USD')).toBe('$1,200.00');
   });
 });
 

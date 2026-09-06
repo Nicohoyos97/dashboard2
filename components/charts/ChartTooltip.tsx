@@ -11,13 +11,11 @@ export function ChartTooltip({
   label,
   rows,
   currency,
-  locale,
 }: {
   active?: boolean | undefined;
   label?: string | undefined;
   rows: TooltipRow[];
   currency: string;
-  locale: string;
 }) {
   if (!active || rows.length === 0) return null;
   return (
@@ -27,7 +25,7 @@ export function ChartTooltip({
         <p key={r.name} className="text-ink flex items-center gap-2">
           <span className="size-2.5 rounded-full" style={{ background: r.color }} aria-hidden="true" />
           <span className="text-muted-foreground flex-1">{r.name}</span>
-          <span className="font-medium tabular-nums">{fullMoney(r.value, currency, locale)}</span>
+          <span className="font-medium tabular-nums">{fullMoney(r.value, currency)}</span>
         </p>
       ))}
     </div>

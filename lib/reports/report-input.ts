@@ -55,8 +55,8 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
   const { report, roots, locale } = input;
   const t: ReportLabels = reportLabels(locale);
   const isBalance = report.reportType === 'balance_sheet';
-  const money = (cents: number | null) => reportMoney(cents, report.currency, locale);
-  const plain = (cents: number | null) => reportNumber(cents, locale);
+  const money = (cents: number | null) => reportMoney(cents, report.currency);
+  const plain = (cents: number | null) => reportNumber(cents);
   const basisLabel = report.basis === 'cash' ? t.basisCash : t.basisAccrual;
   const basisExplained = report.basis === 'cash' ? t.basisCashExplained : t.basisAccrualExplained;
 
@@ -81,7 +81,7 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
   let bands: Bands;
   let kpis: KpiCard[];
   let analysis: string[];
-  const ctx = { labels: t, locale, money, percent: (v: number | null) => reportPercent(v, locale) };
+  const ctx = { labels: t, locale, money, percent: (v: number | null) => reportPercent(v) };
 
   if (isBalance) {
     const metrics = balanceSheetMetrics(report, roots);

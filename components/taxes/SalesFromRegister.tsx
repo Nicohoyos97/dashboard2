@@ -13,7 +13,7 @@ import { formatPeriod } from '@/lib/utils/dates';
 // work out why "taxable receipts" is smaller than what they rang up.
 export async function SalesFromRegister({ report }: { report: PortalSalesReport }) {
   const [t, locale] = await Promise.all([getTranslations('Taxes'), getLocale()]);
-  const money = (cents: number | null) => (cents === null ? null : formatCents(cents, report.currency, locale));
+  const money = (cents: number | null) => (cents === null ? null : formatCents(cents, report.currency));
 
   const figures: [string, number | null][] = [
     [t('posGross'), report.grossSalesCents],

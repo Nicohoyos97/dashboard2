@@ -77,7 +77,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const obligations = selectedCode === '' ? all : all.filter((o) => o.jurisdiction?.code === selectedCode);
 
   const today = todayIn(settings.timezone);
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
   const format = (cents: number | null) => (cents === null ? null : money(cents));
   const due = nextDueDate(obligations, today);
   const pendingReview = obligations.filter((o) => o.status === 'pending_review').length;

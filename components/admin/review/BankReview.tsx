@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 
 import type { Reconciliation } from '@/lib/documents/reconciliation';
 import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
+import { formatAmount } from '@/lib/money';
 
 export type BankStatementSummary = {
   id: string;
@@ -40,7 +41,7 @@ export async function BankReview({
 }) {
   const [t, locale] = await Promise.all([getTranslations('Admin'), getLocale()]);
   const fmt = (v: number | null) =>
-    v === null ? '' : new Intl.NumberFormat(locale, { style: 'currency', currency: statement.currency }).format(v);
+    v === null ? '' : formatAmount(v, statement.currency);
   const rec = statement.reconciliation;
 
   return (

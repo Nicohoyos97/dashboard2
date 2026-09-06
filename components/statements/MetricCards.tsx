@@ -1,7 +1,8 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 
 import type { Metric, MetricReason, Ratio } from '@/lib/reports/types';
+import { formatCents } from '@/lib/money';
 
 export type MetricCardItem =
   | { kind: 'money'; label: string; metric: Metric; upIsGood: boolean }
@@ -11,8 +12,8 @@ export type MetricCardItem =
 // the statement does not print is shown as "not printed" with the reason —
 // never estimated. Deltas are contextual (upIsGood) and carry a sign + arrow.
 export async function MetricCards({ items, currency }: { items: MetricCardItem[]; currency: string }) {
-  const [t, locale] = await Promise.all([getTranslations('Statements'), getLocale()]);
-  const money = (cents: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  const t = await getTranslations('Statements');
+  const money = (cents: number) => formatCents(cents, currency);
   const reasonText = (reason: MetricReason | undefined) =>
     reason === 'no_printed_total' ? t('notPrinted') : reason ? t(`reason_${reason}`) : t('notCalculable');
 

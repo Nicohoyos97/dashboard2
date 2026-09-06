@@ -4,6 +4,11 @@
 // symbol; negatives are parenthesised with the symbol outside — "$(10,542.31)".
 // Grouping is forced because Spanish leaves four-digit numbers ungrouped by
 // default, which puts "5000,00" beside "12.000,00" in the same column.
+//
+// The separators themselves follow MONEY_LOCALE rather than the language the
+// letter is written in: this is a US accounting document, and a client
+// comparing it to their bank statement should not have to re-read the commas.
+import { MONEY_LOCALE } from '@/lib/money';
 
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -22,17 +27,17 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
 }
 
-function grouped(value: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
+function grouped(value: number): string {
+  return new Intl.NumberFormat(MONEY_LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: true,
   }).format(value);
 }
 
-export function currencySymbol(currency: string, locale: string): string {
+export function currencySymbol(currency: string): string {
   try {
-    const parts = new Intl.NumberFormat(locale, {
+    const parts = new Intl.NumberFormat(MONEY_LOCALE, {
       style: 'currency',
       currency,
       currencyDisplay: 'narrowSymbol',
@@ -45,23 +50,24 @@ export function currencySymbol(currency: string, locale: string): string {
 }
 
 /** A detail-row figure: no symbol, negatives in parentheses. */
-export function reportNumber(cents: number | null, locale: string): string {
+export function reportNumber(cents: number | null): string {
   if (cents === null) return '';
-  const text = grouped(Math.abs(cents) / 100, locale);
+  const text = grouped(Math.abs(cents) / 100);
   return cents < 0 ? `(${text})` : text;
 }
 
 /** A total or band figure: symbol outside the parentheses, per KILL-PDF. */
-export function reportMoney(cents: number | null, currency: string, locale: string): string {
+export function reportMoney(cents: number | null, currency: string): string {
   if (cents === null) return '';
-  const symbol = currencySymbol(currency, locale);
-  const text = grouped(Math.abs(cents) / 100, locale);
+  const symbol = currencySymbol(currency);
+  const text = grouped(Math.abs(cents) / 100);
   return cents < 0 ? `${symbol}(${text})` : `${symbol}${text}`;
 }
 
-export function reportPercent(value: number | null, locale: string): string {
+/** Same separators as the money it sits beside — one document, one convention. */
+export function reportPercent(value: number | null): string {
   if (value === null) return '';
-  const text = new Intl.NumberFormat(locale, {
+  const text = new Intl.NumberFormat(MONEY_LOCALE, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
     useGrouping: true,

@@ -100,7 +100,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const topCategory = totals.byCategory[0] ?? null;
   const topVendor = totals.byVendor.find((group) => group.key !== '') ?? null;
 
-  const money = (cents: number) => formatCents(cents, currency, locale);
+  const money = (cents: number) => formatCents(cents, currency);
   const unavailable = covered ? undefined : t('incompletePeriod');
   const deltaOf = (currentCents: number, priorCents: number | null) => expenseDelta(currentCents, priorCents).deltaPct;
   // A one-month period has no shape of its own, so the card falls back to the

@@ -34,9 +34,9 @@ export function MonthlySpendPlot({
         <YAxis
           tickLine={false}
           axisLine={false}
-          width={moneyAxisWidth(months.map((m) => m.cents), currency, locale)}
+          width={moneyAxisWidth(months.map((m) => m.cents), currency)}
           tick={{ fill: CHART_CHROME.axis, fontSize: 12 }}
-          tickFormatter={(v: number) => compactMoney(v, currency, locale)}
+          tickFormatter={(v: number) => compactMoney(v, currency)}
         />
         <Tooltip
           cursor={{ fill: 'var(--chart-cursor)' }}
@@ -45,7 +45,6 @@ export function MonthlySpendPlot({
               active={active}
               label={typeof label === 'string' ? label : undefined}
               currency={currency}
-              locale={locale}
               rows={(payload ?? []).map((p) => ({ name: String(p.name), value: Number(p.value), color: String(p.color ?? SERIES.expense) }))}
             />
           )}

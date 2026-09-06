@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getTranslations } from 'next-intl/server';
 
 import { Sparkline, type SparklineTone } from '@/components/charts/Sparkline';
 import { Link } from '@/i18n/navigation';
@@ -40,8 +40,8 @@ export async function KpiCard({
   trend?: readonly number[];
   unavailableReason?: string;
 }) {
-  const [t, locale] = await Promise.all([getTranslations('Overview'), getLocale()]);
-  const money = (v: number) => formatCents(v, currency, locale);
+  const t = await getTranslations('Overview');
+  const money = (v: number) => formatCents(v, currency);
   const up = deltaCents !== null && deltaCents > 0;
   const down = deltaCents !== null && deltaCents < 0;
   const good = (up && upIsGood) || (down && !upIsGood);

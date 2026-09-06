@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import type { ReminderRow } from '@/lib/portal/load';
 import { effectiveReminderStatus } from '@/lib/reminders/status';
 import { formatIsoDate } from '@/lib/utils/dates';
+import { formatCents } from '@/lib/money';
 
 const TONE: Record<string, string> = {
   overdue: 'bg-danger/10 text-danger',
@@ -23,7 +24,7 @@ const TONE: Record<string, string> = {
 export async function RemindersCard({ reminders, currency, today, limit = 6 }: { reminders: ReminderRow[]; currency: string; today: string; limit?: number }) {
   const [t, locale] = await Promise.all([getTranslations('Reminders'), getLocale()]);
 
-  const money = (c: number) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(c / 100);
+  const money = (c: number) => formatCents(c, currency);
   const open = reminders
     .map((r) => ({ ...r, effective: effectiveReminderStatus(r.status, r.dueDate, today) }))
     .filter((r) => r.effective !== 'paid' && r.effective !== 'completed')

@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight, Search } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 
 import { inputClass } from '@/components/admin/ui';
@@ -9,6 +9,7 @@ import { useNickSelection } from '@/components/chat/NickContext';
 
 import { CompareSelector, type CompareProps } from './CompareSelector';
 import { LineDrawer } from './LineDrawer';
+import { formatCents } from '@/lib/money';
 
 export type StatementNode = {
   id: string;
@@ -81,7 +82,6 @@ export function StatementTable({
   compare?: CompareProps;
 }) {
   const t = useTranslations('Statements');
-  const locale = useLocale();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [hideZero, setHideZero] = useState(false);
@@ -101,9 +101,7 @@ export function StatementTable({
   const money = (cents: number | null) =>
     cents === null
       ? ''
-      : new Intl.NumberFormat(locale, { style: 'currency', currency: meta.currency }).format(
-          cents / 100,
-        );
+      : formatCents(cents, meta.currency);
   const expenseLike = (node: StatementNode) =>
     /expense|cost|liabilit/i.test(node.section ?? '') || /expense|cost/i.test(node.accountName);
   const deltaTone = (node: StatementNode) => {

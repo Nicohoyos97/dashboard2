@@ -4,6 +4,7 @@ import type { CrossCheck } from '@/lib/documents/cross-check';
 import type { Reconciliation } from '@/lib/documents/reconciliation';
 import { posSystemLabel } from '@/lib/ingestion/schemas/sales-report';
 import { formatPeriod } from '@/lib/utils/dates';
+import { formatAmount, formatCents } from '@/lib/money';
 
 export type SalesReportSummary = {
   id: string;
@@ -42,9 +43,9 @@ export async function SalesReportReview({
 }) {
   const [t, locale] = await Promise.all([getTranslations('Admin'), getLocale()]);
   const fmt = (v: number | null) =>
-    v === null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency: report.currency }).format(v);
+    v === null ? '—' : formatAmount(v, report.currency);
   const money = (cents: number) =>
-    new Intl.NumberFormat(locale, { style: 'currency', currency: report.currency }).format(Math.abs(cents) / 100);
+    formatCents(Math.abs(cents), report.currency);
   const rec = report.reconciliation;
 
   // Only what the report actually printed. A figure it omitted is left out

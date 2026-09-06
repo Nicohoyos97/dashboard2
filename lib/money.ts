@@ -69,9 +69,30 @@ export function sumCents(values: Iterable<number>): number {
   return total;
 }
 
-export function formatCents(cents: number, currency = 'USD', locale = 'en-US'): string {
+/**
+ * Money is written the American way everywhere — `$1,200.00` — whatever
+ * language the portal is in (owner, 2026-09-05).
+ *
+ * This is a US firm with US clients. A Spanish-speaking owner reads their bank
+ * statement, their point-of-sale report and their state filing in $1,200.00;
+ * a portal that alone said `1.200,00 US$` would be the odd one out, and the
+ * reader would have to translate every figure back before comparing it to the
+ * document it came from. Dates, labels and prose still follow the reader's
+ * language — only the numbers are fixed.
+ *
+ * Deliberately not a parameter: a locale argument here would be a way to get
+ * it wrong on one screen out of thirty.
+ */
+export const MONEY_LOCALE = 'en-US';
+
+export function formatCents(cents: number, currency = 'USD'): string {
   assertSafeCents(cents);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
+  return formatAmount(cents / 100, currency);
+}
+
+/** The same, for a figure that is already in currency units rather than cents. */
+export function formatAmount(amount: number, currency = 'USD'): string {
+  return new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency }).format(amount);
 }
 
 /**
