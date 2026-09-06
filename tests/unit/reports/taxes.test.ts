@@ -7,7 +7,6 @@ import {
   nextDueDate,
   remainingOwed,
   salesTaxCardFigures,
-  salesTaxSeries,
   taxYearSeries,
   sumField,
   taxAlerts,
@@ -136,20 +135,6 @@ describe('tax alerts', () => {
       ['late', 'past_due'],
       ['soon', 'upcoming_payment'],
       ['review', 'pending_review'],
-    ]);
-  });
-});
-
-describe('sales tax series', () => {
-  it('orders filing periods oldest first and drops rows with no period', () => {
-    const rows = [
-      obligation({ id: 'q2', periodStart: '2026-04-01', periodEnd: '2026-06-30', collectedCents: 200_00 }),
-      obligation({ id: 'q1', periodStart: '2026-01-01', periodEnd: '2026-03-31', collectedCents: 100_00 }),
-      obligation({ id: 'none', periodStart: null, periodEnd: null }),
-    ];
-    expect(salesTaxSeries(rows, (o) => o.id).map((point) => [point.label, point.collectedCents])).toEqual([
-      ['q1', 100_00],
-      ['q2', 200_00],
     ]);
   });
 });

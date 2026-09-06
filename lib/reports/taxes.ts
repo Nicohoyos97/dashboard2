@@ -183,30 +183,6 @@ export function taxAlerts(obligations: readonly TaxObligation[], today: string):
   });
 }
 
-export type SalesTaxPeriod = {
-  label: string;
-  collectedCents: number | null;
-  paidCents: number | null;
-  payableCents: number | null;
-  taxableSalesCents: number | null;
-  nonTaxableSalesCents: number | null;
-};
-
-/** Sales-tax filing periods oldest first, for the collections / payments charts. */
-export function salesTaxSeries(obligations: readonly TaxObligation[], labelOf: (o: TaxObligation) => string): SalesTaxPeriod[] {
-  return [...obligations]
-    .filter((o) => o.periodStart !== null && o.periodEnd !== null)
-    .sort((a, b) => (a.periodEnd ?? '').localeCompare(b.periodEnd ?? ''))
-    .map((o) => ({
-      label: labelOf(o),
-      collectedCents: o.collectedCents,
-      paidCents: o.paidCents,
-      payableCents: o.payableCents,
-      taxableSalesCents: o.taxableSalesCents,
-      nonTaxableSalesCents: o.nonTaxableSalesCents,
-    }));
-}
-
 /**
  * The four money figures on the Sales Taxes cards.
  *

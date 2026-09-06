@@ -5,7 +5,7 @@
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { TrendBars } from '@/components/charts/TrendBars';
+import { NetSalesChart } from '@/components/charts/NetSalesChart';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
@@ -20,10 +20,10 @@ import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { loadPublishedSalesReports } from '@/lib/portal/load';
 import { loadSalesTaxJurisdictions, loadTaxObligations } from '@/lib/portal/taxes';
-import { nextDueDate, salesTaxCardFigures, salesTaxSeries, taxAlerts } from '@/lib/reports/taxes';
+import { nextDueDate, salesTaxCardFigures, taxAlerts } from '@/lib/reports/taxes';
 import { todayIn } from '@/lib/utils/timezone';
 import { createClient } from '@/lib/supabase/server';
-import { formatIsoDate, formatPeriod } from '@/lib/utils/dates';
+import { formatIsoDate, formatPeriodCompact } from '@/lib/utils/dates';
 
 const TREND_LIMIT = 8;
 
@@ -44,8 +44,9 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   const [all, salesReports, registeredIn] = await Promise.all([
     loadTaxObligations(supabase, entity.id, 'sales'),
     // The client's own register. Read even when there are no filings yet: a
-    // business that has sent us a month of sales should see it.
-    loadPublishedSalesReports(supabase, entity.id, 1).catch(() => []),
+    // business that has sent us a month of sales should see it. Several
+    // periods, because the trend beside the breakdown is drawn from them.
+    loadPublishedSalesReports(supabase, entity.id, TREND_LIMIT).catch(() => []),
     // Where the firm registered this business — the pills under the title.
     loadSalesTaxJurisdictions(supabase, entity.id),
   ]);
@@ -101,17 +102,16 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     { label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
   ];
 
-  const series = salesTaxSeries(obligations, (o) =>
-    o.periodStart && o.periodEnd ? formatPeriod(o.periodStart, o.periodEnd, locale) : String(o.taxYear ?? ''),
-  ).slice(-TREND_LIMIT);
-  const trend = series.length >= 2 ? series.map((point) => ({ label: point.label, a: point.collectedCents, b: point.paidCents })) : null;
-  // Taxable next to non-taxable, both printed on the filing — a legend entry
-  // for a series the filings never state would read as "zero non-taxable sales".
-  const salesTrend =
-    series.filter((point) => point.taxableSalesCents !== null).length >= 2
-      ? series.map((point) => ({ label: point.label, a: point.taxableSalesCents, b: point.nonTaxableSalesCents }))
-      : null;
-  const showsNonTaxable = series.some((point) => point.nonTaxableSalesCents !== null);
+  // Net sales over the published register periods, oldest first. One series:
+  // the register is the only source of a sales figure in this portal, so there
+  // is no second opinion to plot beside it.
+  const netSeries = [...salesReports]
+    .reverse()
+    .map((report) => ({
+      label: formatPeriodCompact(report.periodStart, report.periodEnd, locale),
+      netSalesCents: report.netSalesCents,
+    }));
+  const netTrend = netSeries.filter((point) => point.netSalesCents !== null).length >= 2 ? netSeries : null;
 
   return (
     <>
@@ -137,7 +137,23 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
 
         {/* Sales first, then what was owed on them: the two describe the same
             month and are routinely confused for each other. */}
-        {latestSales && <SalesFromRegister report={latestSales} />}
+        {latestSales && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <SalesFromRegister report={latestSales} />
+            <Section title={t('netSalesTitle')}>
+              {netTrend ? (
+                <NetSalesChart
+                  points={netTrend}
+                  currency={currency}
+                  seriesLabel={t('posNet')}
+                  summary={t('netSalesSummary', { count: netTrend.length })}
+                />
+              ) : (
+                <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
+              )}
+            </Section>
+          </div>
+        )}
 
         {hasFilings && (
           <div className="mt-6">
@@ -149,29 +165,6 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
         )}
 
         <TaxAlerts alerts={taxAlerts(obligations, today)} />
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <Section title={t('collectionsTitle')}>
-            {trend ? (
-              <TrendBars points={trend} currency={currency} seriesA={t('amountCollected')} seriesB={t('amountPaid')} summary={t('collectionsSummary', { count: trend.length })} />
-            ) : (
-              <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
-            )}
-          </Section>
-          <Section title={t('taxableSalesTitle')}>
-            {salesTrend ? (
-              <TrendBars
-                points={salesTrend}
-                currency={currency}
-                seriesA={t('amountTaxableSales')}
-                {...(showsNonTaxable ? { seriesB: t('amountNonTaxableSales') } : {})}
-                summary={t('taxableSalesSummary', { count: salesTrend.length })}
-              />
-            ) : (
-              <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
-            )}
-          </Section>
-        </div>
 
         <section aria-labelledby="sales-obligations" className="mt-6">
           <h2 id="sales-obligations" className="text-ink text-[16px] font-semibold">
@@ -189,9 +182,9 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink text-[16px] font-semibold">{title}</h2>
-      <div className="mt-4">{children}</div>
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <h2 className="text-ink text-[18px] font-bold tracking-[-0.01em]">{title}</h2>
+      <div className="mt-4 flex-1">{children}</div>
     </section>
   );
 }

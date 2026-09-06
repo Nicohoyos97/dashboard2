@@ -337,6 +337,9 @@ export type PortalSalesReport = {
   grossSalesCents: number | null;
   netSalesCents: number | null;
   refundsCents: number | null;
+  // The third term of net sales (gross − refunds − discounts), read by the
+  // portal since the client's own breakdown started showing it.
+  discountsCents: number | null;
   tipsCents: number | null;
   taxCollectedCents: number | null;
   amountCollectedCents: number | null;
@@ -360,7 +363,7 @@ export async function loadPublishedSalesReports(
   const { data, error } = await supabase
     .from('sales_reports')
     .select(
-      'id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, tips, tax_collected, amount_collected, order_count, sales_report_tenders ( id, label, amount, position )',
+      'id, source_system, period_start, period_end, currency, gross_sales, net_sales, refunds, discounts, tips, tax_collected, amount_collected, order_count, sales_report_tenders ( id, label, amount, position )',
     )
     .eq('business_entity_id', entityId)
     .eq('status', 'published')
@@ -377,6 +380,7 @@ export async function loadPublishedSalesReports(
     grossSalesCents: cents(row.gross_sales),
     netSalesCents: cents(row.net_sales),
     refundsCents: cents(row.refunds),
+    discountsCents: cents(row.discounts),
     tipsCents: cents(row.tips),
     taxCollectedCents: cents(row.tax_collected),
     amountCollectedCents: cents(row.amount_collected),

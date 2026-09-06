@@ -1,7 +1,8 @@
 'use client';
 
 // The account control in the top bar, beside Help: a circle carrying the
-// business's own logo. It opens the same menu as the user row at the bottom of
+// business's own logo, cropped to fill it edge to edge rather than sitting
+// letterboxed inside it. It opens the same menu as the user row at the bottom of
 // the sidebar — Profile and Sign out — so the two are never a different set of
 // choices depending on where you clicked.
 import { useTranslations } from 'next-intl';
@@ -34,7 +35,7 @@ export function TopAccountMenu({
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- firm-set, arbitrary host
-              <img src={logoUrl} alt="" className="size-full object-contain p-0.5" />
+              <img src={logoUrl} alt="" className="size-full object-cover" />
             ) : (
               <span className="text-muted-foreground text-[12px] font-semibold">
                 {initials(businessName)}
