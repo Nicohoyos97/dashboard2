@@ -2,6 +2,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { publishBlockers } from '@/lib/documents/publish';
+import { syncDocumentStatus } from '@/lib/documents/recompute';
 import type { Json } from '@/lib/supabase/types';
 
 import { Fixtures, supabaseEnv } from '../e2e/helpers/fixtures';
@@ -158,7 +159,9 @@ describe.skipIf(!env)('publish blockers', () => {
     expect(blocked.blockers).not.toContain('publishBlockedNoData');
     expect(blocked.blockers).toContain('publishBlockedReconciliation');
 
-    await A.from('tax_obligations').update({ reconciliation: passed }).eq('id', unreconciled.data.id);
+    await A.from('tax_obligations')
+      .update({ reconciliation: passed })
+      .eq('id', unreconciled.data.id);
     const clear = await publishBlockers(A, doc.data.id);
     expect(clear.blockers).toEqual([]);
   });
@@ -171,7 +174,13 @@ describe.skipIf(!env)('publish blockers', () => {
     const tenant = await fx.makeTenant('pb-v2');
     const be = { business_entity_id: tenant.entityId };
     const doc = await A.from('documents')
-      .insert({ ...be, document_type: 'profit_and_loss', title: 'P&L', status: 'published', published_at: new Date().toISOString() })
+      .insert({
+        ...be,
+        document_type: 'profit_and_loss',
+        title: 'P&L',
+        status: 'published',
+        published_at: new Date().toISOString(),
+      })
       .select('id')
       .single();
     if (doc.error || !doc.data) throw new Error(`document: ${doc.error?.message}`);
@@ -214,6 +223,124 @@ describe.skipIf(!env)('publish blockers', () => {
     expect(versionId).toBe(v2);
     expect(versionId).not.toBe(v1);
     expect(blockers).toContain('publishBlockedReconciliation');
+  });
+
+  it('lifts a corrected point-of-sale report out of review, so it can be published', async () => {
+    // The bug this covers: the worker leaves a document in `needs_review`, the
+    // firm corrects the figures until every check passes — and the document
+    // stayed in review, because the status sync counted only reports and bank
+    // statements. Nothing was left to fix and the Publish button never came
+    // back. Found on a real August register report.
+    const tenant = await fx.makeTenant('pb-sales-sync');
+    const be = { business_entity_id: tenant.entityId };
+    const doc = await A.from('documents')
+      .insert({
+        ...be,
+        document_type: 'sales_report',
+        title: 'August register',
+        status: 'needs_review',
+      })
+      .select('id')
+      .single();
+    if (doc.error) throw new Error(`document: ${doc.error.message}`);
+    const version = await A.from('document_versions')
+      .insert({
+        ...be,
+        document_id: doc.data.id,
+        version_no: 1,
+        storage_path: `${tenant.entityId}/${doc.data.id}/v1/register.pdf`,
+        original_filename: 'register.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 256,
+        upload_status: 'uploaded',
+      })
+      .select('id')
+      .single();
+    if (version.error) throw new Error(`version: ${version.error.message}`);
+    await A.from('documents').update({ current_version_id: version.data.id }).eq('id', doc.data.id);
+
+    const report = await A.from('sales_reports')
+      .insert({
+        ...be,
+        source: 'firm_document',
+        source_system: 'other',
+        document_version_id: version.data.id,
+        reconciliation: failed,
+        ...PERIOD,
+      })
+      .select('id')
+      .single();
+    if (report.error) throw new Error(`sales report: ${report.error.message}`);
+
+    await syncDocumentStatus(A, version.data.id);
+    const stillInReview = await A.from('documents').select('status').eq('id', doc.data.id).single();
+    expect(stillInReview.data?.status).toBe('needs_review');
+    expect((await publishBlockers(A, doc.data.id)).blockers).toContain('publishBlockedStatus');
+
+    // The correction: the figures now tie.
+    await A.from('sales_reports').update({ reconciliation: passed }).eq('id', report.data.id);
+    await syncDocumentStatus(A, version.data.id);
+
+    const lifted = await A.from('documents').select('status').eq('id', doc.data.id).single();
+    expect(lifted.data?.status).toBe('reconciled');
+    expect((await publishBlockers(A, doc.data.id)).blockers).toEqual([]);
+  });
+
+  it('syncs the status of the version under review, not an older one', async () => {
+    // current_version_id is the publication pointer and does not move while a
+    // document is published, so matching the document on it meant a correction
+    // to v2 synced nothing at all.
+    const tenant = await fx.makeTenant('pb-sync-v2');
+    const be = { business_entity_id: tenant.entityId };
+    const doc = await A.from('documents')
+      .insert({ ...be, document_type: 'profit_and_loss', title: 'P&L', status: 'needs_review' })
+      .select('id')
+      .single();
+    if (doc.error) throw new Error(`document: ${doc.error.message}`);
+    const documentId = doc.data.id;
+
+    async function addVersion(no: number, reconciliation: Json): Promise<string> {
+      const v = await A.from('document_versions')
+        .insert({
+          ...be,
+          document_id: documentId,
+          version_no: no,
+          storage_path: `${tenant.entityId}/${documentId}/v${no}/p.pdf`,
+          original_filename: 'p.pdf',
+          mime_type: 'application/pdf',
+          size_bytes: 10,
+          upload_status: 'uploaded',
+        })
+        .select('id')
+        .single();
+      if (v.error) throw new Error(`version ${no}: ${v.error.message}`);
+      const r = await A.from('financial_reports').insert({
+        ...be,
+        report_type: 'profit_and_loss',
+        source: 'firm_document',
+        document_version_id: v.data.id,
+        reconciliation,
+        ...PERIOD,
+      });
+      if (r.error) throw new Error(`report ${no}: ${r.error.message}`);
+      return v.data.id;
+    }
+
+    const v1 = await addVersion(1, passed);
+    await A.from('documents').update({ current_version_id: v1 }).eq('id', documentId);
+    const v2 = await addVersion(2, failed);
+
+    // v1 passes, but the client is not getting v1 — v2 is what review is on.
+    await syncDocumentStatus(A, v1);
+    const untouched = await A.from('documents').select('status').eq('id', documentId).single();
+    expect(untouched.data?.status).toBe('needs_review');
+
+    await A.from('financial_reports')
+      .update({ reconciliation: passed })
+      .eq('document_version_id', v2);
+    await syncDocumentStatus(A, v2);
+    const synced = await A.from('documents').select('status').eq('id', documentId).single();
+    expect(synced.data?.status).toBe('reconciled');
   });
 
   it('blocks a document that has no derived rows to publish', async () => {

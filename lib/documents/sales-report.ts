@@ -12,6 +12,8 @@ import { reconcileSalesReport } from '@/lib/ingestion/reconcile';
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/supabase/types';
 
+import { syncDocumentStatus } from './recompute';
+
 // Firm corrections to an extracted point-of-sale report (§8 "correct
 // low-confidence fields"), the same contract as correctLine for statements:
 // the firm edits the effective figures, the reconciliation is recomputed from
@@ -73,7 +75,7 @@ export async function correctSalesReport(input: unknown): Promise<ActionResult> 
     .update(values)
     .eq('id', parsed.data.reportId)
     .neq('status', 'published')
-    .select('id, business_entity_id, source_system, period_start, period_end, confidence, gross_sales, net_sales, refunds, discounts, tips, tax_collected, tax_expected, amount_collected, sales_report_tenders ( amount )');
+    .select('id, business_entity_id, document_version_id, source_system, period_start, period_end, confidence, gross_sales, net_sales, refunds, discounts, tips, tax_collected, tax_expected, amount_collected, sales_report_tenders ( amount )');
   const report = updated?.[0];
   if (error || !report) return { ok: false, error: t('correctionBlockedPublished') };
 
@@ -102,6 +104,12 @@ export async function correctSalesReport(input: unknown): Promise<ActionResult> 
       status: reconciliation.passed ? 'reconciled' : 'needs_review',
     })
     .eq('id', report.id);
+
+  // The document follows its figures, which is what the comment at the top of
+  // this file always claimed and nothing did: without this the row stayed in
+  // `needs_review` after a correction that made every check pass, and the
+  // Publish button stayed disabled with nothing left to fix.
+  if (report.document_version_id) await syncDocumentStatus(supabase, report.document_version_id);
 
   await logAccess({
     action: 'sales_report.correct',
