@@ -11,7 +11,11 @@ export default {
   '*.{ts,tsx}': (stagedFiles) => {
     const lintable = stagedFiles.filter((f) => !UNLINTABLE.some((pattern) => pattern.test(f)));
     return [
-      ...(lintable.length ? [`eslint --fix --max-warnings=0 ${lintable.join(' ')}`] : []),
+      // Quoted: the paths are absolute, and a checkout under a folder with a
+      // space in its name ("HoyosBaker Consulting LLC") split every one of them.
+      ...(lintable.length
+        ? [`eslint --fix --max-warnings=0 ${lintable.map((f) => JSON.stringify(f)).join(' ')}`]
+        : []),
       'tsc --noEmit',
     ];
   },
