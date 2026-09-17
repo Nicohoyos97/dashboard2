@@ -2,13 +2,17 @@
 
 // Sidebar navigation for both portals. Client-only because it reads the
 // current path to highlight the active item. Items with `children` render as
-// an always-expanded group; disabled items render non-interactive with a
+// a group that starts collapsed and opens on click — already open when the
+// current page is one of its children, so the page you are on is never hidden
+// behind a closed group. Disabled items render non-interactive with a
 // "coming soon" tag, never a dead link. Style per DESIGN.md → Navigation:
 // outlined 18px icons, 14px regular labels, a filled pill for the current page.
 import {
+  ChevronDown,
   CircleHelp,
   FileText,
   FolderOpen,
+  Inbox,
   Landmark,
   LayoutDashboard,
   type LucideIcon,
@@ -18,10 +22,10 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
-  Inbox,
   Users,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { type ReactNode, useId, useState } from 'react';
 
 import { Link, usePathname } from '@/i18n/navigation';
 import { type NavChild, type NavItem, isActiveNav } from '@/lib/nav';
@@ -77,25 +81,23 @@ export function NavList({
         ) : null;
 
         if (item.children) {
-          const groupActive = isActiveNav(pathname, item.href);
           return (
-            <div key={item.href} className="flex flex-col gap-0.5">
-              <span className={`${itemBase} ${groupActive ? 'text-blue' : 'text-foreground'}`}>
-                {icon}
-                <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
-              </span>
-              <div className="border-line ml-[21px] flex flex-col gap-0.5 border-l pl-3">
-                {item.children.map((child) => (
-                  <NavSubItem
-                    key={child.href}
-                    child={child}
-                    pathname={pathname}
-                    label={t(child.labelKey)}
-                    soon={tShell('comingSoon')}
-                  />
-                ))}
-              </div>
-            </div>
+            <NavGroup
+              key={item.href}
+              icon={icon}
+              label={t(item.labelKey)}
+              active={isActiveNav(pathname, item.href)}
+            >
+              {item.children.map((child) => (
+                <NavSubItem
+                  key={child.href}
+                  child={child}
+                  pathname={pathname}
+                  label={t(child.labelKey)}
+                  soon={tShell('comingSoon')}
+                />
+              ))}
+            </NavGroup>
           );
         }
 
@@ -128,6 +130,56 @@ export function NavList({
         );
       })}
     </nav>
+  );
+}
+
+// Closed by default. Arriving on one of its pages opens it (a full load, or a
+// jump from search or a breadcrumb), since the shell layout — and this state —
+// survives client navigation; leaving never closes it behind the reader's back.
+function NavGroup({
+  icon,
+  label,
+  active,
+  children,
+}: {
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  const panelId = useId();
+  const [open, setOpen] = useState(active);
+  const [wasActive, setWasActive] = useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setOpen(true);
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+        className={`${itemBase} hover:bg-secondary w-full text-left ${active ? 'text-blue' : 'text-foreground'}`}
+      >
+        {icon}
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <ChevronDown
+          className={`text-muted-foreground -mx-1 size-3.5 shrink-0 transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+          strokeWidth={ICON_STROKE}
+          aria-hidden="true"
+        />
+      </button>
+      <div
+        id={panelId}
+        hidden={!open}
+        className="border-line ml-[21px] flex flex-col gap-0.5 border-l pl-3"
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
