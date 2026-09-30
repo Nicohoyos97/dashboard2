@@ -11,6 +11,8 @@ import { insightKey } from '@/lib/insights/periods';
 import type { LineRow, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
 
+import { withAccountLabels } from './account-label';
+
 type Db = Awaited<ReturnType<typeof createClient>>;
 
 const PAGE_SIZE = 1_000;
@@ -104,7 +106,7 @@ export async function loadReportLines(supabase: Db, entityId: string, reportId: 
     rows.push(...(data ?? []));
     if ((data ?? []).length < PAGE_SIZE) break;
   }
-  return rows.map((l) => ({
+  return withAccountLabels(rows.map((l) => ({
     id: l.id,
     parentLineId: l.parent_line_id,
     position: l.position,
@@ -118,7 +120,7 @@ export async function loadReportLines(supabase: Db, entityId: string, reportId: 
     isTotal: l.is_total,
     pageNumber: l.page_number,
     confidence: l.confidence,
-  }));
+  })));
 }
 
 /**
@@ -169,6 +171,7 @@ export async function loadReportLinesFor(
     }
     if ((data ?? []).length < PAGE_SIZE) break;
   }
+  for (const [id, lines] of byReport) byReport.set(id, withAccountLabels(lines));
   return byReport;
 }
 

@@ -4,6 +4,8 @@
 // to the model are read from the database here — never from the request.
 import 'server-only';
 
+import { accountLabel } from '@/lib/portal/account-label';
+
 import type { Db, NickLocale } from './tools/context';
 import { parsePeriodInput, periodText } from './tools/context';
 import type { PageContext, ResolvedContext, SelectedLine } from './types';
@@ -29,7 +31,8 @@ async function loadSelectedLine(
   const cents = (value: number | null) => (value === null ? null : Math.round(value * 100));
   return {
     lineId: data.id,
-    accountName: data.account_name,
+    // The name the client clicked on, without the preparer's notes.
+    accountName: accountLabel(data.account_name),
     currentCents: cents(data.current),
     priorCents: cents(data.prior),
     page: data.page_number,
