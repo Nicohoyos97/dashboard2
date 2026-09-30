@@ -80,6 +80,34 @@ describe('reconcileStatement — profit and loss', () => {
   });
 });
 
+describe('reconcileStatement — lines between expenses and net income', () => {
+  // A P&L with no "Total other income / expenses" line can still print lines
+  // after operating income. Ignored, they failed net income by exactly their
+  // amount, and no correction of the line could clear it.
+  function withLoose(name: string, amount: string, netIncome: string) {
+    const s = structuredClone(statement('letter-and-pnl.json'));
+    for (const l of s.lines) delete l.prior;
+    const net = line(s, 'Net Income');
+    net.current = netIncome;
+    const loose = { ...net, ref: 'L22', section: name, account_name: name, current: amount, is_total: false, source_text: `${name} ${amount}` };
+    s.lines.splice(s.lines.indexOf(net), 0, loose);
+    return check(reconcile(s), 'net_income');
+  }
+
+  it('counts a line printed in parentheses by its sign', () => {
+    expect(withLoose('Unclassified expenses', '-104.69', '38240.21')).toMatchObject({ ok: true, expectedCents: 3824021 });
+  });
+
+  it('subtracts an expense printed without a sign, and adds income', () => {
+    expect(withLoose('Other expense', '100.00', '38244.90').ok).toBe(true);
+    expect(withLoose('Interest income', '50.00', '38394.90').ok).toBe(true);
+  });
+
+  it('still fails when net income does not follow from the lines printed', () => {
+    expect(withLoose('Unclassified expenses', '-104.69', '38344.90').ok).toBe(false);
+  });
+});
+
 describe('reconcileStatement — balance sheet', () => {
   it('passes on the balanced fixture with nested sections', () => {
     const result = reconcile(statement('balance-sheet.json'));

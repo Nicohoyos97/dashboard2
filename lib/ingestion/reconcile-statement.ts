@@ -72,10 +72,54 @@ class Statement {
   }
 
   find(pattern: RegExp, column: Column, last = false): number | null {
-    const matches = this.rows.filter((row) => pattern.test(normalizeName(row.account_name)) && row[column] !== null);
-    const row = last ? matches.at(-1) : matches[0];
-    return row?.[column] ?? null;
+    return this.findRow(pattern, column, last)?.[column] ?? null;
   }
+
+  findRow(pattern: RegExp, column: Column, last = false): HierarchyRow | null {
+    const matches = this.rows.filter((row) => pattern.test(normalizeName(row.account_name)) && row[column] !== null);
+    return (last ? matches.at(-1) : matches[0]) ?? null;
+  }
+
+  /**
+   * Top-level lines printed between two rows that are neither a total nor a
+   * heading: what a statement puts between operating income and net income
+   * when it has no "Total other income / expenses" line of its own.
+   */
+  looseBetween(from: HierarchyRow, to: HierarchyRow, column: Column): HierarchyRow[] {
+    return this.rows.filter(
+      (row) =>
+        row.position > from.position &&
+        row.position < to.position &&
+        row.parentIndex === null &&
+        !row.is_total &&
+        !row.is_section &&
+        !this.children.has(row.position) &&
+        row[column] !== null,
+    );
+  }
+}
+
+// A loose line whose name says it takes from net income. Printed in
+// parentheses it already carries its sign; printed plain it is subtracted.
+const REDUCES_INCOME = /\b(expenses?|loss(es)?|costs?|fees?|tax(es)?)\b/;
+
+function otherBelowExpenses(statement: Statement, column: Column): number {
+  const named = statement.find(NAMES.totalOtherIncome, column) ?? statement.find(NAMES.totalOtherExpenses, column);
+  if (named !== null) {
+    return (statement.find(NAMES.totalOtherIncome, column) ?? 0) - (statement.find(NAMES.totalOtherExpenses, column) ?? 0);
+  }
+  // No named totals: the lines themselves. Ignoring them made a P&L that
+  // printed "Unclassified expenses (104.69)" between operating income and net
+  // income fail by exactly 104.69, and no correction of that line could clear
+  // it, because the check never read it.
+  const expenses = statement.findRow(NAMES.totalExpenses, column);
+  const netIncome = statement.findRow(NAMES.netIncome, column, true);
+  if (!expenses || !netIncome) return 0;
+  const parts = statement.looseBetween(expenses, netIncome, column).map((row) => {
+    const value = row[column] ?? 0;
+    return REDUCES_INCOME.test(normalizeName(row.account_name)) && value > 0 ? -value : value;
+  });
+  return parts.length === 0 ? 0 : sumCents(parts);
 }
 
 function subtotalChecks(statement: Statement, column: Column, suffix: string, label: string): ReconciliationCheck[] {
@@ -104,7 +148,7 @@ function namedChecks(statement: Statement, reportType: StatementType, column: Co
     }
     const base = grossProfit ?? (income === null ? null : income - cogs);
     if (base !== null && expenses !== null && netIncome !== null) {
-      const other = (find(NAMES.totalOtherIncome) ?? 0) - (find(NAMES.totalOtherExpenses) ?? 0);
+      const other = otherBelowExpenses(statement, column);
       checks.push(makeCheck(`net_income${suffix}`, `Net income = gross profit − expenses ± other${label}`, base - expenses + other, netIncome));
     }
   } else {
