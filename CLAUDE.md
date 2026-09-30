@@ -110,10 +110,29 @@ Planned by the spec (Phases 1–5): `app/[locale]/admin/`, `app/api/jobs/process
 | Querying tenant data from app code | skill `multi-tenant-data-access` |
 | Auth, encryption, logging, MFA | `docs/SECURITY.md` |
 | Local vs cloud Supabase, env files | `docs/ENVIRONMENTS.md` |
-| Colors, typography, layout | `INITIAL_PROMPT.md` §6 + `app/globals.css` |
+| Colors, typography, layout | `INITIAL_PROMPT.md` §6 + `app/globals.css` — but read §5.1 below first |
+| What the firm is, what it promises, how it is named | `../brand/BRAND.md` |
+| Wording of any user-facing string, EN or ES | `../brand/VOICE.md` |
+| Why a design token holds the value it holds | `../brand/DESIGN-TOKENS.md` + `../brand/tokens.css` |
 | Any client-facing PDF (reports, taxes, statements) | `docs/KILL-PDF.md` — the firm's binding report design standard |
 | Naming, file layout, error patterns | `docs/CODE_STYLE.md` |
 | Anthropic models, PDF blocks, tool use | The current Anthropic docs — never memory (spec §1.2) |
+
+### 5.1 Brand: what this app shares with the marketing site, and what it doesn't
+
+The firm's design system lives one folder up, in `../brand/tokens.css`, and it is deliberately two layers: a shared core, and a `[data-surface='product']` scope that overrides the core for dense UI. `app/globals.css` is this app's product layer. **It is currently its own divergent copy of that scope, not an import of it** — the migration is pending, and until it happens `globals.css` is what ships, so read it before you trust the brand file about what this app actually looks like.
+
+Two things to know before you touch a color here.
+
+**Inter is correct.** `--font-sans: var(--font-inter)` is not a brand violation waiting to be fixed. `../brand/tokens.css` splits typography by surface on purpose: `--hb-font-marketing` is Geist (plus Instrument Serif italic for one accent word per headline) and belongs to `hoyosbaker.com`; `--hb-font-product` is Inter and belongs here. Geist and the serif accent do not come into the portal. Same logic for `--chart-blue: #2563eb`, which already matches `--hb-chart-blue`.
+
+**The blue is the real divergence.** The brand splits it by role: `#2d6cff` is the identity blue and governs *form* — fills, icons, borders, CTAs, accents 18px and up — while `#2563eb` enters only when the blue **is** text below 18px, because `#2d6cff` measures 4.47:1 and AA asks 4.5. The mnemonic is: if you can read it, `#2563eb`; if you can touch it, `#2d6cff`. This app sets `--brand-primary: #2563eb` and uses it for both, so every fill and icon in the portal is currently running the text blue. Carry that split when the tokens migrate; don't "correct" it piecemeal in a component.
+
+**Naming**, in every user-facing string: **Hoyos Baker**, with a space. The ampersand form, **Hoyos & Baker Consulting LLC**, is the legal entity and appears only on legal surfaces — terms, privacy, contracts, invoice and report footers, `schema.org`. Never `HoyosBaker` joined, never `Hoyos-Baker`, never `HB`.
+
+**No inline hex.** If a value isn't in the tokens, the question is whether the value is wrong or the system is missing a token; the answer is never a hex literal in a component.
+
+When the brand docs and this code disagree, the code wins — it's what clients are looking at today — but say which one you moved. The two standing exceptions are both accessibility, both documented in `../CLAUDE.md §6`, and there the docs win on purpose.
 
 ---
 
