@@ -16,6 +16,17 @@ export const metadata: Metadata = {
   title: 'Hoyos Baker — Client Portal',
   description:
     'Secure client portal for bookkeeping & tax clients: financial statements, documents, and Nick, your AI financial assistant.',
+  // The capybara. Served from public/ rather than the app/icon convention:
+  // the root layout lives under [locale], and these paths are already outside
+  // the i18n middleware's matcher. favicon.ico holds 16/32/48 for the tab;
+  // the Apple icon sits on paper because iOS paints transparency black.
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/brand/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: { url: '/brand/apple-icon.png', sizes: '180x180' },
+  },
 };
 
 export function generateStaticParams() {
