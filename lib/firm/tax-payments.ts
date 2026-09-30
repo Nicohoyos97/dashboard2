@@ -71,6 +71,26 @@ export async function recordTaxPayment(input: unknown): Promise<ActionResult> {
     .eq('source', 'firm_entry')
     .maybeSingle();
 
+  // A payment the pipeline already read off a confirmation is the same money,
+  // not a second payment: entering it again by hand stacked it, and amount_paid
+  // (the sum of every row) doubled — Que La Creo's August read $5,504.54 paid
+  // against $2,752.27. Same confirmation number, or same date and amount, is
+  // the same payment.
+  if (!existing) {
+    const confirmation = parsed.data.confirmationNumber;
+    const { data: others } = await supabase
+      .from('tax_payments')
+      .select('paid_on, amount, confirmation_number')
+      .eq('obligation_id', obligation.id)
+      .neq('source', 'firm_entry');
+    const duplicate = (others ?? []).some(
+      (p) =>
+        (confirmation !== '' && p.confirmation_number?.trim() === confirmation) ||
+        (p.paid_on === parsed.data.paidOn && toCents(p.amount) === amountCents),
+    );
+    if (duplicate) return { ok: false, error: t('paymentAlreadyRecorded') };
+  }
+
   const row = {
     business_entity_id: obligation.business_entity_id,
     obligation_id: obligation.id,

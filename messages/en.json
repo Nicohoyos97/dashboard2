@@ -310,6 +310,7 @@
     "breadcrumb": "Breadcrumb"
   },
   "Admin": {
+    "paymentAlreadyRecorded": "This payment is already recorded — it was read from the payment confirmation.",
     "portalBadge": "Firm portal",
     "breadcrumbRoot": "Firm portal",
     "navDashboard": "Dashboard",

@@ -310,6 +310,7 @@
     "breadcrumb": "Ruta de navegación"
   },
   "Admin": {
+    "paymentAlreadyRecorded": "Este pago ya está registrado: se leyó del comprobante de pago.",
     "portalBadge": "Portal de la firma",
     "breadcrumbRoot": "Portal de la firma",
     "navDashboard": "Panel",
