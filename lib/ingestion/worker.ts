@@ -73,6 +73,7 @@ async function processJob(admin: Admin, job: Job): Promise<JobOutcome> {
     documentId: doc.id,
     entityId: version.business_entity_id,
     currency: doc.business_entities?.currency ?? 'USD',
+    documentType: doc.document_type,
   };
 
   try {

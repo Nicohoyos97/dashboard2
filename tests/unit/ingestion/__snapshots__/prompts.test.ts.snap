@@ -91,6 +91,7 @@ Record rules:
 - This document says what is OWED. Read the amount due, the period it covers, its due date and its confirmation number.
 - Do NOT report sales figures from this document. A return prints receipts as the filer entered them, which is not the same as what the business sold — those figures come from the point-of-sale sales report for the same period, never from here.
 - Fill only the fields printed on the document and omit the rest. amount_payable is a remaining balance due, not the total liability.
+- A sales-tax RETURN is a filing, never a payment confirmation. The Illinois Form ST-1 ("Sales and Use Tax and E911 Surcharge Return") is one: amount_payable is the line labeled "Payment due" (Line 25), due_date is the "Due Date" in the header, the filing period is the "Filing Period" in the header, and confirmation_number is the header's "Confirmation Number". That number and the "Date Submitted" confirm the return was submitted, not that money was paid: on a return, leave amount_paid and payment_date out and never use status paid. Its receipts lines (Total (gross) receipts, Taxable (net) receipts, the Step 3 receipts) are sales figures and are not reported.
 - status is paid when a payment is confirmed, payable when a balance is due, estimated for estimates or vouchers, and pending_review when the document does not make it clear.
 - page is the page the figures were read from."
 `;

@@ -16,6 +16,7 @@ import type { PipelineOutput, PipelineResult } from './pipeline';
 import { reconcileCsvExport } from './reconcile';
 import type { Reconciliation } from './reconciliation';
 import type { ClassifiedPage } from './schemas/classification';
+import { filingStatus, taxDocumentRole } from './tax-roles';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -24,6 +25,8 @@ export type PersistContext = {
   documentId: string;
   entityId: string;
   currency: string;
+  /** The type the firm chose at upload — what decides a tax document's role. */
+  documentType: string;
 };
 
 export type PersistSummary = { results: number; passed: boolean; warnings: string[] };
@@ -47,6 +50,9 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
   await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published');
   // Tenders cascade with their report.
   await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
+  // A payment confirmation owns its payment rows, not the obligation they
+  // settle; without this, reprocessing one stacked a second payment.
+  await admin.from('tax_payments').delete().eq('document_version_id', versionId).is('published_at', null);
   await clearFilingHalf(admin, versionId);
 }
 
@@ -62,35 +68,55 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
  *
  * So: a row this filing alone produced is deleted, and a shared one keeps its
  * sales columns and loses only the filing's, ready to be filled again.
+ *
+ * A payment is the third party to the row — a confirmation, or one the firm
+ * recorded by hand — and it is not the filing's to take either. clearDerived
+ * has already removed this version's own payments, so any payment still
+ * pointing at the row came from elsewhere: such a row is never deleted (its
+ * payments would cascade with it), and it keeps `amount_paid` and its status.
  */
 async function clearFilingHalf(admin: Admin, versionId: string): Promise<void> {
-  await admin
+  const { data: owned } = await admin
     .from('tax_obligations')
-    .delete()
-    .eq('document_version_id', versionId)
-    .is('published_at', null)
-    .is('taxable_sales', null)
-    .is('tax_collected', null);
-
-  await admin
-    .from('tax_obligations')
-    .update({
-      tax_year: null,
-      due_date: null,
-      amount_paid: null,
-      amount_payable: null,
-      confirmation_number: null,
-      notes: null,
-      page_number: null,
-      confidence: null,
-      reconciliation: null,
-      document_version_id: null,
-      // Nothing is filed for this period any more, which is what
-      // pending_review means on an obligation.
-      status: 'pending_review',
-    })
+    .select('id, taxable_sales, tax_collected')
     .eq('document_version_id', versionId)
     .is('published_at', null);
+  if (!owned || owned.length === 0) return;
+
+  const { data: payments } = await admin
+    .from('tax_payments')
+    .select('obligation_id')
+    .in('obligation_id', owned.map((row) => row.id));
+  const paid = new Set((payments ?? []).map((p) => p.obligation_id));
+
+  const alone = owned.filter((row) => row.taxable_sales === null && row.tax_collected === null && !paid.has(row.id));
+  if (alone.length > 0) {
+    await admin.from('tax_obligations').delete().in('id', alone.map((row) => row.id));
+  }
+
+  const kept = owned.filter((row) => !alone.includes(row));
+  const filingHalf = {
+    tax_year: null,
+    due_date: null,
+    amount_payable: null,
+    confirmation_number: null,
+    notes: null,
+    page_number: null,
+    confidence: null,
+    reconciliation: null,
+    document_version_id: null,
+  };
+  const unpaid = kept.filter((row) => !paid.has(row.id)).map((row) => row.id);
+  const settled = kept.filter((row) => paid.has(row.id)).map((row) => row.id);
+  // Nothing is filed for this period any more, which is what pending_review
+  // means on an obligation. A row a payment settled stays paid.
+  if (unpaid.length > 0) {
+    await admin
+      .from('tax_obligations')
+      .update({ ...filingHalf, amount_paid: null, status: 'pending_review' })
+      .in('id', unpaid);
+  }
+  if (settled.length > 0) await admin.from('tax_obligations').update(filingHalf).in('id', settled);
 }
 
 export async function persistPages(admin: Admin, ctx: PersistContext, pages: readonly ClassifiedPage[]): Promise<void> {
@@ -462,51 +488,104 @@ async function persistSalesReport(
 }
 
 async function persistTax(admin: Admin, ctx: PersistContext, r: Extract<PipelineResult, { kind: 'tax_record' }>): Promise<void> {
+  const role = taxDocumentRole(ctx.documentType);
+  if (role === 'payment') return persistPaymentConfirmation(admin, ctx, r);
+
   const { data } = r;
+  const key = { taxType: data.tax_type, periodStart: data.filing_period_start ?? null, periodEnd: data.filing_period_end ?? null };
   // A filing says what is OWED and nothing believable about what was sold.
   // `taxable_sales`, `non_taxable_sales` and `tax_collected` are deliberately
   // absent here: they belong to the point-of-sale report for the same period
   // (0022). Reading them off a return once put a client's July sales at
   // $12,955 when their POS said $14,119 — the return had been prepared from
   // the card tender line alone.
+  const filingHalf: Database['public']['Tables']['tax_obligations']['Update'] = {
+    tax_year: data.filing_period_end ? Number(data.filing_period_end.slice(0, 4)) : null,
+    due_date: data.due_date ?? null,
+    amount_payable: money(centsOf(data.amount_payable)),
+    confirmation_number: data.confirmation_number ?? null,
+    notes: `Jurisdiction: ${data.jurisdiction}`,
+    document_version_id: ctx.versionId,
+    page_number: data.page,
+    confidence: data.confidence,
+    // The pipeline already cross-checked this filing; without recording it,
+    // publishBlockers has nothing to gate on and the row can never be
+    // published (0016).
+    reconciliation: asJson(r.reconciliation),
+  };
+
+  if (role === 'filing') {
+    // The return: what is owed, and never a payment (see tax-roles.ts). Its
+    // status is written only onto a row nobody has paid — a confirmation or
+    // the firm may have settled the period before the return was processed.
+    const status = filingStatus(data.status);
+    const obligationId = await upsertObligation(admin, ctx, key, filingHalf, { status });
+    const { error } = await admin.from('tax_obligations').update({ status }).eq('id', obligationId).neq('status', 'paid');
+    if (error) throw new WorkerError('persist_tax');
+    return;
+  }
+
+  const obligationId = await upsertObligation(admin, ctx, key, {
+    ...filingHalf,
+    amount_paid: money(centsOf(data.amount_paid)),
+    status: data.status,
+  });
+  await insertPayment(admin, ctx, obligationId, data);
+}
+
+/**
+ * A payment confirmation: the money left, and the obligation it settles is
+ * paid. It writes a `tax_payments` row — which carries its own provenance
+ * pointer, and is what publishing this document publishes — and marks the
+ * obligation, and nothing the return owns: not the pointer, not what was owed,
+ * not the due date. A confirmation prints none of those, and writing its
+ * blanks over the return's figures is how August 2026 lost its amount owed.
+ *
+ * A confirmation that does not print both the amount and the date records
+ * nothing, rather than a payment on a date nobody read.
+ */
+async function persistPaymentConfirmation(
+  admin: Admin,
+  ctx: PersistContext,
+  r: Extract<PipelineResult, { kind: 'tax_record' }>,
+): Promise<void> {
+  const { data } = r;
+  const amountPaid = money(centsOf(data.amount_paid));
+  if (amountPaid === null || !data.payment_date) return;
+
   const obligationId = await upsertObligation(
     admin,
     ctx,
     { taxType: data.tax_type, periodStart: data.filing_period_start ?? null, periodEnd: data.filing_period_end ?? null },
-    {
-      tax_year: data.filing_period_end ? Number(data.filing_period_end.slice(0, 4)) : null,
-      due_date: data.due_date ?? null,
-      amount_paid: money(centsOf(data.amount_paid)),
-      amount_payable: money(centsOf(data.amount_payable)),
-      status: data.status,
-      confirmation_number: data.confirmation_number ?? null,
-      notes: `Jurisdiction: ${data.jurisdiction}`,
-      document_version_id: ctx.versionId,
-      page_number: data.page,
-      confidence: data.confidence,
-      // The pipeline already cross-checked this filing; without recording it,
-      // publishBlockers has nothing to gate on and the row can never be
-      // published (0016).
-      reconciliation: asJson(r.reconciliation),
-    },
+    { amount_paid: amountPaid, status: 'paid' },
+    // A confirmation can arrive before its return. The row it opens has no
+    // filing on it and so nothing to reconcile — an empty passing result, the
+    // same as the one a sales report opens (persistSalesReport).
+    { reconciliation: { passed: true, checks: [], lowConfidence: { count: 0, refs: [] } } as unknown as Json },
   );
-  const obligation = { id: obligationId };
+  await insertPayment(admin, ctx, obligationId, data);
+}
 
+async function insertPayment(
+  admin: Admin,
+  ctx: PersistContext,
+  obligationId: string,
+  data: Extract<PipelineResult, { kind: 'tax_record' }>['data'],
+): Promise<void> {
   const paid = centsOf(data.amount_paid);
-  if (paid !== null && data.payment_date) {
-    const { error: paymentError } = await admin.from('tax_payments').insert({
-      business_entity_id: ctx.entityId,
-      obligation_id: obligation.id,
-      paid_on: data.payment_date,
-      amount: paid / 100,
-      confirmation_number: data.confirmation_number ?? null,
-      source: 'firm_document',
-      document_version_id: ctx.versionId,
-      page_number: data.page,
-      confidence: data.confidence,
-    });
-    if (paymentError) throw new WorkerError('persist_tax_payment');
-  }
+  if (paid === null || !data.payment_date) return;
+  const { error } = await admin.from('tax_payments').insert({
+    business_entity_id: ctx.entityId,
+    obligation_id: obligationId,
+    paid_on: data.payment_date,
+    amount: paid / 100,
+    confirmation_number: data.confirmation_number ?? null,
+    source: 'firm_document',
+    document_version_id: ctx.versionId,
+    page_number: data.page,
+    confidence: data.confidence,
+  });
+  if (error) throw new WorkerError('persist_tax_payment');
 }
 
 export async function persistPipelineOutput(admin: Admin, ctx: PersistContext, output: PipelineOutput): Promise<PersistSummary> {

@@ -93,7 +93,7 @@ export async function publishBlockers(
   // out the same way and it bit the same way: a sales report's own passing
   // reconciliation was never read, and once the obligation stopped carrying its
   // version (see persistSalesReport) the document had nothing derived at all.
-  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }, { data: sales }] =
+  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }, { data: sales }, { data: payments }] =
     await Promise.all([
       supabase
         .from('financial_reports')
@@ -115,6 +115,7 @@ export async function publishBlockers(
         .from('sales_reports')
         .select('id, reconciliation')
         .eq('document_version_id', reviewVersionId),
+      supabase.from('tax_payments').select('id').eq('document_version_id', reviewVersionId),
     ]);
   const derived = [
     ...(reports ?? []),
@@ -123,7 +124,11 @@ export async function publishBlockers(
     ...(payroll ?? []),
     ...(sales ?? []),
   ];
-  if (derived.length === 0) blockers.add('publishBlockedNoData');
+  // A payment confirmation produces payment rows and no obligation of its own
+  // — the obligation belongs to the return (lib/ingestion/tax-roles.ts). A
+  // payment carries no reconciliation to gate on; the document's status does
+  // that, and it is only `reconciled` when the extraction's own checks passed.
+  if (derived.length === 0 && (payments ?? []).length === 0) blockers.add('publishBlockedNoData');
 
   for (const row of derived) {
     const rec = parseReconciliation(row.reconciliation);

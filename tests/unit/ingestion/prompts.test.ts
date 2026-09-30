@@ -44,6 +44,15 @@ describe('system prompts', () => {
     expect(EXTRACT_SALES_REPORT_SYSTEM_PROMPT).toContain('Do not derive one figure from another');
   });
 
+  it('reads a sales-tax return as a filing, never a payment', () => {
+    // The ST-1 prints a Confirmation Number and a Date Submitted, which read
+    // like a payment. Read that way, August 2026's return claimed to be paid
+    // and its payment confirmation wrote blanks over the amount owed.
+    expect(EXTRACT_TAX_RECORD_SYSTEM_PROMPT).toContain('A sales-tax RETURN is a filing, never a payment confirmation');
+    expect(EXTRACT_TAX_RECORD_SYSTEM_PROMPT).toContain('"Payment due" (Line 25)');
+    expect(EXTRACT_TAX_RECORD_SYSTEM_PROMPT).toContain('leave amount_paid and payment_date out and never use status paid');
+  });
+
   it('page-bound prompts label pages "Page N" and bind page numbers to the request', () => {
     for (const prompt of PAGE_PROMPTS) {
       expect(prompt).toContain('titled "Page N"');
