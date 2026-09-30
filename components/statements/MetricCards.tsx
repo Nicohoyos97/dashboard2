@@ -1,6 +1,6 @@
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
+import { DeltaPill } from '@/components/dashboard/DeltaPill';
 import type { Metric, MetricReason, Ratio } from '@/lib/reports/types';
 import { formatCents } from '@/lib/money';
 
@@ -25,41 +25,43 @@ export async function MetricCards({ items, currency }: { items: MetricCardItem[]
         const reason = item.kind === 'money' ? item.metric.reason : item.ratio.reason;
         const delta = current !== null && prior !== null ? current - prior : null;
         const deltaPct = item.kind === 'money' ? item.metric.deltaPct : null;
-        const up = delta !== null && delta > 0;
-        const down = delta !== null && delta < 0;
-        const good = (up && item.upIsGood) || (down && !item.upIsGood);
-        const bad = (up && !item.upIsGood) || (down && item.upIsGood);
-        const tone = good ? 'bg-success/10 text-success' : bad ? 'bg-danger/10 text-danger' : 'bg-secondary text-muted-foreground';
         const value =
           current === null ? null : item.kind === 'money' ? money(current) : item.format === 'pct' ? `${current.toFixed(1)}%` : `${current.toFixed(2)}×`;
-        const deltaText =
+        // The change as it will be read — rounded the way it prints — and its
+        // unsigned size; the pill adds the sign and the arrow.
+        const digits = item.kind === 'ratio' && item.format === 'x' ? 2 : 1;
+        const change =
           delta === null
             ? null
             : item.kind === 'money'
               ? deltaPct !== null
-                ? `${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}%`
-                : `${delta > 0 ? '+' : ''}${money(delta)}`
-              : `${delta > 0 ? '+' : ''}${delta.toFixed(item.format === 'pct' ? 1 : 2)}${item.format === 'pct' ? ' pts' : ''}`;
+                ? Number(deltaPct.toFixed(1))
+                : delta
+              : Number(delta.toFixed(digits));
+        const magnitude =
+          delta === null
+            ? null
+            : item.kind === 'money'
+              ? deltaPct !== null
+                ? `${Math.abs(deltaPct).toFixed(1)}%`
+                : money(Math.abs(delta))
+              : `${Math.abs(delta).toFixed(digits)}${item.format === 'pct' ? ' pts' : ''}`;
 
         return (
           <article key={item.label} className="border-line bg-card rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <p className="text-muted-foreground text-[12.5px] font-medium">{item.label}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-muted-foreground text-[12.5px] font-medium">{item.label}</p>
+              {value !== null && change !== null && magnitude !== null && (
+                <DeltaPill change={change} magnitude={magnitude} upIsGood={item.upIsGood} />
+              )}
+            </div>
             {value === null ? (
               <p className="text-muted-foreground mt-1.5 text-[13px] leading-snug">{reasonText(reason)}</p>
             ) : (
-              <p className="text-ink mt-1.5 text-[22px] leading-none font-bold tracking-[-0.02em] tabular-nums">{value}</p>
+              <p className="text-ink mt-1 text-[22px] leading-tight font-bold tracking-[-0.02em] tabular-nums">{value}</p>
             )}
-            {value !== null && (
-              <p className="mt-2 text-[12px]">
-                {deltaText ? (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${tone}`}>
-                    {up ? <ArrowUpRight className="size-3.5" aria-hidden="true" /> : down ? <ArrowDownRight className="size-3.5" aria-hidden="true" /> : null}
-                    {deltaText}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">{reason ? reasonText(reason) : t('noPriorShort')}</span>
-                )}
-              </p>
+            {value !== null && change === null && (
+              <p className="text-muted-foreground mt-2 text-[12px]">{reason ? reasonText(reason) : t('noPriorShort')}</p>
             )}
           </article>
         );

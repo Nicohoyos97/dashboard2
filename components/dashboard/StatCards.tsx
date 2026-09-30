@@ -1,7 +1,8 @@
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
-import { Sparkline, type SparklineTone } from '@/components/charts/Sparkline';
+import { Sparkline } from '@/components/charts/Sparkline';
+
+import { DeltaPill, deltaTone } from './DeltaPill';
 
 export type StatTone = 'positive' | 'negative' | 'neutral' | 'warning';
 
@@ -40,40 +41,45 @@ export async function StatCards({ items, columns = 4 }: { items: readonly StatCa
     <div className={`grid gap-3 ${grid}`}>
       {items.map((item) => {
         const delta = item.deltaPct ?? null;
-        const up = delta !== null && delta > 0;
-        const down = delta !== null && delta < 0;
         const upIsGood = item.upIsGood ?? true;
-        const good = (up && upIsGood) || (down && !upIsGood);
-        const bad = (up && !upIsGood) || (down && upIsGood);
-        const tone: SparklineTone = good ? 'positive' : bad ? 'negative' : 'neutral';
-        const pill = good ? BADGE.positive : bad ? BADGE.negative : BADGE.neutral;
+        // The change as it will be read, so a figure that prints as 0.0% is flat.
+        const change = delta === null ? null : Number(delta.toFixed(1));
+        // A trend is drawn only on a card that is a series; a due date or a
+        // jurisdiction gets no dashed "no history yet" rule it never needed.
+        const hasTrend = item.trend !== undefined;
 
         return (
-          <article key={item.label} className="border-line bg-card flex flex-col rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <p className="text-muted-foreground text-[12.5px] font-medium">{item.label}</p>
+          <article key={item.label} className="border-line bg-card flex flex-col overflow-hidden rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-muted-foreground text-[12.5px] font-medium">{item.label}</p>
+              {/* A card with no figure has nothing to qualify: a delta next to
+                  "not available" would read as if the value existed. */}
+              {item.value !== null && change !== null && delta !== null && (
+                <DeltaPill change={change} magnitude={`${Math.abs(delta).toFixed(1)}%`} upIsGood={upIsGood} />
+              )}
+            </div>
             {item.value === null ? (
               <p className="text-muted-foreground mt-1.5 text-[13px] leading-snug">{item.unavailable ?? t('noDataPeriod')}</p>
             ) : (
-              <p className="text-ink mt-1.5 text-[22px] leading-none font-bold tracking-[-0.02em] tabular-nums">{item.value}</p>
+              <p className="text-ink mt-1 text-[22px] leading-tight font-bold tracking-[-0.02em] tabular-nums">{item.value}</p>
             )}
             {item.detail && <p className="text-muted-foreground mt-1.5 truncate text-[12.5px]">{item.detail}</p>}
-            {/* A card with no figure has nothing to qualify: a status badge or a
-                delta next to "not available" would read as if the value existed. */}
-            {item.value !== null && (delta !== null || item.badge || (item.trend?.length ?? 0) >= 2) && (
-              <div className="mt-auto flex items-end justify-between gap-3 pt-3">
-                <div className="min-w-0">
+            {item.value !== null && (item.badge || (delta !== null && item.deltaLabel) || hasTrend) && (
+              <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                <div className="min-w-0 pb-0.5">
                   {item.badge && (
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ${BADGE[item.badge.tone]}`}>{item.badge.text}</span>
                   )}
-                  {delta !== null && (
-                    <span className={`inline-flex items-center gap-0.5 rounded-full py-0.5 pr-2 pl-1.5 text-[12px] font-semibold ${pill} ${item.badge ? 'ml-2' : ''}`}>
-                      {up ? <ArrowUpRight className="size-3.5" aria-hidden="true" /> : down ? <ArrowDownRight className="size-3.5" aria-hidden="true" /> : null}
-                      {`${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`}
-                    </span>
+                  {delta !== null && item.deltaLabel && (
+                    <p className={`text-muted-foreground truncate text-[11.5px] ${item.badge ? 'mt-1.5' : ''}`}>{item.deltaLabel}</p>
                   )}
-                  {delta !== null && item.deltaLabel && <p className="text-muted-foreground mt-1.5 truncate text-[11.5px]">{item.deltaLabel}</p>}
                 </div>
-                <Sparkline values={item.trend ?? []} tone={tone} width={68} height={30} />
+                {hasTrend && (
+                  // Bleeds into the card's corner; the card's overflow-hidden clips it.
+                  <div className="-mr-4 -mb-4 shrink-0">
+                    <Sparkline values={item.trend ?? []} tone={deltaTone(change, upIsGood)} width={80} height={30} />
+                  </div>
+                )}
               </div>
             )}
           </article>

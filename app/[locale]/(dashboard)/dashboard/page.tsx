@@ -45,7 +45,7 @@ import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { createClient } from '@/lib/supabase/server';
-import { formatPeriod } from '@/lib/utils/dates';
+import { formatPeriodCompact } from '@/lib/utils/dates';
 
 // Which figure the delta was measured against. The statement's own comparative
 // column and the previous published period are different periods, and labelling
@@ -255,7 +255,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   // so rather than borrowing the previous period's name.
   const comparativeLabel =
     currentPnlReport?.comparativeStart && currentPnlReport?.comparativeEnd
-      ? formatPeriod(currentPnlReport.comparativeStart, currentPnlReport.comparativeEnd, locale)
+      ? formatPeriodCompact(currentPnlReport.comparativeStart, currentPnlReport.comparativeEnd, locale)
       : null;
   const periodLabelFor = (delta: Delta): string =>
     delta.comparedTo === 'comparative_column' ? (comparativeLabel ?? t('priorColumn')) : priorLabel;

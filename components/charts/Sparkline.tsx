@@ -34,32 +34,64 @@ function trendPath(points: readonly Point[]): string {
   return d;
 }
 
+/**
+ * The trend inside a KPI card, drawn the way the hoyosbaker-voice cards draw
+ * it: the metric's own published periods as a line over a flat 16% fill,
+ * sized to bleed into the card's bottom-right corner (the card clips it).
+ *
+ * With fewer than two periods, or a series that never moves, there is no
+ * shape to draw, and the card gets a dashed rule instead of a hole: a row of
+ * cards where some have a line and some a gap reads as broken. Dashed, because
+ * a solid rule across the foot of a card reads as a stray border. It never
+ * implies movement, which is why it is dead straight.
+ */
 export function Sparkline({
   values,
   tone,
-  width = 84,
-  height = 36,
+  width = 96,
+  height = 34,
 }: {
   values: readonly number[];
   tone: SparklineTone;
   width?: number;
   height?: number;
 }) {
-  if (values.length < 2) return null;
+  const flat = values.length < 2 || Math.min(...values) === Math.max(...values);
+  if (flat) {
+    return (
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        width={width}
+        height={height}
+        className="text-muted-foreground shrink-0"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <line
+          x1={10}
+          y1={height / 2}
+          x2={width - 4}
+          y2={height / 2}
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeDasharray="3 4"
+          opacity="0.55"
+        />
+      </svg>
+    );
+  }
 
   const inset = 3;
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const span = max - min || 1;
   const stepX = (width - inset * 2) / (values.length - 1);
   const points = values.map((value, index) => ({
     x: inset + index * stepX,
-    y: inset + (1 - (value - min) / span) * (height - inset * 2),
+    y: inset + (1 - (value - min) / (max - min)) * (height - inset * 2),
   }));
   const line = trendPath(points);
-  // Identical per tone, so a duplicate id across cards resolves to an
-  // identical gradient — the stops read `currentColor` from this <svg>.
-  const gradientId = `sparkline-${tone}`;
+  const last = points[points.length - 1] ?? { x: width - inset };
 
   return (
     <svg
@@ -70,21 +102,12 @@ export function Sparkline({
       aria-hidden="true"
       focusable="false"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.26" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path
-        d={`${line} L ${width - inset} ${height} L ${inset} ${height} Z`}
-        fill={`url(#${gradientId})`}
-      />
+      <path d={`${line} L ${last.x} ${height} L ${inset} ${height} Z`} fill="currentColor" fillOpacity="0.16" />
       <path
         d={line}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.75"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
