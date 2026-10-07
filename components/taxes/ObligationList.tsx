@@ -75,7 +75,7 @@ export async function ObligationList({
             </div>
 
             {printed.length > 0 && (
-              <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {printed.map((amount) => (
                   <div key={amount.label}>
                     <dt className="text-muted-foreground text-[12px] font-medium">{amount.label}</dt>

@@ -35,7 +35,7 @@ export async function TaxOpportunities() {
         {t('opportunitiesLede')}
       </p>
 
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {TOPICS.map((topic) => (
           <li key={topic} className="border-line-soft rounded-xl border p-3.5">
             <p className="text-ink text-[14px] font-semibold">{t(`topic_${topic}_title`)}</p>

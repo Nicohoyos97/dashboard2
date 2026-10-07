@@ -24,7 +24,7 @@ export async function MetricCards({ items, currency }: { items: MetricCardItem[]
     reason === 'no_printed_total' ? t('notPrinted') : reason ? t(`reason_${reason}`) : t('notCalculable');
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => {
         const current = item.kind === 'money' ? item.metric.current?.cents ?? null : item.ratio.current;
         const prior = item.kind === 'money' ? item.metric.prior?.cents ?? null : item.ratio.prior;

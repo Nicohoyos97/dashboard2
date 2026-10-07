@@ -87,7 +87,7 @@ export function PeriodPicker({
   const rangeInvalid = from === '' || to === '' || from > to;
 
   return (
-    <label className="flex items-center gap-2 text-[13.5px]">
+    <label className="flex max-w-full min-w-0 items-center gap-2 text-[13.5px]">
       <span className="text-muted-foreground font-medium whitespace-nowrap">
         {label ?? t('periodLabel')}
       </span>
@@ -102,9 +102,12 @@ export function PeriodPicker({
           <button
             type="button"
             aria-label={label ?? t('periodLabel')}
-            className={`${secondaryButton} h-10 min-w-[220px] justify-between`}
+            // On a phone the trigger gives way and its label truncates: a fixed
+            // 220px beside "Compare with" was wider than the screen and took the
+            // whole page sideways with it.
+            className={`${secondaryButton} h-10 min-w-0 justify-between sm:min-w-[220px]`}
           >
-            <span className="flex items-center gap-2 truncate">
+            <span className="flex min-w-0 items-center gap-2 truncate">
               {icon ?? (
                 <CalendarDays
                   className="text-muted-foreground size-4 shrink-0"

@@ -154,7 +154,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
         {/* Sales first, then what was owed on them: the two describe the same
             month and are routinely confused for each other. */}
         {latestSales && (
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <RegisterTenders periods={tenderPeriods} currency={currency} />
             <Section title={t('netSalesTitle')}>
               {netTrend ? (

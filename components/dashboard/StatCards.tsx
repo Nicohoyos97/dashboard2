@@ -38,7 +38,7 @@ export async function StatCards({ items, columns = 4 }: { items: readonly StatCa
   const grid = columns === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-4';
 
   return (
-    <div className={`grid gap-3 ${grid}`}>
+    <div className={`grid grid-cols-1 gap-3 ${grid}`}>
       {items.map((item) => {
         const delta = item.deltaPct ?? null;
         const upIsGood = item.upIsGood ?? true;

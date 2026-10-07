@@ -123,7 +123,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
         {t('granularityNoteAsOf', { date: formatIsoDate(report.periodEnd, locale) })} · {t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })}
       </p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <h2 className="text-ink text-[16px] font-semibold">{t('compositionAssets')}</h2>
           <div className="mt-4">{assets.length > 0 ? <CompositionBars items={assets} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('notPrinted')}</p>}</div>
@@ -171,7 +171,7 @@ function Page({ title, lede, controls, children }: { title: string; lede: string
           <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
           <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
         </div>
-        {controls && <div className="flex flex-wrap items-center gap-3">{controls}</div>}
+        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
       </div>
       {children}
     </main>

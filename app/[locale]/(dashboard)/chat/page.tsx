@@ -106,7 +106,7 @@ function Page({
           <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
           <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
         </div>
-        {controls && <div className="flex flex-wrap items-center gap-3">{controls}</div>}
+        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
       </div>
       {children}
     </main>

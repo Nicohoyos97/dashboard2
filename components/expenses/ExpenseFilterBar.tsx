@@ -70,7 +70,7 @@ export function ExpenseFilterBar({
     >
       {period && <input type="hidden" name="period" value={period} />}
       {sort && <input type="hidden" name="sort" value={sort} />}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <label className="block">
           <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterSearch')}</span>
           <input name="q" type="search" defaultValue={values.q} placeholder={t('filterSearchPlaceholder')} className={`${inputClass} h-10 text-[13.5px]`} />

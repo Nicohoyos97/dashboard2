@@ -29,7 +29,7 @@ export async function ReportTiles({ documents, showLibraryLink = false }: { docu
       {documents.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-[14px]">{t('reportsEmpty')}</p>
       ) : (
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {documents.map((d) => {
             const Icon = ICON[d.documentType] ?? FileText;
             return (

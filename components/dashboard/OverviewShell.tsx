@@ -34,7 +34,7 @@ export function OverviewShell({
             <p className="text-muted-foreground mt-1.5 text-[15px]">{subtitle}</p>
           </div>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
+        {actions && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{actions}</div>}
       </div>
       {children}
     </main>

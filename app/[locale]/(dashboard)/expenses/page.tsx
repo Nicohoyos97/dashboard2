@@ -240,7 +240,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[3fr_2fr]">
+        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
           <Section title={t('trendTitle')}>
             {!covered ? (
               <Muted text={t('incompletePeriod')} />
@@ -261,7 +261,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           </Section>
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Section title={t('byVendorTitle')}>
             {!covered ? (
               <Muted text={t('incompletePeriod')} />

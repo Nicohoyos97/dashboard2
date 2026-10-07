@@ -145,7 +145,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
         {t('granularityNote', { period: periodLabel })} · {t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })}
       </p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <h2 className="text-ink text-[16px] font-semibold">{t('compositionExpenses')}</h2>
           <div className="mt-4">
@@ -191,7 +191,7 @@ function Page({ title, lede, controls, children }: { title: string; lede: string
           <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
           <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
         </div>
-        {controls && <div className="flex flex-wrap items-center gap-3">{controls}</div>}
+        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
       </div>
       {children}
     </main>
