@@ -1,5 +1,7 @@
-// Expenses (INITIAL_PROMPT.md §7). One source: debits on published bank
-// statements. Totals are only shown for a period every account's statements
+// Expenses (INITIAL_PROMPT.md §7). One source per business, never mixed: debits
+// on published bank statements where the firm publishes them, otherwise the
+// expense accounts of the published Profit & Loss (PnlExpensesView). On the
+// bank path: Totals are only shown for a period every account's statements
 // cover — a missing month is never treated as zero — while the transaction
 // list stays available either way. Filters, sort and paging live in the URL.
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -15,6 +17,7 @@ import { todayIn } from '@/lib/utils/timezone';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { ExpenseFilterBar } from '@/components/expenses/ExpenseFilterBar';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
+import { PnlExpensesView } from '@/components/expenses/PnlExpensesView';
 import { PortalPage, PortalEmpty } from '@/components/portal/PortalPage';
 import { logAccess } from '@/lib/audit/logAccess';
 import { formatCents } from '@/lib/money';
@@ -65,6 +68,22 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const periods = availablePeriods(reports, currencyStatements, { locale }).filter((period) => period.sources.includes('bank'));
   const requested = parsePeriodParam(typeof params.period === 'string' ? params.period : undefined);
   const selected = (requested && periods.find((p) => p.start === requested.start && p.end === requested.end)) ?? periods[0] ?? null;
+
+  // No bank statements published: the expenses are the ones the Profit & Loss
+  // prints. The firm publishes statements, not bank activity, for most clients.
+  const pnlReports = reports.filter((report) => report.reportType === 'profit_and_loss');
+  if (!selected && pnlReports.length > 0) {
+    return (
+      <PnlExpensesView
+        supabase={supabase}
+        entity={entity}
+        reports={pnlReports}
+        period={typeof params.period === 'string' ? params.period : undefined}
+        locale={locale}
+        today={todayIn(settings.timezone)}
+      />
+    );
+  }
 
   if (!selected) {
     await logAccess({ action: 'expenses.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
