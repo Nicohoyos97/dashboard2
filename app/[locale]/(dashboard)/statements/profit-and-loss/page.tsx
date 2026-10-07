@@ -24,7 +24,7 @@ import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
 import { availablePeriods } from '@/lib/reports/periods';
-import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
+import { PNL_SYNONYMS, type PnlMetricKey, type PnlMetrics, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
@@ -74,12 +74,26 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   // Every period's lines in one query rather than one query per period.
   const trendLines =
     trendReports.length >= 2 ? await loadReportLinesFor(supabase, entity.id, trendReports.map((r) => r.id)) : null;
+  const trendMetrics = trendLines ? trendReports.map((r) => pnlMetrics(r, buildTree(trendLines.get(r.id) ?? []))) : [];
   const trend = trendLines
-    ? trendReports.map((r) => {
-        const m = pnlMetrics(r, buildTree(trendLines.get(r.id) ?? []));
-        return { label: formatPeriod(r.periodStart, r.periodEnd, locale), a: m.revenue.current?.cents ?? null, b: m.operatingExpenses.current?.cents ?? null };
+    ? trendReports.map((r, index) => {
+        const m = trendMetrics[index];
+        return { label: formatPeriod(r.periodStart, r.periodEnd, locale), a: m?.revenue.current?.cents ?? null, b: m?.operatingExpenses.current?.cents ?? null };
       })
     : null;
+  // The cards' sparklines, by the Overview's rule: the published periods when
+  // every one of them prints the figure — a gap is never drawn as a zero —
+  // otherwise the two points the card already states, otherwise no shape.
+  const sparkOf = (pick: (m: PnlMetrics) => number | null, current: number | null, prior: number | null): number[] => {
+    const points = trendMetrics.flatMap((m) => {
+      const value = pick(m);
+      return value === null ? [] : [value];
+    });
+    if (points.length === trendMetrics.length && points.length >= 2) return points;
+    return current !== null && prior !== null ? [prior, current] : [];
+  };
+  const moneySpark = (key: PnlMetricKey) =>
+    sparkOf((m) => m[key].current?.cents ?? null, metrics[key].current?.cents ?? null, metrics[key].prior?.cents ?? null);
 
   const periodLabel = formatPeriod(report.periodStart, report.periodEnd, locale);
   const basis = report.basis ? ` · ${t('basis')}: ${report.basis === 'accrual' ? t('basisAccrual') : t('basisCash')}` : '';
@@ -116,13 +130,13 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
         <MetricCards
           currency={report.currency}
           items={[
-            { kind: 'money', label: t('revenue'), metric: metrics.revenue, upIsGood: true },
-            { kind: 'money', label: t('cogs'), metric: metrics.cogs, upIsGood: false },
-            { kind: 'money', label: t('grossProfit'), metric: metrics.grossProfit, upIsGood: true },
-            { kind: 'money', label: t('operatingExpenses'), metric: metrics.operatingExpenses, upIsGood: false },
-            { kind: 'money', label: t('netIncome'), metric: metrics.netIncome, upIsGood: true },
-            { kind: 'ratio', label: t('grossMargin'), ratio: { key: 'grossMargin', current: metrics.grossMarginPct, prior: metrics.priorGrossMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
-            { kind: 'ratio', label: t('netMargin'), ratio: { key: 'netMargin', current: metrics.netMarginPct, prior: metrics.priorNetMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
+            { kind: 'money', label: t('revenue'), metric: metrics.revenue, upIsGood: true, trend: moneySpark('revenue') },
+            { kind: 'money', label: t('cogs'), metric: metrics.cogs, upIsGood: false, trend: moneySpark('cogs') },
+            { kind: 'money', label: t('grossProfit'), metric: metrics.grossProfit, upIsGood: true, trend: moneySpark('grossProfit') },
+            { kind: 'money', label: t('operatingExpenses'), metric: metrics.operatingExpenses, upIsGood: false, trend: moneySpark('operatingExpenses') },
+            { kind: 'money', label: t('netIncome'), metric: metrics.netIncome, upIsGood: true, trend: moneySpark('netIncome') },
+            { kind: 'ratio', label: t('grossMargin'), ratio: { key: 'grossMargin', current: metrics.grossMarginPct, prior: metrics.priorGrossMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct', trend: sparkOf((m) => m.grossMarginPct, metrics.grossMarginPct, metrics.priorGrossMarginPct) },
+            { kind: 'ratio', label: t('netMargin'), ratio: { key: 'netMargin', current: metrics.netMarginPct, prior: metrics.priorNetMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct', trend: sparkOf((m) => m.netMarginPct, metrics.netMarginPct, metrics.priorNetMarginPct) },
           ]}
         />
       </div>
