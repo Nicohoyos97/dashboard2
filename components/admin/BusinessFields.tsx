@@ -70,7 +70,13 @@ export function BusinessFields({
     onChange({
       ...values,
       salesTaxEnabled: modules.sales_taxes,
-      enabledModules: { bookkeeping: modules.bookkeeping, income_taxes: modules.income_taxes },
+      // A package sets the base services and leaves the add-ons as they are —
+      // except the Balance Sheet, which cannot outlive the books it belongs to.
+      enabledModules: {
+        bookkeeping: modules.bookkeeping,
+        balance_sheet: modules.bookkeeping && values.enabledModules.balance_sheet,
+        income_taxes: values.enabledModules.income_taxes,
+      },
     });
   }
 
@@ -261,15 +267,12 @@ export function BusinessFields({
             hint={t('moduleBookkeepingHint')}
             checked={values.enabledModules.bookkeeping}
             onChange={(checked) =>
-              set('enabledModules', { ...values.enabledModules, bookkeeping: checked })
-            }
-          />
-          <Toggle
-            label={t('moduleIncomeTaxes')}
-            hint={t('moduleIncomeTaxesHint')}
-            checked={values.enabledModules.income_taxes}
-            onChange={(checked) =>
-              set('enabledModules', { ...values.enabledModules, income_taxes: checked })
+              set('enabledModules', {
+                ...values.enabledModules,
+                bookkeeping: checked,
+                // No books, no Balance Sheet: it is an add-on to them.
+                balance_sheet: checked && values.enabledModules.balance_sheet,
+              })
             }
           />
           <Toggle
@@ -289,6 +292,31 @@ export function BusinessFields({
             />
           )}
           <Toggle label={t('moduleNick')} hint={t('moduleNickHint')} checked disabled />
+        </div>
+
+        {/* Sold on top of the services above, each at its own price, so they
+            are asked apart and start off. */}
+        <p className="text-muted-foreground mt-5 mb-3 text-[11px] font-semibold tracking-[0.12em] uppercase">
+          {t('addons')}
+        </p>
+        <div className="flex flex-col gap-3 text-[14px]">
+          <Toggle
+            label={t('moduleBalanceSheet')}
+            hint={t(values.enabledModules.bookkeeping ? 'moduleBalanceSheetHint' : 'moduleBalanceSheetNeedsBooks')}
+            checked={values.enabledModules.bookkeeping && values.enabledModules.balance_sheet}
+            disabled={!values.enabledModules.bookkeeping}
+            onChange={(checked) =>
+              set('enabledModules', { ...values.enabledModules, balance_sheet: checked })
+            }
+          />
+          <Toggle
+            label={t('moduleIncomeTaxes')}
+            hint={t('moduleIncomeTaxesHint')}
+            checked={values.enabledModules.income_taxes}
+            onChange={(checked) =>
+              set('enabledModules', { ...values.enabledModules, income_taxes: checked })
+            }
+          />
         </div>
       </fieldset>
     </>

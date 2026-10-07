@@ -19,8 +19,10 @@ export const clientFields = {
 // One key per thing the firm sells: `bookkeeping` covers the statements and the
 // expense breakdown together (0019 collapsed the two switches that only ever
 // produced a combination nobody sells). Sales tax keeps its own column.
+// `balance_sheet` and `income_taxes` are add-ons with their own price.
 export const modulesSchema = z.object({
   bookkeeping: z.boolean(),
+  balance_sheet: z.boolean(),
   income_taxes: z.boolean(),
 });
 

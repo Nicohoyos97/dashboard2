@@ -37,9 +37,9 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
 
   const supabase = await createClient();
   const settings = await loadPortalEntitySettings(supabase, entity.id);
-  // The nav hides this page when the firm did not sell the module; the route has
-  // to agree, or the URL is a way around the sale.
-  if (!settings.modules.bookkeeping) notFound();
+  // The nav hides this page when the firm did not sell the add-on; the route
+  // has to agree, or the URL is a way around the sale.
+  if (!settings.modules.balance_sheet) notFound();
   const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'balance_sheet');
   const report = selectReport(reports, params.period);
   if (!report) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></Page>;

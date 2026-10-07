@@ -18,7 +18,7 @@ import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
 import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
 import { downloadItemsFor } from '@/lib/portal/downloads';
-import { PACKAGE_MODULES } from '@/lib/portal/modules';
+import { ALL_MODULES } from '@/lib/portal/modules';
 import { loadPortalEntitySettings, loadPublishedDocuments } from '@/lib/portal/load';
 import { loadNotifications } from '@/lib/portal/notifications';
 import { createClient } from '@/lib/supabase/server';
@@ -55,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Everything the firm sold this business, and nothing else. Before this the
   // nav read one boolean, so the Expenses and Income Taxes switches in /admin
   // were recorded and then ignored.
-  const navItems = clientNavItems(settings?.modules ?? PACKAGE_MODULES.full);
+  const navItems = clientNavItems(settings?.modules ?? ALL_MODULES);
 
   return (
     <AppShell

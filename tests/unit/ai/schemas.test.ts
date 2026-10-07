@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { TOOL_INPUTS, TOOL_NAMES, isToolName, toolDefinitions } from '@/lib/ai/nick/tools/schemas';
-import { PACKAGE_MODULES } from '@/lib/portal/modules';
+import { ALL_MODULES, PACKAGE_MODULES } from '@/lib/portal/modules';
 
 const SPEC_TOOLS = [
   'get_overview_metrics',
@@ -21,11 +21,11 @@ const SPEC_TOOLS = [
 describe('Nick tool definitions', () => {
   it('exposes exactly the eleven tools of INITIAL_PROMPT.md §10, in a fixed order', () => {
     expect(TOOL_NAMES).toEqual(SPEC_TOOLS);
-    expect(toolDefinitions(PACKAGE_MODULES.full).map((tool) => tool.name)).toEqual(SPEC_TOOLS);
+    expect(toolDefinitions(ALL_MODULES).map((tool) => tool.name)).toEqual(SPEC_TOOLS);
   });
 
   it('sends strict, closed JSON schemas with every property required', () => {
-    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
+    for (const tool of toolDefinitions(ALL_MODULES)) {
       expect(tool.strict).toBe(true);
       expect(tool.input_schema.type).toBe('object');
       expect(tool.input_schema.additionalProperties).toBe(false);
@@ -40,7 +40,7 @@ describe('Nick tool definitions', () => {
     // zod 4 attaches the safe-integer range to `.int()`, and the API answers
     // 400 "For 'integer' type, properties maximum, minimum are not supported"
     // — which the mocked Anthropic server in the suites never checked.
-    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
+    for (const tool of toolDefinitions(ALL_MODULES)) {
       const text = JSON.stringify(tool.input_schema);
       expect(text).not.toContain('"minimum"');
       expect(text).not.toContain('"maximum"');
@@ -48,7 +48,7 @@ describe('Nick tool definitions', () => {
   });
 
   it('never accepts a tenant identifier in any tool', () => {
-    for (const tool of toolDefinitions(PACKAGE_MODULES.full)) {
+    for (const tool of toolDefinitions(ALL_MODULES)) {
       const text = JSON.stringify(tool.input_schema).toLowerCase();
       expect(text).not.toContain('entity');
       expect(text).not.toContain('tenant');
@@ -128,11 +128,19 @@ describe('tools follow the modules the firm sold', () => {
     expect(offered).not.toContain('get_overview_metrics');
   });
 
-  it('offers everything but sales tax to a bookkeeping client', () => {
+  it('offers the books, and neither sales tax nor an add-on, to a bookkeeping client', () => {
     const offered = names(PACKAGE_MODULES.bookkeeping);
     expect(offered).toContain('get_profit_and_loss');
     expect(offered).toContain('get_expense_breakdown');
     expect(offered).not.toContain('get_sales_tax_status');
+    // The Balance Sheet and income taxes are sold separately.
+    expect(offered).not.toContain('get_balance_sheet');
+    expect(offered).not.toContain('get_income_tax_status');
+  });
+
+  it('offers each add-on to the client who bought it', () => {
+    expect(names({ ...PACKAGE_MODULES.bookkeeping, balance_sheet: true })).toContain('get_balance_sheet');
+    expect(names({ ...PACKAGE_MODULES.bookkeeping, income_taxes: true })).toContain('get_income_tax_status');
   });
 
   it('keeps the tools that belong to no module, so the library always works', () => {

@@ -100,6 +100,12 @@ test.describe('Firm portal: clients, businesses, people', () => {
     await expect(page.getByText('City of Niles')).toBeVisible();
     await expect(create).toBeEnabled();
 
+    // The two add-ons are sold apart from the package, so they start off and
+    // the firm turns on the one this client bought.
+    await expect(page.getByLabel(/^Balance Sheet/)).not.toBeChecked();
+    await expect(page.getByLabel(/^Income Taxes/)).not.toBeChecked();
+    await page.getByLabel(/^Balance Sheet/).check();
+
     await create.click();
 
     // One submit lands on the business, ready to receive documents.
@@ -113,9 +119,10 @@ test.describe('Firm portal: clients, businesses, people', () => {
 
     const { data: entityRow } = await fx.admin
       .from('business_entities')
-      .select('has_dba, dba_name')
+      .select('has_dba, dba_name, enabled_modules')
       .eq('name', `Acme Bakery ${stamp}`)
       .single();
+    expect(entityRow?.enabled_modules).toEqual({ bookkeeping: true, balance_sheet: true, income_taxes: false });
     expect(entityRow?.has_dba).toBe(true);
     expect(entityRow?.dba_name).toBe(`Acme Bakery Co ${stamp}`);
 

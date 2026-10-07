@@ -43,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
 /** Which module each nav entry belongs to; the rest (Overview, Nick) are always shown. */
 const NAV_MODULE: Record<string, PortalModule> = {
   '/statements': 'bookkeeping',
+  '/statements/balance-sheet': 'balance_sheet',
   '/expenses': 'bookkeeping',
   '/taxes/income': 'income_taxes',
   '/taxes/sales': 'sales_taxes',
@@ -54,10 +55,15 @@ const NAV_MODULE: Record<string, PortalModule> = {
  * check, so the nav and the URL always agree.
  */
 export function clientNavItems(modules: PortalModules): NavItem[] {
-  return NAV_ITEMS.filter((item) => {
-    const required = NAV_MODULE[item.href];
+  const sold = (href: string): boolean => {
+    const required = NAV_MODULE[href];
     return required === undefined || modules[required];
-  });
+  };
+  // A group keeps only the pages the client bought: Financial Statements
+  // without the Balance Sheet add-on is the Profit & Loss alone.
+  return NAV_ITEMS.filter((item) => sold(item.href)).map((item) =>
+    item.children ? { ...item, children: item.children.filter((child) => sold(child.href)) } : item,
+  );
 }
 
 // Utility links under the user block at the bottom of the sidebar (§7:

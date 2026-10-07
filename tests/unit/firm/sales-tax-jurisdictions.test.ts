@@ -23,7 +23,7 @@ const base = {
   timezone: 'UTC',
   salesTaxEnabled: false,
   salesTax: { state: '', hasCityTax: false, cities: [] },
-  enabledModules: { bookkeeping: true, income_taxes: true },
+  enabledModules: { bookkeeping: true, balance_sheet: true, income_taxes: true },
   industry: '',
   logoUrl: null,
 };

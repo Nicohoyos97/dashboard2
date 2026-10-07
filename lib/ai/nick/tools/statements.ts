@@ -5,7 +5,7 @@
 import { NICK_LIMITS } from '@/lib/ai/nick/config';
 import { variance } from '@/lib/money';
 import { fromCents } from '@/lib/money';
-import { loadPublishedReports, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLines } from '@/lib/portal/load';
 import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
 import { PNL_SYNONYMS, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection, normalizeName, walk } from '@/lib/reports/sections';
@@ -201,9 +201,14 @@ export function expenseBreakdown(
 }
 
 async function loadStatement(ctx: ToolContext, type: ReportType, requested: string | null) {
-  const reports = (await loadPublishedReports(ctx.supabase, ctx.entityId)).filter(
-    (r) => r.reportType === type,
-  );
+  // The Balance Sheet is an add-on. get_balance_sheet is not offered without
+  // it, but compare_financial_periods takes the statement as an argument, so
+  // the gate has to be here as well: no tool reads one the client cannot open.
+  const sold =
+    type !== 'balance_sheet' || (await loadPortalEntitySettings(ctx.supabase, ctx.entityId)).modules.balance_sheet;
+  const reports = sold
+    ? (await loadPublishedReports(ctx.supabase, ctx.entityId)).filter((r) => r.reportType === type)
+    : [];
   const report = pickReport(ctx, reports, requested);
   if (!report) {
     return {

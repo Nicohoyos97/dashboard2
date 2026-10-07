@@ -17,7 +17,7 @@ test.describe('the portal shows the modules the firm sold', () => {
 
   async function clientOn(
     label: string,
-    modules: { bookkeeping: boolean; income_taxes: boolean },
+    modules: { bookkeeping: boolean; income_taxes: boolean; balance_sheet?: boolean },
     salesTax: boolean,
   ) {
     const user = await fx.makeUser(label);
@@ -107,7 +107,7 @@ test.describe('the portal shows the modules the firm sold', () => {
     }
   });
 
-  test('a bookkeeping client gets everything except Sales Taxes', async ({ page }) => {
+  test('a bookkeeping client with the income-tax add-on gets everything except Sales Taxes', async ({ page }) => {
     test.slow();
     const { user } = await clientOn('bookkeeping', { bookkeeping: true, income_taxes: true }, false);
     await signIn(page, user.email);
@@ -126,6 +126,42 @@ test.describe('the portal shows the modules the firm sold', () => {
     // And the Overview keeps the statement cards this client did buy.
     await page.goto('/dashboard');
     await expect(page.getByRole('main').getByText('Gross Income')).toBeVisible();
+  });
+
+  test('the Balance Sheet and Income Taxes are add-ons a bookkeeping client may not have bought', async ({ page }) => {
+    test.slow();
+    // The books alone: the Profit & Loss and Expenses, nothing sold on top. A
+    // balance sheet is published anyway, because the point is that the portal
+    // withholds it — the nav, the page and both exports.
+    const { user, entityId } = await clientOn('booksonly', { bookkeeping: true, income_taxes: false, balance_sheet: false }, false);
+    const { reportId: balanceSheetId } = await seedPublishedStatement(fx, entityId, 'balance-sheet', { uploaded: [] });
+    await signIn(page, user.email);
+
+    const nav = page.getByRole('complementary', { name: /navigation/i });
+    await expect(nav.getByRole('link', { name: /expenses/i })).toBeVisible();
+    await expect(nav.getByRole('link', { name: /income taxes/i })).toHaveCount(0);
+    await nav.getByRole('button', { name: /financial statements/i }).click();
+    await expect(nav.getByRole('link', { name: /profit & loss/i })).toBeVisible();
+    await expect(nav.getByRole('link', { name: /balance sheet/i })).toHaveCount(0);
+
+    for (const path of ['/statements/balance-sheet', '/taxes/income']) {
+      await page.goto(path);
+      await expect(page.getByText(/could not be found/i), path).toBeVisible();
+    }
+    for (const format of ['csv', 'pdf']) {
+      const response = await page.request.get(`/api/reports/${balanceSheetId}/${format}`);
+      expect(response.status(), format).toBe(404);
+    }
+
+    // Sold, the same statement is one click away.
+    const { error } = await fx.admin
+      .from('business_entities')
+      .update({ enabled_modules: { bookkeeping: true, income_taxes: false, balance_sheet: true } })
+      .eq('id', entityId);
+    if (error) throw new Error(`sell the add-on: ${error.message}`);
+    await page.goto('/statements/balance-sheet');
+    await expect(page.getByRole('heading', { name: /balance sheet/i }).first()).toBeVisible();
+    expect((await page.request.get(`/api/reports/${balanceSheetId}/csv`)).status()).toBe(200);
   });
 
   test('a client without bookkeeping cannot export the statement either', async ({ page }) => {

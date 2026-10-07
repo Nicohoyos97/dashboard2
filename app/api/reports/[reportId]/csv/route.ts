@@ -37,6 +37,8 @@ export async function GET(request: Request, context: { params: Promise<{ reportI
     loadPortalEntitySettings(supabase, entity.id),
   ]);
   if (!settings.modules.bookkeeping) return new Response(null, { status: 404 });
+  // The Balance Sheet is its own add-on: a client with the books alone cannot export one.
+  if (report.reportType === 'balance_sheet' && !settings.modules.balance_sheet) return new Response(null, { status: 404 });
   const locale = request.headers.get('accept-language')?.toLowerCase().startsWith('es') ? 'es' : 'en';
   const csv = statementCsv(buildTree(lines), { locale });
 

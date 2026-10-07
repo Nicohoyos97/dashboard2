@@ -163,7 +163,11 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const currentPnlReport = exactReport(reports, 'profit_and_loss', selected);
   const priorRange = priorPeriod(selected, locale);
   const priorPnlReport = priorRange ? exactReport(reports, 'profit_and_loss', priorRange) : null;
-  const balanceReport = reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null;
+  // Only for a client with the Balance Sheet add-on: without it no insight may
+  // read, or link to, a statement they cannot open.
+  const balanceReport = settings.modules.balance_sheet
+    ? (reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null)
+    : null;
   const currency = currentPnlReport?.currency ?? settings.currency;
   const modules = settings.modules;
 

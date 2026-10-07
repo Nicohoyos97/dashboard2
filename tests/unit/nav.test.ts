@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { BOTTOM_NAV_ITEMS, NAV_ITEMS, clientNavItems, currentNavLabelKey, isActiveNav } from '@/lib/nav';
-import { PACKAGE_MODULES } from '@/lib/portal/modules';
+import { ALL_MODULES, PACKAGE_MODULES } from '@/lib/portal/modules';
 
 describe('isActiveNav', () => {
   it('activates on an exact path match (a statement sub-item)', () => {
@@ -49,10 +49,12 @@ describe('NAV_ITEMS', () => {
   it('shows what the firm sold, and Overview and Nick either way', () => {
     const hrefs = (m: Parameters<typeof clientNavItems>[0]) => clientNavItems(m).map((i) => i.href);
 
-    expect(hrefs(PACKAGE_MODULES.full)).toEqual(NAV_ITEMS.map((i) => i.href));
+    expect(hrefs(ALL_MODULES)).toEqual(NAV_ITEMS.map((i) => i.href));
 
-    // Bookkeeping: everything but sales taxes.
-    expect(hrefs(PACKAGE_MODULES.bookkeeping)).toEqual([
+    // Bookkeeping: the books, with neither sales taxes nor an add-on.
+    expect(hrefs(PACKAGE_MODULES.bookkeeping)).toEqual(['/dashboard', '/statements', '/expenses', '/chat']);
+    // The income-tax add-on brings its page with it.
+    expect(hrefs({ ...PACKAGE_MODULES.bookkeeping, income_taxes: true })).toEqual([
       '/dashboard',
       '/statements',
       '/expenses',
@@ -65,7 +67,7 @@ describe('NAV_ITEMS', () => {
   });
 
   it('keeps the order when a module is hidden', () => {
-    const custom = { ...PACKAGE_MODULES.full, income_taxes: false };
+    const custom = { ...ALL_MODULES, income_taxes: false };
     expect(clientNavItems(custom).map((i) => i.href)).toEqual([
       '/dashboard',
       '/statements',
@@ -78,7 +80,7 @@ describe('NAV_ITEMS', () => {
   it('takes the statements and the expense breakdown together', () => {
     // They are one engagement (0019): a client with the Profit & Loss gets the
     // breakdown that explains it, and a client without it gets neither.
-    const noBooks = { ...PACKAGE_MODULES.full, bookkeeping: false };
+    const noBooks = { ...ALL_MODULES, bookkeeping: false, balance_sheet: false };
     expect(clientNavItems(noBooks).map((i) => i.href)).toEqual([
       '/dashboard',
       '/taxes/income',
@@ -104,5 +106,15 @@ describe('currentNavLabelKey', () => {
   it('returns null for a route no nav entry covers, rather than naming the wrong page', () => {
     expect(currentNavLabelKey('/reports', items)).toBeNull();
     expect(currentNavLabelKey('/statements-archive', items)).toBeNull();
+  });
+
+  it('lists the Balance Sheet under Financial Statements only for a client with the add-on', () => {
+    const statements = (m: Parameters<typeof clientNavItems>[0]) =>
+      clientNavItems(m).find((i) => i.href === '/statements')?.children?.map((c) => c.href);
+    expect(statements(PACKAGE_MODULES.bookkeeping)).toEqual(['/statements/profit-and-loss']);
+    expect(statements({ ...PACKAGE_MODULES.bookkeeping, balance_sheet: true })).toEqual([
+      '/statements/profit-and-loss',
+      '/statements/balance-sheet',
+    ]);
   });
 });

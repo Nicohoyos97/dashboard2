@@ -19,7 +19,8 @@ export const EMPTY_BUSINESS: EntityFormValues = {
   timezone: DEFAULT_TIMEZONE,
   salesTaxEnabled: false,
   salesTax: { state: '', hasCityTax: false, cities: [] },
-  enabledModules: { bookkeeping: true, income_taxes: true },
+  // The add-ons start off: each is a separate sale the firm has to mean.
+  enabledModules: { bookkeeping: true, balance_sheet: false, income_taxes: false },
   industry: '',
   logoUrl: null,
 };

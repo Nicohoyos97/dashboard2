@@ -5,7 +5,7 @@ import { CitationRegistry } from '@/lib/ai/nick/citations';
 import { runToolLoop } from '@/lib/ai/nick/loop';
 import { CITATION_RETRY_MESSAGE, NICK_SYSTEM_PROMPT } from '@/lib/ai/nick/prompts';
 import { toolDefinitions } from '@/lib/ai/nick/tools/schemas';
-import { PACKAGE_MODULES } from '@/lib/portal/modules';
+import { ALL_MODULES } from '@/lib/portal/modules';
 import { NickError, type NickEvent } from '@/lib/ai/nick/types';
 
 import { isRecord, server, testClient } from '../ingestion/helpers/anthropic-mock';
@@ -54,7 +54,7 @@ function harness(maxIterations = 8) {
       maxTokens: 800,
       effort: 'high',
       system: [{ type: 'text', text: NICK_SYSTEM_PROMPT }],
-      tools: toolDefinitions(PACKAGE_MODULES.full),
+      tools: toolDefinitions(ALL_MODULES),
       messages: [{ role: 'user', content: 'What was net income?' }],
       runTool,
       registry,

@@ -25,8 +25,10 @@ function modulesOf(value: unknown): EnabledModules {
   // Absent means on: a row written before a module existed keeps its pages.
   // `statements` is the pre-0019 name for `bookkeeping`, read as a fallback so
   // a row the backfill has not reached still says what the firm sold.
+  const bookkeeping = 'bookkeeping' in v ? v.bookkeeping !== false : v.statements !== false;
   return {
-    bookkeeping: 'bookkeeping' in v ? v.bookkeeping !== false : v.statements !== false,
+    bookkeeping,
+    balance_sheet: bookkeeping && v.balance_sheet !== false,
     income_taxes: v.income_taxes !== false,
   };
 }
@@ -165,6 +167,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
       t('modules'),
       [
         modules.bookkeeping ? t('moduleBookkeeping') : null,
+        modules.balance_sheet ? t('moduleBalanceSheet') : null,
         modules.income_taxes ? t('moduleIncomeTaxes') : null,
         entity.sales_tax_enabled ? t('moduleSalesTaxes') : null,
         t('moduleNick'),

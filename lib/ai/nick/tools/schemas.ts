@@ -176,7 +176,7 @@ export type ToolDefinition = {
  */
 const TOOL_MODULE: Partial<Record<ToolName, PortalModule>> = {
   get_profit_and_loss: 'bookkeeping',
-  get_balance_sheet: 'bookkeeping',
+  get_balance_sheet: 'balance_sheet',
   compare_financial_periods: 'bookkeeping',
   get_overview_metrics: 'bookkeeping',
   get_expense_breakdown: 'bookkeeping',
