@@ -1,7 +1,7 @@
-// Expenses (INITIAL_PROMPT.md §7). One source per business, never mixed: debits
-// on published bank statements where the firm publishes them, otherwise the
-// expense accounts of the published Profit & Loss (PnlExpensesView). On the
-// bank path: Totals are only shown for a period every account's statements
+// Expenses (INITIAL_PROMPT.md §7). One source per business, never mixed: the
+// expense accounts of the published Profit & Loss (PnlExpensesView), and only
+// for a business with no P&L at all, debits on published bank statements. On
+// the bank path: Totals are only shown for a period every account's statements
 // cover — a missing month is never treated as zero — while the transaction
 // list stays available either way. Filters, sort and paging live in the URL.
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -69,10 +69,12 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const requested = parsePeriodParam(typeof params.period === 'string' ? params.period : undefined);
   const selected = (requested && periods.find((p) => p.start === requested.start && p.end === requested.end)) ?? periods[0] ?? null;
 
-  // No bank statements published: the expenses are the ones the Profit & Loss
-  // prints. The firm publishes statements, not bank activity, for most clients.
+  // The Profit & Loss is the source of expenses (owner, 2026-10-07: the firm
+  // publishes statements, not bank activity). It wins whenever one is
+  // published: a client with a P&L for every month and one stray bank statement
+  // was shown that single bank month and nothing else.
   const pnlReports = reports.filter((report) => report.reportType === 'profit_and_loss');
-  if (!selected && pnlReports.length > 0) {
+  if (pnlReports.length > 0) {
     return (
       <PnlExpensesView
         supabase={supabase}

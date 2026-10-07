@@ -29,7 +29,7 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     const member = await fx.makeUser('overview-member');
     await fx.addMembership(entityId, member.id, 'client_owner');
     const pnl = await seedPublishedStatement(fx, entityId, 'letter-and-pnl', { uploaded });
-    const bank = await seedPublishedBankMonths(fx, entityId);
+    await seedPublishedBankMonths(fx, entityId);
     await seedPublishedReminder(fx, entityId, '2026-09-05');
 
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -62,12 +62,13 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     await granularity.getByRole('button', { name: 'Monthly' }).click();
     await expect(page).toHaveURL(/\/dashboard\?period=\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/);
 
-    // Bank activity is the Expenses page's source, and it names it. The portal
-    // does not report cash flow anywhere.
+    // The Profit & Loss is the Expenses page's source, and it names it — even
+    // for a business that also has bank statements published, whose debits
+    // must not appear there. The portal does not report cash flow anywhere.
     await page.goto('/expenses');
-    await expect(page.getByText(/debits on published bank statements/i)).toBeVisible();
-    // The page opens on the newest published month, so it shows that month's debits.
-    await expect(page.getByText(money(bank.monthlyDebitCents)).first()).toBeVisible();
+    await expect(page.getByText(/expense accounts of your published Profit & Loss/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Expense accounts' })).toBeVisible();
+    await expect(page.getByText(/debits on published bank statements/i)).toHaveCount(0);
     await page.goto(`/dashboard?period=${pnl.period.start}_${pnl.period.end}`);
 
     await page.getByRole('link', { name: /view all/i }).click();
