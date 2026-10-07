@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
+import { withAccountLabels } from '@/lib/portal/account-label';
 import { pnlMetrics } from '@/lib/reports/pnl';
 import { buildTree } from '@/lib/reports/tree';
 
@@ -88,5 +89,43 @@ describe('pnlMetrics', () => {
     expect(m.operatingExpenses.current?.lineId).toBe('R5');
     expect(m.netIncome.current?.lineId).toBe('R6');
     expect(m.netMarginPct).toBe(30);
+  });
+
+  // QuickBooks Online prints "Total for Income" and an account code in front of
+  // every name. Read as "for income", the three section totals went missing and
+  // the portal showed a statement with profit but no revenue.
+  it('reads a QuickBooks Online layout: "Total for X" totals and coded accounts', () => {
+    resetPositions();
+    const rows = withAccountLabels([
+      line('Q1', 'Income', { isSection: true }),
+      line('Q2', '1001- Sales (POS)', { parent: 'Q1', current: 60_000 }),
+      line('Q3', '1002 - Zelle sales', { parent: 'Q1', current: 40_000 }),
+      line('Q4', 'Total for Income', { parent: 'Q1', current: 100_000, isTotal: true }),
+      line('Q5', 'Cost of Goods Sold', { isSection: true }),
+      line('Q6', '1100 - Cost of good sold', { parent: 'Q5', current: 40_000 }),
+      line('Q7', 'Total for Cost of Goods Sold', { parent: 'Q5', current: 40_000, isTotal: true }),
+      line('Q8', 'Gross Profit', { current: 60_000, isTotal: true }),
+      line('Q9', 'Expenses', { isSection: true }),
+      line('Q10', '5943 - Rent', { parent: 'Q9', current: 20_000 }),
+      line('Q11', '6300 - Utilities', { parent: 'Q9', isSection: true }),
+      line('Q12', '63001 - Electricity', { parent: 'Q11', current: 10_000 }),
+      line('Q13', 'Total for 6300 - Utilities', { parent: 'Q11', current: 10_000, isTotal: true }),
+      line('Q14', 'Total for Expenses', { parent: 'Q9', current: 30_000, isTotal: true }),
+      line('Q15', 'Net Operating Income', { current: 30_000, isTotal: true }),
+      line('Q16', 'Net Income', { current: 30_000, isTotal: true }),
+    ]);
+    const m = metricsOf(rows, report({ comparativeStart: null, comparativeEnd: null }));
+    expect(m.revenue.current).toMatchObject({ cents: 100_000, lineId: 'Q4' });
+    expect(m.cogs.current?.lineId).toBe('Q7');
+    expect(m.operatingExpenses.current?.lineId).toBe('Q14');
+    expect(m.netIncome.current?.lineId).toBe('Q16');
+    expect(m.grossMarginPct).toBe(60);
+    expect(m.netMarginPct).toBe(30);
+    expect(rows.map((r) => r.accountName)).toEqual([
+      'Income', 'Sales (POS)', 'Zelle sales', 'Total for Income',
+      'Cost of Goods Sold', 'Cost of good sold', 'Total for Cost of Goods Sold', 'Gross Profit',
+      'Expenses', 'Rent', 'Utilities', 'Electricity', 'Total for Utilities', 'Total for Expenses',
+      'Net Operating Income', 'Net Income',
+    ]);
   });
 });

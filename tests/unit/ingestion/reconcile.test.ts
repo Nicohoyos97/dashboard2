@@ -80,6 +80,22 @@ describe('reconcileStatement — profit and loss', () => {
   });
 });
 
+describe('reconcileStatement — "Total for X"', () => {
+  // QuickBooks Online's wording. Unrecognised, the named checks were skipped
+  // rather than failed: the statement published with gross profit and net
+  // income never tied to anything.
+  it('runs the named checks on a statement that prints "Total for Income"', () => {
+    const s = structuredClone(statement('letter-and-pnl.json'));
+    for (const l of s.lines) {
+      delete l.prior;
+      if (l.is_total) l.account_name = l.account_name.replace(/^Total /, 'Total for ');
+    }
+    const result = reconcile(s);
+    expect(result.passed).toBe(true);
+    expect(result.checks.map((c) => c.key)).toEqual(expect.arrayContaining(['gross_profit', 'net_income']));
+  });
+});
+
 describe('reconcileStatement — lines between expenses and net income', () => {
   // A P&L with no "Total other income / expenses" line can still print lines
   // after operating income. Ignored, they failed net income by exactly their

@@ -16,9 +16,12 @@ export function normalizeName(name: string): string {
     .trim();
 }
 
-/** "Total Income" → "income"; "Gross Profit" → "gross profit"; "Total" → "". */
+/**
+ * "Total Income" → "income"; "Gross Profit" → "gross profit"; "Total" → "".
+ * QuickBooks Online prints "Total for Income", which reads the same way.
+ */
 function headingOf(name: string): string {
-  return normalizeName(name).replace(/^total\b\s*/, '');
+  return normalizeName(name).replace(/^total\b\s*(?:for\b\s*)?/, '');
 }
 
 export function walk(nodes: readonly LineNode[], visit: (node: LineNode, parent: LineNode | null) => void): void {

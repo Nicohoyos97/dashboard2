@@ -16,18 +16,19 @@ const COLUMNS: { column: Column; suffix: string; label: string }[] = [
   { column: 'priorCents', suffix: ':prior', label: ' (prior period)' },
 ];
 
+// "Total Income" and QuickBooks Online's "Total for Income" are the same line.
 const NAMES = {
-  totalIncome: /^total (income|revenue|revenues|sales)\b/,
-  totalCogs: /^total (cost of (goods sold|sales)|cogs)\b/,
+  totalIncome: /^total (?:for )?(income|revenue|revenues|sales)\b/,
+  totalCogs: /^total (?:for )?(cost of (goods sold|sales)|cogs)\b/,
   grossProfit: /^gross (profit|margin)\b/,
-  totalExpenses: /^total (operating )?expenses?\b/,
-  totalOtherIncome: /^total other income\b/,
-  totalOtherExpenses: /^total other expenses?\b/,
+  totalExpenses: /^total (?:for )?(operating )?expenses?\b/,
+  totalOtherIncome: /^total (?:for )?other income\b/,
+  totalOtherExpenses: /^total (?:for )?other expenses?\b/,
   netIncome: /^net (income|loss|profit|earnings)\b(?!.*operating)/,
-  totalAssets: /^total assets\b/,
-  totalLiabilities: /^total liabilities$/,
-  totalEquity: /^total (equity|stockholders'? equity|shareholders'? equity|owner'?s'? equity)\b/,
-  totalLiabilitiesAndEquity: /^total liabilities (and|&) (equity|stockholders|shareholders|owner)/,
+  totalAssets: /^total (?:for )?assets\b/,
+  totalLiabilities: /^total (?:for )?liabilities$/,
+  totalEquity: /^total (?:for )?(equity|stockholders'? equity|shareholders'? equity|owner'?s'? equity)\b/,
+  totalLiabilitiesAndEquity: /^total (?:for )?liabilities (and|&) (equity|stockholders|shareholders|owner)/,
 };
 
 function normalizeName(name: string): string {

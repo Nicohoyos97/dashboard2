@@ -51,9 +51,6 @@ export function LineDrawer({
                   <Dialog.Title className="text-ink mt-1 text-[20px] leading-tight font-bold">
                     {node.accountName}
                   </Dialog.Title>
-                  {node.accountNumber && (
-                    <p className="text-muted-foreground text-[12.5px]">{node.accountNumber}</p>
-                  )}
                 </div>
                 <Dialog.Close asChild>
                   <button

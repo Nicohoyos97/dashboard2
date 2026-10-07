@@ -49,10 +49,7 @@ function flatten(
   for (const node of nodes) {
     const isZero =
       (node.currentCents ?? 0) === 0 && (node.priorCents ?? 0) === 0 && !node.isSection;
-    const matches =
-      query === '' ||
-      node.accountName.toLowerCase().includes(query) ||
-      (node.accountNumber ?? '').includes(query);
+    const matches = query === '' || node.accountName.toLowerCase().includes(query);
     const index = out.length;
     out.push({ node, parent, visible: false });
     const childVisible =
@@ -224,11 +221,6 @@ export function StatementTable({
                       <span className={strong ? 'text-ink font-semibold' : 'text-ink'}>
                         {node.accountName}
                       </span>
-                      {node.accountNumber && (
-                        <span className="text-muted-foreground text-[12px]">
-                          {node.accountNumber}
-                        </span>
-                      )}
                     </span>
                   </td>
                   <td
