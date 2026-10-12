@@ -21,7 +21,7 @@ The wordmark is the stacked lockup: **"Hoyos"** in navy `#0b1a3a` over
 ## Specs
 
 - **Color profile:** sRGB. Use the exact brand hex: navy `#0b1a3a`, blue `#2d6cff`.
-- **Transparency:** the wordmark + icon must have a transparent background (PNG-24 with alpha) so they sit on the cream paper surface cleanly.
+- **Transparency:** the wordmark + icon must have a transparent background (PNG-24 with alpha) so they sit cleanly on any surface.
 - **Trim & safe area:** trim empty canvas to the artwork, then re-add ~8% padding on all sides so the lockup isn't flush to the edge.
 - **Resolution:** export at ≥2× the display size to stay crisp on retina (e.g. a 96px BrandMark wants ≥192px of real pixels; 480px gives headroom).
 - **Square icon:** center the "HB" monogram or the stacked lockup in a square with even margins; avoid text that becomes illegible at 32×32.
