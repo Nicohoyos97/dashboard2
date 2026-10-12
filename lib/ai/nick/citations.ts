@@ -79,6 +79,12 @@ const FIGURE =
 const NOT_FIGURES =
   /https?:\/\/\S+|\/\S*\/\S*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b\d{4}-\d{2}-\d{2}\b|\b(?:19|20)\d{2}\b/gi;
 
+// "$2,350.00 (4%) [c9]": nothing but an opening parenthesis and a sign between
+// the two figures, and the marker right after the closing one.
+const OPENS_PAIR = /^\s*\(\s*[+\-−–]?\s*$/;
+// The figure scanner reads "0.4" out of "-0.4%", so the sign may still be there.
+const CLOSES_PAIR = /^\s*%?\s*\)\s*\[c\d+\]/;
+
 /** Blanks a region while preserving length, so match offsets stay comparable. */
 function mask(text: string, pattern: RegExp): string {
   return text.replace(pattern, (match) => ' '.repeat(match.length));
@@ -101,18 +107,29 @@ export function hasFinancialFigure(text: string): boolean {
  * Checking this per figure rather than per message is the point: a single [c1]
  * anywhere used to satisfy the whole answer, which let a real, sourced number
  * carry fabricated ones along beside it.
+ *
+ * One idiom is a single statement, not two: a change with its percentage in
+ * parentheses, "up $2,350.00 (4%) [c9]". Both halves come from the same tool
+ * result and the marker closes the pair, so the amount is cited by it. Read as
+ * two figures, that sentence was refused twice in a row and a correct, fully
+ * sourced balance-sheet answer never reached the client.
  */
 export function uncitedFigures(text: string): string[] {
   const figures = [...maskedForFigures(text).matchAll(new RegExp(FIGURE.source, 'g'))];
   if (figures.length === 0) return [];
   const markerAt = [...text.matchAll(new RegExp(MARKER.source, 'g'))].map((m) => m.index ?? 0);
+  const startOf = (i: number) => figures[i]?.index ?? text.length;
+  const endOf = (i: number) => startOf(i) + (figures[i]?.[0].length ?? 0);
 
-  return figures.flatMap((figure, i) => {
-    const from = (figure.index ?? 0) + figure[0].length;
-    const next = figures[i + 1]?.index ?? text.length;
-    const cited = markerAt.some((at) => at >= from && at < next);
-    return cited ? [] : [figure[0].trim()];
-  });
+  const cited = figures.map((_, i) => markerAt.some((at) => at >= endOf(i) && at < startOf(i + 1)));
+  // Last to first, so the amount inherits from the percentage beside it.
+  for (let i = figures.length - 2; i >= 0; i -= 1) {
+    if (cited[i] || !cited[i + 1]) continue;
+    const opens = OPENS_PAIR.test(text.slice(endOf(i), startOf(i + 1)));
+    const closes = CLOSES_PAIR.test(text.slice(endOf(i + 1)));
+    if (opens && closes) cited[i] = true;
+  }
+  return figures.flatMap((figure, i) => (cited[i] ? [] : [figure[0].trim()]));
 }
 
 export type AnswerCheck =

@@ -15,9 +15,10 @@ ${NICK_UNTRUSTED_NOTICE}
 
 Grounding rules — these are absolute:
 - Every number you state must come from a tool result of this conversation turn, and must be followed immediately by that figure's citation marker, written exactly as [cN] using the "cite" value the tool gave you (for example: Net income was $12,450.00 [c2]). A number without a marker is rejected by the server and never shown.
+- That holds for every number in a comparison too: a prior-period amount, a change and a percentage each carry their own marker (for example: up from $9,100.00 [c2], a 12.4% [c2] increase). Do not re-express a figure in another form — a ratio as dollars per dollar, or as a percentage — because the new number has no source; quote it as the tool returned it.
 - Never invent, estimate, round differently, or compute figures yourself. Tools already compute totals, changes, percentages and shares deterministically; quote what they return. If you need a figure a tool did not return, call a tool or say the figure is not available.
 - When a tool returns null with a reason, explain what is missing in plain words (for example: the statement does not print a comparative column) instead of guessing.
-- Sources never mix. Expenses come from the debits on published bank statements; revenue and net income from the Profit & Loss; assets, liabilities and equity from the Balance Sheet; tax figures from tax documents or firm entries. Name the source when it matters, and never present one source's figure as another's.
+- Sources never mix. Revenue, expenses and net income come from the Profit & Loss; assets, liabilities and equity from the Balance Sheet; tax figures from tax documents or firm entries. Name the source when it matters, and never present one source's figure as another's.
 - Never infer bank movement from a Profit & Loss, tax payable from revenue, a final tax liability from an estimate, or business performance from a single metric.
 - Tax amounts marked estimated, payable or pending_review are not final. Only firm_confirmed amounts may be described as confirmed.
 - Answer only about the business named in the context. You have no access to any other business and must not speculate about one.
@@ -116,3 +117,23 @@ export const CITATION_RETRY_MESSAGE =
   'Your previous answer was not accepted: it contained a figure without a citation marker, or a marker that does not match any tool result from this turn. ' +
   'Rewrite the answer so that every number is followed by the [cN] marker of the tool result it came from, using only markers returned by tools in this turn. ' +
   'If you have no tool result for a figure, remove the figure and say the information is not available.';
+
+/**
+ * The retry instruction, naming what the gate tripped on. Told only "a figure
+ * was uncited", the model rewrote the same answer and kept the same stray
+ * number — a ratio restated as "$4.22 for every $1" — and the second refusal
+ * cost the client the whole answer. These are the model's own words going back
+ * to it, never to a log.
+ */
+export function citationRetryMessage(problem: { uncited: readonly string[]; unknownMarkers: readonly string[] }): string {
+  const parts = [CITATION_RETRY_MESSAGE];
+  if (problem.uncited.length > 0) {
+    parts.push(
+      `These numbers had no marker after them: ${problem.uncited.join(', ')}. Give each one the marker of the tool result it came from; if it is your own restatement or arithmetic, delete it.`,
+    );
+  }
+  if (problem.unknownMarkers.length > 0) {
+    parts.push(`These markers match no tool result from this turn: ${problem.unknownMarkers.map((key) => `[${key}]`).join(', ')}.`);
+  }
+  return parts.join(' ');
+}

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CITATION_RETRY_MESSAGE,
+  citationRetryMessage,
   NICK_SYSTEM_PROMPT,
   NICK_UNTRUSTED_NOTICE,
   contextBlock,
@@ -49,6 +50,15 @@ describe('Nick prompts', () => {
     );
     expect(NICK_SYSTEM_PROMPT).toContain('not a replacement for the accountant');
     expect(CITATION_RETRY_MESSAGE).toContain('[cN]');
+  });
+
+  it('names what the gate tripped on, so the rewrite can fix it', () => {
+    const message = citationRetryMessage({ uncited: ['$4.22', '16%'], unknownMarkers: ['c9'] });
+    expect(message).toContain(CITATION_RETRY_MESSAGE);
+    expect(message).toContain('$4.22, 16%');
+    expect(message).toContain('[c9]');
+    // Nothing to name, nothing added.
+    expect(citationRetryMessage({ uncited: [], unknownMarkers: [] })).toBe(CITATION_RETRY_MESSAGE);
   });
 
   it('context block carries server-derived facts only, including the selected line and its citation key', () => {

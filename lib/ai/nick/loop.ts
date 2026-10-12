@@ -7,8 +7,8 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import type { Effort } from '@/lib/ai/models';
 
-import { type CitationRegistry, checkAnswer } from './citations';
-import { CITATION_RETRY_MESSAGE } from './prompts';
+import { type CitationRegistry, checkAnswer, uncitedFigures } from './citations';
+import { citationRetryMessage } from './prompts';
 import type { ToolDefinition } from './tools/schemas';
 import { type CitationRecord, NickError, type NickEvent } from './types';
 
@@ -123,7 +123,10 @@ export async function runToolLoop(params: LoopParams): Promise<LoopOutcome> {
     retried = true;
     params.emit({ type: 'reset' });
     messages.push({ role: 'assistant', content: message.content });
-    messages.push({ role: 'user', content: CITATION_RETRY_MESSAGE });
+    messages.push({
+      role: 'user',
+      content: citationRetryMessage({ uncited: uncitedFigures(text), unknownMarkers: check.unknown }),
+    });
   }
 
   throw new NickError('model_error');

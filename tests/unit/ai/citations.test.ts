@@ -144,6 +144,32 @@ describe('checkAnswer — every figure needs its own marker', () => {
     expect(check.ok).toBe(true);
   });
 
+  it('reads a change with its percentage in parentheses as one cited statement', () => {
+    // "up $2,350.00 (4%) [c9]" was refused twice in a row: the marker closes
+    // the pair, and both halves come from the same tool result.
+    for (const answer of [
+      'Cash is $61,480.00 [c1], up $2,350.00 (4%) [c1] from August.',
+      'Equity is $91,694.46 [c1], down $351.78 (-0.4%) [c1].',
+      'Working capital is $57,094.46 [c1], up $128.22 (+0.2%) [c1].',
+    ]) {
+      expect(checkAnswer(answer, registryWith(1)).ok, answer).toBe(true);
+    }
+  });
+
+  it('does not let that idiom cover a figure that merely sits nearby', () => {
+    for (const answer of [
+      // No marker closing the pair.
+      'Cash rose $2,350.00 (4%) from August.',
+      // The marker belongs to a later figure, not to the parenthesis.
+      'Cash rose $2,350.00 (4%) to $61,480.00 [c1].',
+      // Words between the figures: two statements, one marker.
+      'Cash rose $2,350.00 and liabilities (15.7%) [c1].',
+    ]) {
+      const check = checkAnswer(answer, registryWith(1));
+      expect(check.ok, answer).toBe(false);
+    }
+  });
+
   it('rejects bare integers a reader would read as money', () => {
     // The figure pattern only recognised >= 5 digits, a decimal, a grouping
     // comma or a currency symbol, so plain-language amounts passed uncited —
