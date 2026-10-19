@@ -63,7 +63,7 @@ test.describe('RLS firm access', () => {
       .from('audit_logs')
       .insert({ business_entity_id: b.entityId, action: 'test.event', actor_id: b.userId });
 
-    // Positive control at aal1: firm_memberships_self_select needs no second
+    // Positive control at aal1: firm_memberships_select's own-row half needs no second
     // factor — the /admin layout reads it to decide whether to ask for TOTP.
     const self = await db.from('firm_memberships').select('role').eq('user_id', admin.userId);
     expect(self.data?.[0]?.role).toBe('master_admin');

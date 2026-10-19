@@ -16,7 +16,7 @@ import { localeSchema } from './schemas';
 // Linking people to a business (INITIAL_PROMPT.md §8 "invite users"; bootstrap
 // note 3). Two paths:
 //   linkUserByEmail — the person already has an account (self-signup, Google):
-//     look the profile up (profiles_firm_select) and add the membership.
+//     look the profile up (profiles_select, firm half) and add the membership.
 //   inviteUser — no account yet: Supabase's invite flow creates the auth user
 //     and emails a link to /invite where they set a password. The auth admin
 //     API needs the service role; that is an identity operation, not tenant

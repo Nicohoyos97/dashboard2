@@ -2490,6 +2490,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      comember_user_ids: { Args: never; Returns: string[] }
       consume_rate_limit: {
         Args: { p_key: string; p_max: number; p_window: string }
         Returns: boolean
@@ -2514,6 +2515,7 @@ export type Database = {
         Args: { account: string }
         Returns: boolean
       }
+      member_entity_ids: { Args: never; Returns: string[] }
       object_entity_id: { Args: { object_name: string }; Returns: string }
       portal_expense_summary: {
         Args: {
@@ -2551,6 +2553,8 @@ export type Database = {
         }
         Returns: Json
       }
+      published_bank_statement_ids: { Args: never; Returns: string[] }
+      published_ledger_ids: { Args: never; Returns: string[] }
       published_ledgers: {
         Args: { entity: string }
         Returns: {
@@ -2559,10 +2563,13 @@ export type Database = {
           period_start: string
         }[]
       }
+      published_report_ids: { Args: never; Returns: string[] }
+      published_sales_report_ids: { Args: never; Returns: string[] }
       report_is_published: { Args: { report: string }; Returns: boolean }
       sales_report_is_published: { Args: { report: string }; Returns: boolean }
       shares_entity_with: { Args: { target: string }; Returns: boolean }
       unpublish_document: { Args: { p_document_id: string }; Returns: Json }
+      visible_ledger_account_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

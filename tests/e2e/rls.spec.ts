@@ -230,7 +230,7 @@ test.describe('RLS cross-tenant isolation', () => {
     expect(res.ok).toBe(true);
   });
 
-  // profiles_comember_select: members of a shared business can read each other's
+  // profiles_select (co-member half, 0031): members of a shared business can read each other's
   // profile; users in unrelated businesses cannot. Both directions matter — the
   // second is the cross-tenant leak guard.
   test('profiles: co-members see each other; users in other businesses cannot', async () => {
@@ -268,10 +268,10 @@ test.describe('RLS cross-tenant isolation', () => {
       if (r.error) expect(r.error.code).toBe('42501');
     };
 
-    // business_entities → entities_member_select calls is_entity_member()
+    // business_entities → entities_member_select calls is_firm_member() / member_entity_ids()
     assertNoLeak(await anon.from('business_entities').select('id').eq('id', seeded.entityId));
 
-    // entity_memberships → memberships_member_select calls is_entity_member()
+    // entity_memberships → memberships_member_select calls is_firm_member() / member_entity_ids()
     assertNoLeak(
       await anon
         .from('entity_memberships')
@@ -279,7 +279,7 @@ test.describe('RLS cross-tenant isolation', () => {
         .eq('business_entity_id', seeded.entityId),
     );
 
-    // profiles → profiles_comember_select calls shares_entity_with()
+    // profiles → profiles_select calls is_firm_member() / comember_user_ids()
     assertNoLeak(await anon.from('profiles').select('id').eq('id', seeded.userId));
 
     // firm tables → is_firm_member() (0002)
