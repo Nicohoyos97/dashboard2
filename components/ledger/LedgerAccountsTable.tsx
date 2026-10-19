@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronRight, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { LedgerTxn } from '@/lib/ledger/display';
 import { formatCents } from '@/lib/money';
@@ -31,11 +31,15 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
   const tStatements = useTranslations('Statements');
   const [open, setOpen] = useState<Set<string>>(() => new Set(openId ? [openId] : []));
   const [view, setView] = useState<Record<string, 'payee' | 'all'>>({});
-  const arrived = useRef<HTMLTableRowElement | null>(null);
 
+  // Not only on arrival: a link to this same page with another `?line=` (a Nick
+  // citation, say) changes `openId` without remounting the table, and that
+  // account has to open and come into view as well.
   useEffect(() => {
-    arrived.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, []);
+    if (!openId) return;
+    setOpen((prev) => (prev.has(openId) ? prev : new Set(prev).add(openId)));
+    document.getElementById(`line-${openId}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [openId]);
 
   const toggle = (id: string) =>
     setOpen((prev) => {
@@ -71,7 +75,7 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
               </>
             );
             const main = (
-              <tr key={row.id} id={`line-${row.id}`} ref={row.id === openId ? arrived : undefined} className={`scroll-mt-24 ${isOpen ? 'bg-blue-pale/40' : ''}`}>
+              <tr key={row.id} id={`line-${row.id}`} className={`scroll-mt-24 ${isOpen ? 'bg-blue-pale/40' : ''}`}>
                 <th scope="row" className="px-3 py-2.5 font-normal">
                   {row.txns ? (
                     <button

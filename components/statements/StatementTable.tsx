@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 
 import { inputClass } from '@/components/admin/ui';
 import { useNickSelection } from '@/components/chat/NickContext';
-import { Link, useRouter } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 
 import { CompareSelector, type CompareProps } from './CompareSelector';
 import { LineDrawer } from './LineDrawer';
@@ -82,23 +82,20 @@ export function StatementTable({
   meta: StatementMeta;
   /** Absent when the statement has nothing comparable to offer. */
   compare?: CompareProps;
-  /** Lines whose transactions can be opened: a click goes there instead of the drawer. */
+  /** Lines whose transactions can be opened: the account name links there, and so does the line's drawer. */
   details?: LineDetails;
 }) {
   const t = useTranslations('Statements');
   const tLedger = useTranslations('Ledger');
-  const router = useRouter();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [hideZero, setHideZero] = useState(false);
   const [selected, setSelected] = useState<Flat | null>(null);
   const nick = useNickSelection();
+  // The row always opens the drawer, ledger or not: on a phone it is where the
+  // prior figure and the change in dollars live, and where "Ask Nick" starts.
+  // The account name is the way to the transactions.
   const select = (node: StatementNode, parent: StatementNode | null) => {
-    const detail = details[node.id];
-    if (detail) {
-      router.push(detail.href);
-      return;
-    }
     setSelected({ node, parent, visible: true });
     nick?.setLine({ id: node.id, name: node.accountName });
   };
@@ -297,6 +294,7 @@ export function StatementTable({
         selected={selected?.node ?? null}
         parent={selected?.parent ?? null}
         meta={meta}
+        detail={selected ? (details[selected.node.id] ?? null) : null}
         onClose={() => setSelected(null)}
       />
     </div>

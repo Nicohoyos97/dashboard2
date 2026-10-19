@@ -57,7 +57,9 @@ export function ExportMenu({
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className="border-line bg-card z-50 w-[min(280px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-menu"
+          // Portalled under <body>, outside the page's print:hidden toolbar: without
+          // its own, an open menu printed over the top of the statement.
+          className="border-line bg-card z-50 w-[min(280px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-menu print:hidden"
         >
           {formats.map((entry) => {
             const Icon = ICON[entry.format];
@@ -101,7 +103,8 @@ export function ExportMenu({
             </DropdownMenu.Item>
           )}
           {print && (
-            <DropdownMenu.Item onSelect={() => window.print()} className={itemClass}>
+            // onSelect runs before the menu closes; the print dialog waits for it.
+            <DropdownMenu.Item onSelect={() => window.setTimeout(() => window.print(), 0)} className={itemClass}>
               <Printer className="text-link size-4 shrink-0" aria-hidden="true" />
               <span className="font-medium">{t('print')}</span>
             </DropdownMenu.Item>

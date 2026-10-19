@@ -1,28 +1,33 @@
 'use client';
 
-import { Sparkles, X } from 'lucide-react';
+import { ChevronRight, Sparkles, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
 
 import { useNickSelection } from '@/components/chat/NickContext';
+import { Link } from '@/i18n/navigation';
 
-import type { StatementMeta, StatementNode } from './StatementTable';
+import type { LineDetails, StatementMeta, StatementNode } from './StatementTable';
 import { formatCents } from '@/lib/money';
 
 // Side drawer for a statement line (§7): explanation, current vs prior,
-// where it sits in the hierarchy and the source page of the published PDF.
+// where it sits in the hierarchy and the source page of the published PDF —
+// and, when the month's General Ledger carries the line, its transactions.
 export function LineDrawer({
   selected,
   parent,
   meta,
+  detail = null,
   onClose,
 }: {
   selected: StatementNode | null;
   parent: StatementNode | null;
   meta: StatementMeta;
+  detail?: LineDetails[string] | null;
   onClose: () => void;
 }) {
   const t = useTranslations('Statements');
+  const tLedger = useTranslations('Ledger');
   const tNick = useTranslations('Nick');
   const nick = useNickSelection();
   const money = (cents: number | null) =>
@@ -97,6 +102,15 @@ export function LineDrawer({
                 )
               ) : (
                 <p className="text-muted-foreground mt-3 text-ui">{t('drawerNoPrior')}</p>
+              )}
+              {detail && (
+                <Link
+                  href={detail.href}
+                  className="text-link mt-3 inline-flex items-center gap-0.5 text-ui font-semibold hover:underline"
+                >
+                  {tLedger('transactions', { count: detail.count })}
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
               )}
 
               <Dialog.Description asChild>
