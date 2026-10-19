@@ -33,7 +33,7 @@ This is a financial application handling client books, bank statements and tax d
 
 ### Authorization
 
-- **RLS is the primary control.** Every tenant table filters by `business_entity_id` via `is_entity_member()`; firm access goes through `is_entity_member(...) OR is_firm_admin()`. See `docs/DATABASE.md`.
+- **RLS is the primary control.** Every tenant table filters by `business_entity_id` against the caller's own businesses (`business_entity_id in (select member_entity_ids())` since 0031, evaluated once per query); firm reads go through `(select is_firm_member())`, firm writes through `is_firm_admin()`. See `docs/DATABASE.md`.
 - App-level checks (`requireEntity`, role checks in Server Actions) are additional defense, never a substitute.
 - Client roles: `client_owner` (edit business profile, full read) > `client_viewer` (read). Firm roles (`master_admin`, `firm_staff`) live in `firm_memberships` (Phase 1).
 - **Service-role client (`lib/supabase/admin.ts`) bypasses RLS.** Use it only for system writes with no client policy (`logAccess`, jobs that name their tenant, server-maintained counters). Never inside a request handler to read or write tenant data on a user's behalf.

@@ -61,20 +61,23 @@ Downloads never expose a bucket URL: a route handler checks membership + publica
 
 | Function | Returns | Callable by | Used by |
 |---|---|---|---|
-| `is_entity_member(entity uuid)` | caller is a member | authenticated, service_role | every tenant SELECT |
+| `member_entity_ids()` (set) | the caller's businesses | authenticated, service_role | every tenant SELECT, as `business_entity_id in (select …)` (0031) |
+| `comember_user_ids()` (set) | users who share a business with the caller | authenticated, service_role | `profiles_select` |
+| `published_report_ids()`, `published_bank_statement_ids()`, `published_sales_report_ids()`, `published_ledger_ids()`, `visible_ledger_account_ids()` (sets) | the published parents of the caller's businesses; for ledgers, the accounts publication matched to a P&L line | authenticated, service_role | line / transaction / tender / ledger SELECT (0031) |
+| `is_entity_member(entity uuid)` | caller is a member | authenticated, service_role | write policies and the storage policies (one object per read); no table SELECT policy since 0031 |
 | `is_entity_owner(entity uuid)` | caller is `client_owner` | authenticated, service_role | `entities_owner_update` |
-| `shares_entity_with(target uuid)` | caller and target share a business | authenticated, service_role | `profiles_comember_select` |
-| `is_firm_member()` | any firm role **and** `aal2` | authenticated, service_role | every firm SELECT |
+| `is_firm_member()` | any firm role **and** `aal2` | authenticated, service_role | every firm SELECT, as `(select is_firm_member())` |
 | `is_firm_admin()` | `master_admin` **and** `aal2` | authenticated, service_role | every firm write; `guard_entity_firm_columns` |
-| `report_is_published(uuid)`, `bank_statement_is_published(uuid)` | parent is published | authenticated, service_role | line / transaction SELECT |
-| `general_ledger_is_published(uuid)`, `ledger_account_is_client_visible(uuid)` | ledger published / account matched to a P&L line in a published ledger | authenticated, service_role | ledger account / transaction SELECT (0026) |
+| `published_ledgers(entity uuid)` | id and period of the business's published ledgers | authenticated, service_role | `lib/ledger/load.ts`: the client has no read on the row (0028) |
+| `report_is_published`, `bank_statement_is_published`, `general_ledger_is_published`, `ledger_account_is_client_visible`, `sales_report_is_published`, `shares_entity_with` | per-row predecessors of the sets above | authenticated, service_role | none since 0031; kept so an older build's ad-hoc use does not break |
 | `document_object_is_client_visible(text)`, `object_entity_id(text)` | storage path parsing (never raise) | authenticated, service_role | storage policies |
 | `claim_processing_jobs(int)` | claims runnable jobs (`FOR UPDATE SKIP LOCKED`) | **service_role only** | the worker |
 | `consume_rate_limit(text, int, interval)` | under the limit? | **service_role only** | `lib/rate-limit.ts` |
 | `account_requests_guard()` (trigger, before insert or update) | client INSERT: refuses firm-owned columns, sets `requested_at = now()`; client UPDATE: freezes every column but `status`, sets `resolved_at` on withdrawal | trigger | `account_requests_self_insert`, `account_requests_self_cancel` |
 | `assert_valid_timezone()` (trigger) | rejects a `business_entities.timezone` Postgres cannot resolve | trigger | 0010 |
-| `portal_expense_summary(...)` | every figure above the Expenses table in one grouped call; escapes its own LIKE pattern (0012) | authenticated, service_role | `lib/portal/expenses.ts` |
-| `portal_expense_vendors(...)` | DISTINCT vendors for the filter facet | authenticated, service_role | `lib/portal/expenses.ts` |
+| `portal_expense_summary(...)` | every figure above the Expenses table in one grouped call; escapes its own LIKE pattern (0012); PL/pgSQL planned per call with its values, five passes over the rows (0032) | authenticated, service_role | `lib/portal/expenses.ts` |
+| `portal_expense_vendors(...)` | DISTINCT vendors for the filter facet; planned per call (0032) | authenticated, service_role | `lib/portal/expenses.ts` |
+| `publish_document_version(...)`, `unpublish_document(uuid)` | every publication write in one transaction, SECURITY INVOKER under the firm admin's own policies (0029) | authenticated | `lib/documents/publish.ts` |
 
 EXECUTE is revoked from `public`/`anon` on every helper. Trigger functions (`handle_new_user`, `set_updated_at`, `guard_entity_firm_columns`) are executable by nobody. The `aal` claim comes from `auth.jwt() ->> 'aal'`: a firm admin who has not completed TOTP in this session is not a firm admin for RLS.
 
@@ -90,7 +93,7 @@ There is **no self-serve `create_organization()`**. A user who signs up has a `p
 
 1. Migration file `supabase/migrations/NNNN_<name>.sql` (four-digit, sequential).
 2. `business_entity_id uuid not null references public.business_entities (id) on delete cascade` + index.
-3. `alter table … enable row level security;` then policies one at a time, default-deny first. Firm read via `is_firm_member()`, firm writes via `is_firm_admin()`.
+3. `alter table … enable row level security;` then policies one at a time, default-deny first. **One** SELECT policy per table, written so nothing runs per row (0031): `(select public.is_firm_member()) or (business_entity_id in (select public.member_entity_ids()) and …)`, a published parent as `parent_id in (select public.published_…_ids())`, the caller as `(select auth.uid())`. Firm writes via `(select public.is_firm_admin())`, as separate INSERT / UPDATE / DELETE policies — a `for all` policy is also a SELECT policy.
 4. Derived records store `source`, `document_version_id`, `page_number`, `confidence`, `published_at/by`, `superseded_by` (spec §5). Client SELECT gates on publication.
 5. `pnpm db:reset` → `pnpm db:types` → commit `lib/supabase/types.ts`.
 6. Extend `tests/e2e/rls*.spec.ts`: user A cannot SELECT/INSERT/UPDATE/DELETE B's rows; drafts are invisible to members; a firm admin without `aal2` is blocked.
