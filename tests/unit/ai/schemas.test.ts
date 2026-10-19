@@ -16,10 +16,12 @@ const SPEC_TOOLS = [
   'get_report_download_link',
   'compare_financial_periods',
   'create_financial_export',
+  // Over the published General Ledgers (0026), after §10's eleven.
+  'search_transactions',
 ];
 
 describe('Nick tool definitions', () => {
-  it('exposes exactly the eleven tools of INITIAL_PROMPT.md §10, in a fixed order', () => {
+  it('exposes the eleven tools of INITIAL_PROMPT.md §10 and search_transactions, in a fixed order', () => {
     expect(TOOL_NAMES).toEqual(SPEC_TOOLS);
     expect(toolDefinitions(ALL_MODULES).map((tool) => tool.name)).toEqual(SPEC_TOOLS);
   });
@@ -126,12 +128,15 @@ describe('tools follow the modules the firm sold', () => {
     expect(offered).not.toContain('get_expense_breakdown');
     expect(offered).not.toContain('get_income_tax_status');
     expect(offered).not.toContain('get_overview_metrics');
+    // The transactions behind a P&L the client does not have.
+    expect(offered).not.toContain('search_transactions');
   });
 
   it('offers the books, and neither sales tax nor an add-on, to a bookkeeping client', () => {
     const offered = names(PACKAGE_MODULES.bookkeeping);
     expect(offered).toContain('get_profit_and_loss');
     expect(offered).toContain('get_expense_breakdown');
+    expect(offered).toContain('search_transactions');
     expect(offered).not.toContain('get_sales_tax_status');
     // The Balance Sheet and income taxes are sold separately.
     expect(offered).not.toContain('get_balance_sheet');

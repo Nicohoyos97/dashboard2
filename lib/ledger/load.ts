@@ -10,6 +10,8 @@
 import 'server-only';
 
 import { toCents } from '@/lib/money';
+import { loadPublishedReport, loadReportLines } from '@/lib/portal/load';
+import { buildTree } from '@/lib/reports/tree';
 import type { LineNode, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
 
@@ -72,6 +74,94 @@ export async function loadLedgerDetail(
   return lines.size > 0 ? { ledgerId: ledger.id, periodStart: ledger.period_start, periodEnd: ledger.period_end, lines } : null;
 }
 
+export type LineLedger = {
+  line: { id: string; accountName: string };
+  report: ReportRow;
+  /** Null when the month has no published ledger, or its account no longer carries the line's figure. */
+  detail: LedgerLine | null;
+  txns: LedgerTxn[];
+};
+
+/**
+ * One P&L account line and the transactions behind it — what its own page
+ * shows and what its CSV contains. Null when the line is not on a published
+ * Profit & Loss this client can read (RLS returns nothing else).
+ */
+export async function loadLineLedger(supabase: Db, entityId: string, lineId: string): Promise<LineLedger | null> {
+  const { data: line } = await supabase
+    .from('financial_statement_lines')
+    .select('id, report_id, account_name')
+    .eq('id', lineId)
+    .eq('business_entity_id', entityId)
+    .maybeSingle();
+  const report = line ? await loadPublishedReport(supabase, entityId, line.report_id) : null;
+  if (!line || !report || report.reportType !== 'profit_and_loss') return null;
+  const roots = buildTree(await loadReportLines(supabase, entityId, report.id));
+  const detail = (await loadLedgerDetail(supabase, entityId, report, roots))?.lines.get(lineId) ?? null;
+  const txns = detail ? await loadLedgerTransactions(supabase, entityId, [detail.accountId]) : [];
+  return { line: { id: line.id, accountName: line.account_name }, report, detail, txns };
+}
+
+const SEARCH_LIMIT = 1000;
+const TXN_COLUMNS = 'id, account_id, txn_date, txn_type, num, name, description, split, amount';
+
+function toTxn(row: {
+  id: string;
+  account_id: string;
+  txn_date: string;
+  txn_type: string | null;
+  num: string | null;
+  name: string | null;
+  description: string | null;
+  split: string | null;
+  amount: number;
+}): LedgerTxn {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    date: row.txn_date,
+    type: row.txn_type,
+    num: row.num,
+    name: row.name,
+    description: row.description,
+    split: row.split,
+    amountCents: toCents(row.amount),
+  };
+}
+
+/** `%`, `_` and `\` in what the user typed are literal, not wildcards. */
+function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/**
+ * Transactions of these accounts whose payee or description contains `text`,
+ * case-insensitively, newest first. Two filtered reads rather than one `or`
+ * filter, so nothing the user typed is ever parsed as PostgREST syntax.
+ */
+export async function searchLedgerTransactions(
+  supabase: Db,
+  entityId: string,
+  accountIds: readonly string[],
+  text: string,
+): Promise<LedgerTxn[]> {
+  if (accountIds.length === 0 || text.trim() === '') return [];
+  const pattern = containsPattern(text.trim());
+  const read = (column: 'name' | 'description') =>
+    supabase
+      .from('ledger_transactions')
+      .select(TXN_COLUMNS)
+      .eq('business_entity_id', entityId)
+      .in('account_id', [...accountIds])
+      .ilike(column, pattern)
+      .limit(SEARCH_LIMIT);
+  const [byName, byDescription] = await Promise.all([read('name'), read('description')]);
+  if (byName.error || byDescription.error) throw new Error('ledger_transactions_read_failed');
+  const found = new Map<string, LedgerTxn>();
+  for (const row of [...(byName.data ?? []), ...(byDescription.data ?? [])]) found.set(row.id, toTxn(row));
+  return [...found.values()].sort((a, b) => b.date.localeCompare(a.date));
+}
+
 /** Every transaction of these accounts, newest first. Paged: a month of sales can pass PostgREST's row cap. */
 export async function loadLedgerTransactions(supabase: Db, entityId: string, accountIds: readonly string[]): Promise<LedgerTxn[]> {
   if (accountIds.length === 0) return [];
@@ -79,26 +169,14 @@ export async function loadLedgerTransactions(supabase: Db, entityId: string, acc
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from('ledger_transactions')
-      .select('id, account_id, txn_date, txn_type, num, name, description, split, amount')
+      .select(TXN_COLUMNS)
       .eq('business_entity_id', entityId)
       .in('account_id', [...accountIds])
       .order('txn_date', { ascending: false })
       .order('position', { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw new Error('ledger_transactions_read_failed');
-    for (const row of data ?? []) {
-      out.push({
-        id: row.id,
-        accountId: row.account_id,
-        date: row.txn_date,
-        type: row.txn_type,
-        num: row.num,
-        name: row.name,
-        description: row.description,
-        split: row.split,
-        amountCents: toCents(row.amount),
-      });
-    }
+    for (const row of data ?? []) out.push(toTxn(row));
     if ((data ?? []).length < PAGE) return out;
   }
 }

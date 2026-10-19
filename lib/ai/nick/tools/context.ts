@@ -52,6 +52,10 @@ const LABELS = {
     page: 'Page',
     tax: 'Tax record',
     reminder: 'Reminder',
+    ledger: 'Transactions',
+    paid: 'Paid',
+    received: 'Received',
+    adjustment: 'Bookkeeper adjustment',
   },
   es: {
     profit_and_loss: 'Estado de resultados',
@@ -60,6 +64,10 @@ const LABELS = {
     page: 'Página',
     tax: 'Registro fiscal',
     reminder: 'Recordatorio',
+    ledger: 'Transacciones',
+    paid: 'Pagado',
+    received: 'Recibido',
+    adjustment: 'Ajuste del contador',
   },
 } as const;
 

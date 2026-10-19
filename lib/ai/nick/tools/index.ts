@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { type ToolContext, ToolError, type ToolResult } from './context';
 import { createFinancialExport, getReportDownloadLink } from './exports';
+import { searchTransactions } from './ledger';
 import { getOverviewMetrics, getUpcomingObligations, listAvailableReports } from './overview';
 import { TOOL_INPUTS, isToolName } from './schemas';
 import {
@@ -54,6 +55,8 @@ async function dispatch(
       return compareFinancialPeriods(ctx, TOOL_INPUTS[name].parse(raw));
     case 'create_financial_export':
       return createFinancialExport(ctx, TOOL_INPUTS[name].parse(raw));
+    case 'search_transactions':
+      return searchTransactions(ctx, TOOL_INPUTS[name].parse(raw));
   }
 }
 

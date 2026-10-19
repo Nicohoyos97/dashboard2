@@ -91,7 +91,8 @@ describe('runToolLoop', () => {
     expect(lastUserText(captured[1])).toContain('"tool_use_id":"toolu_1"');
     expect(lastUserText(captured[1])).toContain('$12,450.00');
     const first = captured[0];
-    expect(isRecord(first) && Array.isArray(first.tools) ? first.tools.length : 0).toBe(11);
+    // §10's eleven and search_transactions (0026).
+    expect(isRecord(first) && Array.isArray(first.tools) ? first.tools.length : 0).toBe(12);
     expect(isRecord(first) && first.stream).toBe(true);
 
     // Events: interim text streamed, cleared when the tool runs, status, then the answer.

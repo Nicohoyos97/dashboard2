@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
@@ -122,10 +122,16 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
                         <TransactionList txns={row.txns} currency={currency} searchable={row.txns.length > 8} />
                       </div>
                     )}
-                    <p className="bg-paper border-line text-muted-foreground flex items-center gap-2 border-t px-4 py-2.5 text-[13px]">
-                      <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
-                      {t('addsUp', { count: row.txns.length, total: formatCents(row.cents, currency) })}
-                    </p>
+                    <div className="bg-paper border-line flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 text-[13px]">
+                      <p className="text-muted-foreground flex items-center gap-2">
+                        <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
+                        {t('addsUp', { count: row.txns.length, total: formatCents(row.cents, currency) })}
+                      </p>
+                      <a href={`/api/ledger/lines/${row.id}/csv`} download className="text-blue inline-flex items-center gap-1.5 font-semibold hover:underline">
+                        <Download className="size-4" aria-hidden="true" />
+                        {t('downloadCsv')}
+                      </a>
+                    </div>
                   </div>
                 </td>
               </tr>,

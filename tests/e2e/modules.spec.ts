@@ -177,5 +177,35 @@ test.describe('the portal shows the modules the firm sold', () => {
       const response = await page.request.get(`/api/reports/${reportId}/${format}`);
       expect(response.status(), format).toBe(404);
     }
+
+    // The transactions behind a P&L account (0026) are the same statement one
+    // level down: give one line a published ledger, and its CSV must stay shut
+    // until bookkeeping is sold.
+    const { data: report } = await fx.admin.from('financial_reports').select('business_entity_id, period_start, period_end').eq('id', reportId).single();
+    const { data: lines } = await fx.admin
+      .from('financial_statement_lines')
+      .select('id, parent_line_id, account_name, current, is_section, is_total')
+      .eq('report_id', reportId);
+    const parents = new Set((lines ?? []).map((l) => l.parent_line_id));
+    const leaf = (lines ?? []).find((l) => !l.is_section && !l.is_total && l.current !== null && l.current !== 0 && !parents.has(l.id));
+    if (!report || !leaf?.current) throw new Error('no account line to give a ledger');
+    const amount = leaf.current;
+    const { data: ledger } = await fx.admin
+      .from('general_ledgers')
+      .insert({ business_entity_id: report.business_entity_id, period_start: report.period_start, period_end: report.period_end, status: 'published', published_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    const { data: account } = await fx.admin
+      .from('ledger_accounts')
+      .insert({ ledger_id: ledger!.id, business_entity_id: report.business_entity_id, name: leaf.account_name, position: 0, total: amount, transaction_count: 1, client_visible: true })
+      .select('id')
+      .single();
+    await fx.admin.from('ledger_transactions').insert({
+      ledger_id: ledger!.id, account_id: account!.id, business_entity_id: report.business_entity_id,
+      txn_date: report.period_end, txn_type: 'Expense', name: 'Vendor', amount, position: 0,
+    });
+    expect((await page.request.get(`/api/ledger/lines/${leaf.id}/csv`)).status()).toBe(404);
+    await fx.admin.from('business_entities').update({ enabled_modules: { bookkeeping: true, income_taxes: true } }).eq('id', report.business_entity_id);
+    expect((await page.request.get(`/api/ledger/lines/${leaf.id}/csv`)).status()).toBe(200);
   });
 });

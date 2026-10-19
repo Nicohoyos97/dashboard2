@@ -1,4 +1,5 @@
-// Input schemas of Nick's eleven read-only tools (INITIAL_PROMPT.md §10).
+// Input schemas of Nick's read-only tools: the eleven of INITIAL_PROMPT.md §10,
+// and search_transactions over the published General Ledgers (0026).
 // Every input is validated with Zod even though the model produced it; the
 // tool definitions sent to the API are strict JSON schemas generated from the
 // same Zod objects. No schema accepts a tenant identifier — the business is
@@ -89,6 +90,17 @@ export const TOOL_INPUTS = {
       .boolean()
       .describe('true only after the user explicitly confirmed this export in a later message'),
   }),
+  search_transactions: z.strictObject({
+    query: z
+      .string()
+      .describe('Who or what to look for: a payee, vendor or customer name, or words from the bank description, e.g. "Meta" or "Restaurant Depot"'),
+    period: z
+      .string()
+      .nullable()
+      .describe(
+        'Period as start_end in ISO dates. A range longer than a month adds up every published month inside it (at most 12), e.g. 2026-01-01_2026-09-30 for this year so far. Null uses the period selected on the page, or the newest published month.',
+      ),
+  }),
 } as const;
 
 export type ToolName = keyof typeof TOOL_INPUTS;
@@ -122,6 +134,8 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
     'Call this to compare two published periods of the Profit & Loss or Balance Sheet: both periods side by side with the change in amount and percent, computed by the server.',
   create_financial_export:
     'Sensitive. Creates a CSV export of a published statement and returns its download link. First call returns requires_confirmation; ask the user to confirm and call again with confirmed: true only after they do.',
+  search_transactions:
+    'Call this when the user asks how much they paid a vendor or payee, how much a customer paid them, or to find specific transactions ("how much did I pay Meta?", "¿cuánto le pagué a Restaurant Depot?"). Searches the transactions behind the Profit & Loss accounts, from the General Ledgers the firm published. Returns what was paid (cost and expense accounts) and what was received (income accounts) separately, with totals, counts, the split by account and by payee, and the latest matching transactions — all computed by the server. Never add paid and received together.',
 };
 
 type JsonSchema = Record<string, unknown>;
@@ -180,6 +194,7 @@ const TOOL_MODULE: Partial<Record<ToolName, PortalModule>> = {
   compare_financial_periods: 'bookkeeping',
   get_overview_metrics: 'bookkeeping',
   get_expense_breakdown: 'bookkeeping',
+  search_transactions: 'bookkeeping',
   get_income_tax_status: 'income_taxes',
   get_sales_tax_status: 'sales_taxes',
 };

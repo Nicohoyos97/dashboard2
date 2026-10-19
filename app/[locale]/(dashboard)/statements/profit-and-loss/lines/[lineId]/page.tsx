@@ -2,7 +2,7 @@
 // General Ledger (0026). The page the P&L links to for accounts that are not
 // expenses — sales, other income — since the statement itself shows account
 // totals only and Expenses is where cost and expense accounts open.
-import { CheckCircle2, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, Download } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
@@ -13,11 +13,10 @@ import { PortalPage } from '@/components/portal/PortalPage';
 import { Link } from '@/i18n/navigation';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadLedgerDetail, loadLedgerTransactions } from '@/lib/ledger/load';
+import { loadLineLedger } from '@/lib/ledger/load';
 import { formatCents } from '@/lib/money';
-import { loadPortalEntitySettings, loadPublishedReport, loadReportLines } from '@/lib/portal/load';
+import { loadPortalEntitySettings } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
-import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
 import { formatPeriod } from '@/lib/utils/dates';
 
@@ -41,18 +40,9 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
   if (!settings.modules.bookkeeping) notFound();
 
   // The line names its statement; RLS returns it only from a published one.
-  const { data: line } = await supabase
-    .from('financial_statement_lines')
-    .select('id, report_id, account_name')
-    .eq('id', lineId)
-    .eq('business_entity_id', entity.id)
-    .maybeSingle();
-  const report = line ? await loadPublishedReport(supabase, entity.id, line.report_id) : null;
-  if (!line || !report || report.reportType !== 'profit_and_loss') notFound();
-
-  const roots = buildTree(await loadReportLines(supabase, entity.id, report.id));
-  const detail = (await loadLedgerDetail(supabase, entity.id, report, roots))?.lines.get(lineId) ?? null;
-  const txns = detail ? await loadLedgerTransactions(supabase, entity.id, [detail.accountId]) : [];
+  const found = await loadLineLedger(supabase, entity.id, lineId);
+  if (!found) notFound();
+  const { line, report, detail, txns } = found;
   const currency = report.currency;
   const period = formatPeriod(report.periodStart, report.periodEnd, locale);
   const back = `/statements/profit-and-loss?period=${periodParam({ start: report.periodStart, end: report.periodEnd })}`;
@@ -66,7 +56,7 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
   });
 
   return (
-    <PortalPage title={line.account_name} lede={`${entity.name} · ${period}`}>
+    <PortalPage title={line.accountName} lede={`${entity.name} · ${period}`}>
       <Link href={back} className="text-muted-foreground hover:text-ink mt-3 inline-flex items-center gap-1 text-[13.5px] font-medium">
         <ChevronLeft className="size-4" aria-hidden="true" />
         {tStatements('pnlTitle')}
@@ -86,10 +76,20 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
               <p className="text-ink mt-1 text-[26px] font-bold tabular-nums">{txns.length}</p>
             </div>
           </div>
-          <p className="text-muted-foreground mt-3 flex items-center gap-2 text-[13px]">
-            <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
-            {t('addsUp', { count: txns.length, total: formatCents(detail.totalCents, currency) })}
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted-foreground flex items-center gap-2 text-[13px]">
+              <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
+              {t('addsUp', { count: txns.length, total: formatCents(detail.totalCents, currency) })}
+            </p>
+            <a
+              href={`/api/ledger/lines/${line.id}/csv`}
+              download
+              className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13.5px] font-semibold"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              {t('downloadCsv')}
+            </a>
+          </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
             <section className="border-line bg-card self-start overflow-hidden rounded-2xl border">
