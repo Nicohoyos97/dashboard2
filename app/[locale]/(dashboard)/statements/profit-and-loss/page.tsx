@@ -19,6 +19,8 @@ import { StatementTable } from '@/components/statements/StatementTable';
 import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
+import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
+import { loadLedgerDetail } from '@/lib/ledger/load';
 import { loadPortalEntitySettings, loadPublishedReports, loadReportLines, loadReportLinesFor } from '@/lib/portal/load';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
@@ -67,7 +69,13 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
     },
   });
   const metrics = pnlMetrics(report, comparison.roots);
-  const expenses = leafItems(findSection(comparison.roots, PNL_SYNONYMS.operatingExpenses));
+  // The month's General Ledger: a click on an account opens its transactions.
+  const lineLinks = ledgerLinks(roots, await loadLedgerDetail(supabase, entity.id, report, roots));
+  const expenseLinks = compositionLinks(roots, lineLinks);
+  const expenses = leafItems(findSection(comparison.roots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
+    const href = expenseLinks.get(item.label);
+    return href ? { ...item, href } : item;
+  });
 
   // Trend across published periods (oldest → newest), only when there are ≥ 2.
   const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
@@ -96,7 +104,8 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
     sparkOf((m) => m[key].current?.cents ?? null, metrics[key].current?.cents ?? null, metrics[key].prior?.cents ?? null);
 
   const periodLabel = formatPeriod(report.periodStart, report.periodEnd, locale);
-  const basis = report.basis ? ` · ${t('basis')}: ${report.basis === 'accrual' ? t('basisAccrual') : t('basisCash')}` : '';
+  // Same rule as the PDF: a statement that prints no method is read on the one set at onboarding.
+  const basis = ` · ${t('basis')}: ${(report.basis ?? settings.accountingBasis) === 'accrual' ? t('basisAccrual') : t('basisCash')}`;
   const comparative = comparison.note
     ? ` · ${comparison.note}`
     : report.comparativeStart && report.comparativeEnd
@@ -168,6 +177,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
         <StatementTable
           roots={comparison.roots}
           meta={{ reportType: 'profit_and_loss', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
+          details={lineLinks}
           compare={{
             leading: comparison.leading,
             presets: comparison.presets,

@@ -6,6 +6,7 @@
 // list stays available either way. Filters, sort and paging live in the URL.
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { z } from 'zod';
 
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { MonthlySpendChart } from '@/components/charts/MonthlySpendChart';
@@ -74,6 +75,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   // published: a client with a P&L for every month and one stray bank statement
   // was shown that single bank month and nothing else.
   const pnlReports = reports.filter((report) => report.reportType === 'profit_and_loss');
+  // The account a click on the P&L or the Overview asked to open.
+  const lineParam = z.string().uuid().safeParse(params.line);
   if (pnlReports.length > 0) {
     return (
       <PnlExpensesView
@@ -81,6 +84,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         entity={entity}
         reports={pnlReports}
         period={typeof params.period === 'string' ? params.period : undefined}
+        line={lineParam.success ? lineParam.data : undefined}
         locale={locale}
         today={todayIn(settings.timezone)}
       />

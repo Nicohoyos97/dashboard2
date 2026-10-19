@@ -50,6 +50,8 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
   await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published');
   // Tenders cascade with their report.
   await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
+  // Accounts and transactions cascade with their ledger.
+  await admin.from('general_ledgers').delete().eq('document_version_id', versionId).neq('status', 'published');
   // A payment confirmation owns its payment rows, not the obligation they
   // settle; without this, reprocessing one stacked a second payment.
   await admin.from('tax_payments').delete().eq('document_version_id', versionId).is('published_at', null);

@@ -34,6 +34,8 @@ async function publishedDerivedCount(supabase: Db, versionIds: string[]): Promis
   const counts = await Promise.all([
     supabase.from('financial_reports').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).eq('status', 'published'),
     supabase.from('bank_statements').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).eq('status', 'published'),
+    supabase.from('sales_reports').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).eq('status', 'published'),
+    supabase.from('general_ledgers').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).eq('status', 'published'),
     supabase.from('tax_obligations').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).not('published_at', 'is', null),
     supabase.from('tax_payments').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).not('published_at', 'is', null),
     supabase.from('payroll_obligations').select('id', { count: 'exact', head: true }).in('document_version_id', versionIds).not('published_at', 'is', null),

@@ -130,9 +130,10 @@ Every reuse and design decision is recorded, dated, in `docs/ASSUMPTIONS.md`
    closing band — in a headless Chromium (`puppeteer-core` +
    `@sparticuz/chromium`), because the standard is written in CSS and its
    reference implementation is HTML. `pdf-lib` then clears the running header
-   and footer from the cover. The cover's analysis paragraph is derived in
-   TypeScript from printed totals only (`lib/reports/report-analysis.ts`); no
-   model writes it. The Expenses page and Nick's `create_financial_export` are
+   and footer from the cover. The cover follows the firm's P&L Cover Letter
+   Template (2026-10-18): its text is fixed wording filled with the statement's
+   period, basis and date, and the KPI cards read printed totals; no model
+   writes any of it. The Expenses page and Nick's `create_financial_export` are
    still CSV-only, and say so rather than offering a format they cannot produce.
 
 ---

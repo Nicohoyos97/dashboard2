@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 
 import { inputClass } from '@/components/admin/ui';
 import { useNickSelection } from '@/components/chat/NickContext';
+import { Link, useRouter } from '@/i18n/navigation';
 
 import { CompareSelector, type CompareProps } from './CompareSelector';
 import { LineDrawer } from './LineDrawer';
@@ -36,6 +37,9 @@ export type StatementMeta = {
 };
 
 type Flat = { node: StatementNode; parent: StatementNode | null; visible: boolean };
+
+/** Where a line's transactions live, when the month's General Ledger carries them. Keyed by line id. */
+export type LineDetails = Record<string, { href: string; count: number }>;
 
 function flatten(
   nodes: StatementNode[],
@@ -72,22 +76,33 @@ export function StatementTable({
   roots,
   meta,
   compare,
+  details = {},
 }: {
   roots: StatementNode[];
   meta: StatementMeta;
   /** Absent when the statement has nothing comparable to offer. */
   compare?: CompareProps;
+  /** Lines whose transactions can be opened: a click goes there instead of the drawer. */
+  details?: LineDetails;
 }) {
   const t = useTranslations('Statements');
+  const tLedger = useTranslations('Ledger');
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [hideZero, setHideZero] = useState(false);
   const [selected, setSelected] = useState<Flat | null>(null);
   const nick = useNickSelection();
   const select = (node: StatementNode, parent: StatementNode | null) => {
+    const detail = details[node.id];
+    if (detail) {
+      router.push(detail.href);
+      return;
+    }
     setSelected({ node, parent, visible: true });
     nick?.setLine({ id: node.id, name: node.accountName });
   };
+  const hasDetails = Object.keys(details).length > 0;
 
   const rows = useMemo(() => {
     const out: Flat[] = [];
@@ -169,6 +184,8 @@ export function StatementTable({
         </button>
       </div>
 
+      {hasDetails && <p className="text-muted-foreground -mt-1 mb-3 text-[13px]">{tLedger('clickHint')}</p>}
+
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[13.5px]">
           <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
@@ -218,9 +235,25 @@ export function StatementTable({
                       ) : (
                         <span className="inline-block size-5" aria-hidden="true" />
                       )}
-                      <span className={strong ? 'text-ink font-semibold' : 'text-ink'}>
-                        {node.accountName}
-                      </span>
+                      {details[node.id] ? (
+                        <span className="flex flex-wrap items-baseline gap-x-2.5">
+                          <Link
+                            href={details[node.id]?.href ?? ''}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-ink hover:text-blue"
+                          >
+                            {node.accountName}
+                          </Link>
+                          <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[12.5px]">
+                            {tLedger('transactions', { count: details[node.id]?.count ?? 0 })}
+                            <ChevronRight className="size-3.5" aria-hidden="true" />
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={strong ? 'text-ink font-semibold' : 'text-ink'}>
+                          {node.accountName}
+                        </span>
+                      )}
                     </span>
                   </td>
                   <td

@@ -8,7 +8,7 @@ import { cache } from 'react';
 
 import { FIRM_ONLY_DOCUMENT_TYPES } from '@/lib/documents/types';
 import { insightKey } from '@/lib/insights/periods';
-import type { LineRow, ReportRow } from '@/lib/reports/types';
+import type { AccountingBasis, LineRow, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
 
 import { withAccountLabels } from './account-label';
@@ -213,6 +213,8 @@ export type PortalEntitySettings = {
   timezone: string;
   industry: string | null;
   logoUrl: string | null;
+  /** The method the firm set at onboarding; a statement that prints none is read on it. */
+  accountingBasis: AccountingBasis;
 };
 
 /**
@@ -226,7 +228,7 @@ export const loadPortalEntitySettings = cache(async function loadPortalEntitySet
 ): Promise<PortalEntitySettings> {
   const { data, error } = await supabase
     .from('business_entities')
-    .select('currency, sales_tax_enabled, enabled_modules, timezone, industry, logo_url')
+    .select('currency, sales_tax_enabled, enabled_modules, timezone, industry, logo_url, accounting_basis')
     .eq('id', entityId)
     .single();
   if (error || !data) throw readError('portal_entity_read_failed');
@@ -237,6 +239,7 @@ export const loadPortalEntitySettings = cache(async function loadPortalEntitySet
     timezone: data.timezone,
     industry: data.industry,
     logoUrl: data.logo_url,
+    accountingBasis: data.accounting_basis === 'accrual' ? 'accrual' : 'cash',
   };
 });
 

@@ -23,6 +23,8 @@ import { todayIn } from '@/lib/utils/timezone';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
+import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
+import { loadLedgerDetail } from '@/lib/ledger/load';
 import { MAX_INSIGHTS, type PnlInput } from '@/lib/insights/types';
 import {
   loadPortalEntitySettings,
@@ -253,7 +255,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     MAX_INSIGHTS + INSIGHT_PERIODS,
     dismissedInsights,
   );
-  const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses));
+  // Each bar opens its account's transactions on Expenses when the month has a General Ledger.
+  const expenseLinks = currentPnlReport
+    ? compositionLinks(currentRoots, ledgerLinks(currentRoots, await loadLedgerDetail(supabase, entity.id, currentPnlReport, currentRoots)))
+    : new Map<string, string>();
+  const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
+    const href = expenseLinks.get(item.label);
+    return href ? { ...item, href } : item;
+  });
   const priorLabel = priorRange?.label ?? selected.label;
   // A statement's comparative column names its own period; when it does not, say
   // so rather than borrowing the previous period's name.

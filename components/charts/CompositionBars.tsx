@@ -1,10 +1,14 @@
 'use client';
 
+import { ChevronRight } from 'lucide-react';
+
+import { Link } from '@/i18n/navigation';
 import { CATEGORICAL } from '@/lib/charts/palette';
 
 import { fullMoney } from './format';
 
-export type CompositionItem = { label: string; cents: number };
+/** `href`: where the account's transactions open, when the month's General Ledger carries them. */
+export type CompositionItem = { label: string; cents: number; href?: string };
 
 // Share of a total as horizontal bars (magnitude, low → high is obvious from
 // length; color only carries identity, fixed order, ≤ 5 classes + Other).
@@ -13,7 +17,7 @@ export function CompositionBars({ items, currency, otherLabel }: { items: Compos
   const sorted = [...items].filter((i) => i.cents > 0).sort((a, b) => b.cents - a.cents);
   const top = sorted.slice(0, CATEGORICAL.length - 1);
   const rest = sorted.slice(CATEGORICAL.length - 1);
-  const rows = rest.length > 0 ? [...top, { label: otherLabel, cents: rest.reduce((s, i) => s + i.cents, 0) }] : top;
+  const rows: CompositionItem[] = rest.length > 0 ? [...top, { label: otherLabel, cents: rest.reduce((s, i) => s + i.cents, 0) }] : top;
   const total = rows.reduce((s, r) => s + r.cents, 0);
   if (total === 0) return null;
 
@@ -26,7 +30,14 @@ export function CompositionBars({ items, currency, otherLabel }: { items: Compos
             <div className="flex items-center justify-between gap-3">
               <span className="text-ink flex min-w-0 items-center gap-2 font-medium">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: CATEGORICAL[i] }} aria-hidden="true" />
-                <span className="truncate">{r.label}</span>
+                {r.href ? (
+                  <Link href={r.href} className="hover:text-blue inline-flex min-w-0 items-center gap-0.5">
+                    <span className="truncate">{r.label}</span>
+                    <ChevronRight className="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <span className="truncate">{r.label}</span>
+                )}
               </span>
               <span className="text-muted-foreground shrink-0 tabular-nums">
                 {fullMoney(r.cents, currency)} · {pct}%

@@ -11,13 +11,10 @@ import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { loadPortalEntitySettings, loadPublishedReport, loadReportLines } from '@/lib/portal/load';
-import { leafItems } from '@/lib/portal/statement-page';
 import { RATE_LIMITS, consumeRateLimit } from '@/lib/rate-limit';
 import { ReportRenderError, statementPdf, statementPdfFilename } from '@/lib/reports/pdf';
-import { PNL_SYNONYMS } from '@/lib/reports/pnl';
 import { reportAssets } from '@/lib/reports/report-assets';
 import { buildReportInput } from '@/lib/reports/report-input';
-import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
 import { todayIn } from '@/lib/utils/timezone';
@@ -56,20 +53,16 @@ export async function GET(request: Request, context: { params: Promise<{ reportI
     ? 'es'
     : 'en';
   const roots = buildTree(lines);
-  const expenses =
-    report.reportType === 'profit_and_loss'
-      ? leafItems(findSection(roots, PNL_SYNONYMS.operatingExpenses))
-      : [];
 
   let pdf: Uint8Array;
   try {
     pdf = await statementPdf({
       ...buildReportInput({
-        report,
+        // A statement that prints no method is read on the one set at onboarding.
+        report: { ...report, basis: report.basis ?? settings.accountingBasis },
         roots,
         entityName: entity.name,
         locale,
-        expenses,
         today: todayIn(settings.timezone),
       }),
       assets: await reportAssets(),

@@ -114,7 +114,7 @@ export async function syncDocumentStatus(supabase: Db, versionId: string): Promi
     .maybeSingle();
   if (!doc || doc.status === 'published') return;
 
-  const [reports, statements, sales, taxes, payroll] = await Promise.all([
+  const [reports, statements, sales, taxes, payroll, ledgers] = await Promise.all([
     supabase
       .from('financial_reports')
       .select('reconciliation')
@@ -126,6 +126,7 @@ export async function syncDocumentStatus(supabase: Db, versionId: string): Promi
       .from('payroll_obligations')
       .select('reconciliation')
       .eq('document_version_id', versionId),
+    supabase.from('general_ledgers').select('reconciliation').eq('document_version_id', versionId),
   ]);
   const derived = [
     ...(reports.data ?? []),
@@ -133,6 +134,7 @@ export async function syncDocumentStatus(supabase: Db, versionId: string): Promi
     ...(sales.data ?? []),
     ...(taxes.data ?? []),
     ...(payroll.data ?? []),
+    ...(ledgers.data ?? []),
   ];
   const passed = (row: { reconciliation: unknown }) =>
     parseReconciliation(row.reconciliation)?.passed === true;

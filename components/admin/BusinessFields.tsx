@@ -196,6 +196,7 @@ export function BusinessFields({
             <option value="cash">{t('basisCash')}</option>
             <option value="accrual">{t('basisAccrual')}</option>
           </select>
+          <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('accountingBasisHelp')}</p>
         </div>
         <div>
           <label htmlFor={id('currency')} className={labelClass}>

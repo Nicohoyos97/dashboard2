@@ -13,6 +13,7 @@ export const INGESTION_ERROR_CODES = [
   'page_out_of_range',
   'csv_unparseable',
   'csv_mapping_invalid',
+  'ledger_unrecognized',
 ] as const;
 
 export type IngestionErrorCode = (typeof INGESTION_ERROR_CODES)[number];
@@ -28,6 +29,7 @@ const MESSAGES: Record<IngestionErrorCode, string> = {
   page_out_of_range: 'The model referenced a page that was not part of the request',
   csv_unparseable: 'The CSV could not be parsed (a header row and at least one data row are required)',
   csv_mapping_invalid: 'The proposed CSV column mapping does not match the file headers',
+  ledger_unrecognized: 'The file is not a QuickBooks General Ledger export in the expected layout',
 };
 
 export class IngestionError extends Error {

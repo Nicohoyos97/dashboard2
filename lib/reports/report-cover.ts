@@ -1,6 +1,7 @@
-// Page 1 of every client report: the cover letter (KILL-PDF.md §Document
-// structure 1). Letterhead, the RE: line, the derived analysis, four KPI cards
-// and the signature block pinned to the bottom.
+// Page 1 of every client report: the cover letter, laid out after the firm's
+// P&L Cover Letter Template (KILL-PDF.md §Document structure 1). Letterhead,
+// date, client, the document · period · basis line, the letter, four KPI
+// cards, the signature block pinned to the bottom and the enclosure footer.
 //
 // Every string that came from an uploaded document or a client-set name is
 // escaped before it reaches the markup.
@@ -22,14 +23,23 @@ export type CoverInput = {
   labels: ReportLabels;
   assets: ReportAssets;
   entityName: string;
-  title: string;
-  periodLabel: string;
-  basisLabel: string;
-  basisExplained: string;
   dateLabel: string;
-  analysis: readonly string[];
+  /** Document · period · basis, in the letter's language. */
+  heading: string;
+  /** What is enclosed, for when, on what basis, and what it summarizes. */
+  intro: string;
+  enclosure: string;
   kpis: readonly KpiCard[];
 };
+
+/** "Prepared by Hoyos Baker · Nicolas Hoyos Restrepo, Account Specialist" — the cover and every statement page. */
+export function preparedBy(labels: ReportLabels): string {
+  return fillTemplate(labels.footerLeft, {
+    firm: FIRM.name,
+    signer: FIRM.signer,
+    role: FIRM.signerRole,
+  });
+}
 
 function kpiCard(card: KpiCard): string {
   const background = card.highlight ? `background: ${BRAND.cardHighlight};` : '';
@@ -42,18 +52,6 @@ function kpiCard(card: KpiCard): string {
 
 export function coverSection(input: CoverInput): string {
   const t = input.labels;
-  const intro = fillTemplate(t.intro, {
-    title: input.title,
-    company: input.entityName,
-    period: input.periodLabel,
-    basisExplained: input.basisExplained,
-  });
-  const re = fillTemplate(t.re, {
-    title: input.title,
-    period: input.periodLabel,
-    basis: input.basisLabel,
-  });
-
   return `<section class="cover">
   <div class="letterhead">
     <img class="letterhead-logo" src="${input.assets.logo}" alt="${escapeHtml(FIRM.name)}">
@@ -64,24 +62,27 @@ export function coverSection(input: CoverInput): string {
   </div>
   <div class="letterhead-bar"></div>
   <p class="cover-date">${escapeHtml(input.dateLabel)}</p>
-  <div class="cover-to">
-    <p class="cover-company">${escapeHtml(input.entityName)}</p>
-    <p class="cover-attn">${escapeHtml(t.attn)}</p>
+  <p class="cover-company">${escapeHtml(input.entityName)}</p>
+  <p class="cover-heading">${escapeHtml(input.heading)}</p>
+  <div class="cover-body">
+    <p class="cover-p">${escapeHtml(t.salutation)}</p>
+    <p class="cover-p">${escapeHtml(input.intro)}</p>
+    <p class="cover-p">${escapeHtml(t.review)}</p>
   </div>
-  <p class="cover-re">${escapeHtml(re)}</p>
-  <p class="cover-p">${escapeHtml(t.salutation)}</p>
-  <p class="cover-p">${escapeHtml(intro)}</p>
   <div class="kpis">${input.kpis.map(kpiCard).join('')}</div>
-  ${input.analysis.map((line) => `<p class="cover-p">${escapeHtml(line)}</p>`).join('\n  ')}
-  <p class="cover-p">${escapeHtml(t.closing)}</p>
+  <p class="cover-p cover-closing">${escapeHtml(t.closing)}</p>
   <div class="signature">
-    <p class="cover-p signature-sincerely">${escapeHtml(t.sincerely)}</p>
+    <p class="signature-sincerely">${escapeHtml(t.sincerely)}</p>
     <img class="signature-image" src="${input.assets.signature}" alt="">
     <div class="signature-rule"></div>
     <p class="signature-name">${escapeHtml(FIRM.signer)}</p>
-    <p class="signature-role">${escapeHtml(`${FIRM.signerRole} · ${FIRM.name}`)}</p>
-    <p class="signature-contact">${escapeHtml(`Tel: ${FIRM.tel}`)}</p>
-    <p class="signature-contact">Email: <a href="mailto:${FIRM.email}">${escapeHtml(FIRM.email)}</a></p>
+    <p class="signature-detail">${escapeHtml(`${FIRM.signerRole} · ${FIRM.name}`)}</p>
+    <p class="signature-detail">${escapeHtml(`Tel: ${FIRM.tel}`)}</p>
+    <p class="signature-detail">Email: <a href="mailto:${FIRM.email}">${escapeHtml(FIRM.email)}</a></p>
+  </div>
+  <div class="cover-footer">
+    <span>${escapeHtml(preparedBy(t))}</span>
+    <span>${escapeHtml(input.enclosure)}</span>
   </div>
 </section>`;
 }

@@ -1,13 +1,12 @@
 // Everything the report document needs, derived from one published statement.
-// Pure: no database, no filesystem, no clock of its own. The route supplies the
-// expense leaves (that read is server-only) and the brand assets.
+// Pure: no database, no filesystem, no clock of its own. The route supplies
+// today's date and the brand assets.
 import { formatIsoDate } from '@/lib/utils/dates';
 
 import { LIABILITIES_AND_EQUITY, balanceSheetMetrics } from './balance-sheet';
 import { pnlMetrics } from './pnl';
-import { type ExpenseItem, balanceAnalysis, pnlAnalysis } from './report-analysis';
 import type { KpiCard } from './report-cover';
-import { reportMoney, reportNumber, reportPercent } from './report-format';
+import { fillTemplate, reportMoney, reportNumber } from './report-format';
 import type { Bands, ReportHtmlInput, StatementColumn } from './report-html';
 import { type ReportLabels, reportLabels } from './report-labels';
 import { findTotal } from './sections';
@@ -22,8 +21,6 @@ export type ReportDocumentInput = {
   roots: readonly LineNode[];
   entityName: string;
   locale: string;
-  /** Expense leaves for the "led by" clause; empty for a balance sheet. */
-  expenses: readonly ExpenseItem[];
   /** The letter's date as ISO `YYYY-MM-DD`, already resolved in the business's
    *  time zone — a report dated in UTC is dated tomorrow for half the day. */
   today: string;
@@ -57,8 +54,8 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
   const isBalance = report.reportType === 'balance_sheet';
   const money = (cents: number | null) => reportMoney(cents, report.currency);
   const plain = (cents: number | null) => reportNumber(cents);
-  const basisLabel = report.basis === 'cash' ? t.basisCash : t.basisAccrual;
-  const basisExplained = report.basis === 'cash' ? t.basisCashExplained : t.basisAccrualExplained;
+  const cash = report.basis === 'cash';
+  const basisLabel = cash ? t.basisCash : t.basisAccrual;
 
   const columns: StatementColumn[] = [
     {
@@ -80,8 +77,6 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
 
   let bands: Bands;
   let kpis: KpiCard[];
-  let analysis: string[];
-  const ctx = { labels: t, locale, money, percent: (v: number | null) => reportPercent(v) };
 
   if (isBalance) {
     const metrics = balanceSheetMetrics(report, roots);
@@ -98,7 +93,6 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
       card(t.kpiEquity, metrics.totalEquity, money),
       card(t.kpiWorkingCapital, metrics.workingCapital, money, true),
     ];
-    analysis = balanceAnalysis(metrics, ctx);
   } else {
     const metrics = pnlMetrics(report, roots);
     bands = {
@@ -111,14 +105,26 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
       card(t.kpiExpenses, metrics.operatingExpenses, money),
       card(t.kpiNetIncome, metrics.netIncome, money, true),
     ];
-    analysis = pnlAnalysis(metrics, input.expenses, ctx);
   }
+
+  const period = periodLabel(report, locale);
+  // A balance sheet is read as of the day it closes, whatever range it was published with.
+  const asOf = formatIsoDate(report.periodEnd, locale, LONG_DATE);
+  const documentName = isBalance ? t.balanceDocument : t.pnlDocument;
+  const intro = fillTemplate(isBalance ? t.introBalance : t.introPnl, {
+    document: documentName,
+    company: input.entityName,
+    period,
+    date: asOf,
+    basis: cash ? t.basisCashPhrase : t.basisAccrualPhrase,
+  });
+  const summary = isBalance ? t.summaryBalance : cash ? t.summaryCash : t.summaryAccrual;
 
   return {
     labels: t,
     entityName: input.entityName,
     title: isBalance ? t.balanceSheet : t.profitAndLoss,
-    periodLabel: periodLabel(report, locale),
+    periodLabel: period,
     basisLabel,
     currency: report.currency,
     roots,
@@ -127,9 +133,14 @@ export function buildReportInput(input: ReportDocumentInput): Omit<ReportHtmlInp
     format: plain,
     formatTotal: money,
     cover: {
-      basisExplained,
       dateLabel: formatIsoDate(input.today, locale, LONG_DATE),
-      analysis,
+      heading: fillTemplate(t.coverLine, {
+        document: documentName,
+        period: isBalance ? fillTemplate(t.asOf, { date: asOf }) : period,
+        basis: basisLabel,
+      }),
+      intro: `${intro} ${summary}`,
+      enclosure: fillTemplate(t.enclosure, { document: documentName }),
       kpis,
     },
   };

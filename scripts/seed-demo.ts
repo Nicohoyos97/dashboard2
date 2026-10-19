@@ -11,6 +11,7 @@
 // Runs with the service role from .env.local. Every figure below is invented:
 // the business name carries "(Demo)" and the firm-facing client is
 // "Demo Client", so a seeded row can never be mistaken for a real one.
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { createClient } from '@supabase/supabase-js';
@@ -81,15 +82,38 @@ const CATEGORIES = [
   { name: 'Utilities', kind: 'operating' as const, is_fixed: false, vendor: 'FPL', monthly: 720 },
 ];
 
+/** What guard_document_delete counts as a published figure; payments before the obligations they settle. */
+const DERIVED_TABLES = [
+  'tax_payments',
+  'tax_obligations',
+  'payroll_obligations',
+  'reminders',
+  'sales_reports',
+  'bank_statements',
+  'financial_reports',
+] as const;
+
 async function removeDemo(admin: Db): Promise<void> {
-  const { data: entity } = await admin.from('business_entities').select('id').eq('name', DEMO_BUSINESS).maybeSingle();
-  if (entity) {
+  // Every business by that name, not maybeSingle(): with two of them it returns
+  // none, so each run deleted the user, kept the business and stranded another
+  // copy (five had piled up by 2026-10-19).
+  const { data: entities } = await admin.from('business_entities').select('id').eq('name', DEMO_BUSINESS);
+  for (const entity of entities ?? []) {
     // The rows cascade from the business; the files in the bucket do not.
     const { data: versions } = await admin.from('document_versions').select('storage_path').eq('business_entity_id', entity.id);
     const paths = (versions ?? []).map((v) => v.storage_path).filter((path): path is string => Boolean(path));
     if (paths.length > 0) await admin.storage.from('documents').remove(paths);
-    // Everything tenant-scoped cascades from the business row.
-    await admin.from('business_entities').delete().eq('id', entity.id);
+    // guard_document_delete (0020/0022) refuses a document while published
+    // figures derive from it, and the cascade from the business goes through
+    // it — so those figures go first. Unchecked, this failed silently and left
+    // the old business behind every run since the demo gained its PDFs.
+    for (const table of DERIVED_TABLES) {
+      const { error } = await admin.from(table).delete().eq('business_entity_id', entity.id);
+      if (error) throw new Error(`Could not clear ${table}: ${error.message}`);
+    }
+    // Everything else tenant-scoped cascades from the business row.
+    const { error } = await admin.from('business_entities').delete().eq('id', entity.id);
+    if (error) throw new Error(`Could not remove "${DEMO_BUSINESS}": ${error.message}`);
     console.log(`Removed "${DEMO_BUSINESS}" and all of its data.`);
   }
   const { data: profile } = await admin.from('profiles').select('id').eq('email', DEMO_EMAIL).maybeSingle();
@@ -97,8 +121,9 @@ async function removeDemo(admin: Db): Promise<void> {
     await admin.auth.admin.deleteUser(profile.id);
     console.log(`Removed ${DEMO_EMAIL}.`);
   }
-  const { data: client } = await admin.from('clients').select('id').eq('name', DEMO_CLIENT).maybeSingle();
-  if (client) await admin.from('clients').delete().eq('id', client.id);
+  const { data: clients } = await admin.from('clients').select('id').eq('name', DEMO_CLIENT);
+  const clientIds = (clients ?? []).map((c) => c.id);
+  if (clientIds.length > 0) await admin.from('clients').delete().in('id', clientIds);
 }
 
 async function main(): Promise<void> {
@@ -204,14 +229,17 @@ async function main(): Promise<void> {
     spendByMonth.set(month.key, spend);
   }
 
-  // ── monthly P&L ──────────────────────────────────
+  // ── monthly P&L and its General Ledger ─────────────────────────────────────
+  // The ledger draws from its own sequence, so the figures seeded after it stay what they were.
+  const ledgerRandom = rng(20_261_019);
   for (const [index, month] of period.entries()) {
     const revenue = revenueByMonth.get(month.key) ?? 0;
     const priorMonth = (index > 0 ? period[index - 1] : null) ?? null;
     const priorRevenue = priorMonth ? (revenueByMonth.get(priorMonth.key) ?? null) : null;
     const spend = spendByMonth.get(month.key) ?? new Map<string, number>();
     const priorSpend = priorMonth ? (spendByMonth.get(priorMonth.key) ?? null) : null;
-    await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, spend, priorSpend, publishedAt });
+    const lines = await insertPnl(admin, { entityId, month, priorMonth, revenue, priorRevenue, spend, priorSpend, publishedAt });
+    await insertDemoLedger(admin, { entityId, month, lines, publishedAt, random: ledgerRandom });
   }
 
   // ── the register: one point-of-sale report per month ───────────────────────
@@ -429,7 +457,7 @@ async function insertPnl(
     priorSpend: ReadonlyMap<string, number> | null;
     publishedAt: string;
   },
-): Promise<void> {
+): Promise<{ name: string; current: number }[]> {
   const { entityId, month, priorMonth, revenue, priorRevenue, spend, priorSpend, publishedAt } = input;
   const cogs = money(revenue * 0.31);
   const priorCogs = priorRevenue === null ? null : money(priorRevenue * 0.31);
@@ -466,7 +494,7 @@ async function insertPnl(
   const netIncome = money(grossProfit - opex);
   const priorNet = priorGross === null || priorOpex === null ? null : money(priorGross - priorOpex);
 
-  await insertLines(admin, entityId, report.id, [
+  const lines: Line[] = [
     {
       name: 'Income', section: 'income', isSection: true, current: null, prior: null,
       children: [
@@ -497,7 +525,99 @@ async function insertPnl(
       ],
     },
     { name: 'Net Income', isTotal: true, current: netIncome, prior: priorNet },
-  ]);
+  ];
+  await insertLines(admin, entityId, report.id, lines);
+  // The account lines, for the month's General Ledger to add up to.
+  return lines.flatMap((section) =>
+    (section.children ?? []).flatMap((child) => (child.isTotal || child.current === null ? [] : [{ name: child.name, current: child.current }])),
+  );
+}
+
+// ── the month's General Ledger ───────────────────────────────────────────────
+// What a click on a P&L account opens (0026): invented transactions, one
+// account per P&L line, adding up to the line to the cent. The ledger carries
+// only the P&L accounts — a real one also has bank, card and equity, which the
+// client never sees anyway.
+type LedgerPart = { day: number; type: string; name: string | null; description: string; weight: number };
+const CHECKING = 'Chase Checking ••4410';
+const CARD = 'Amex ••1007';
+const part = (day: number, type: string, name: string | null, description: string, weight = 1): LedgerPart => ({ day, type, name, description, weight });
+const LEDGER_PLAN: Record<string, LedgerPart[]> = {
+  Catering: [part(6, 'Deposit', 'Lakeview Dental', 'Staff breakfast'), part(14, 'Deposit', 'Westside Realty', 'Open house platters'), part(25, 'Deposit', 'Brickell Yoga Studio', 'Event catering, 40 guests')],
+  'Coffee beans': [part(2, 'Bill', 'Cafe Import Co', 'Ethiopia Yirgacheffe, 60 kg'), part(9, 'Bill', 'Cafe Import Co', 'Colombia Huila, 50 kg'), part(16, 'Bill', 'Cafe Import Co', 'Brazil Cerrado, 60 kg'), part(23, 'Bill', 'Northside Roasters', 'Espresso blend, 25 lb')],
+  'Milk & dairy': [3, 10, 17, 24].map((day) => part(day, 'Credit Card Expense', 'Valley Dairy Supply', 'Weekly delivery')),
+  Rent: [part(1, 'Expense', 'Brickell Property LLC', 'Monthly rent', 12), part(1, 'Expense', 'Brickell Property LLC', 'Common area maintenance', 1)],
+  Payroll: [part(15, 'Expense', 'Gusto Payroll', 'Payroll, 1st to 15th'), part(28, 'Expense', 'Gusto Payroll', 'Payroll, 16th to month end')],
+  Marketing: [part(5, 'Credit Card Expense', 'Meta Platforms', 'Instagram ads', 3), part(12, 'Credit Card Expense', 'Print Hub', 'Flyers, 500 copies', 1), part(19, 'Credit Card Expense', 'Meta Platforms', 'Instagram ads', 3), part(28, 'Credit Card Expense', 'Meta Platforms', 'Instagram ads', 2)],
+  Software: [part(1, 'Credit Card Expense', 'Toast POS', 'POS subscription', 7), part(1, 'Credit Card Expense', '7shifts', 'Staff scheduling', 2), part(3, 'Credit Card Expense', 'Google Workspace', '2 users', 1)],
+  'Professional services': [part(8, 'Bill', 'Harbor Legal Group', 'Lease review', 3), part(22, 'Bill', 'Brightline IT Support', 'Wi-Fi repair', 1)],
+  Utilities: [part(12, 'Expense', 'FPL', 'Electricity', 4), part(18, 'Expense', 'City Water Dept.', 'Water and sewer', 1), part(20, 'Expense', null, 'COMCAST BUSINESS 8155 INTERNET', 1)],
+};
+
+/** `total` cents split by weight, the last part taking the rounding so the sum is exact. */
+function splitCents(total: number, weights: readonly number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  const out = weights.map((w) => Math.floor((total * w) / sum));
+  out[out.length - 1] = total - out.slice(0, -1).reduce((s, c) => s + c, 0);
+  return out;
+}
+
+async function insertDemoLedger(
+  admin: Db,
+  input: { entityId: string; month: { start: string; end: string }; lines: { name: string; current: number }[]; publishedAt: string; random: () => number },
+): Promise<void> {
+  const { entityId, month, lines, publishedAt, random } = input;
+  const lastDay = Number(month.end.slice(8));
+  const on = (day: number) => `${month.start.slice(0, 8)}${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+
+  const { data: ledger, error } = await admin
+    .from('general_ledgers')
+    .insert({
+      business_entity_id: entityId, period_start: month.start, period_end: month.end, basis: 'accrual', currency: CURRENCY,
+      company_name: DEMO_BUSINESS, status: 'published', published_at: publishedAt,
+      reconciliation: { passed: true, checks: [], lowConfidence: { count: 0, refs: [] } },
+    })
+    .select('id')
+    .single();
+  if (error || !ledger) throw new Error(`insert ledger: ${error?.message}`);
+
+  const accounts = [];
+  const txns = [];
+  for (const [position, line] of lines.entries()) {
+    const cents = Math.round(line.current * 100);
+    let parts: (LedgerPart & { cents: number })[];
+    if (line.name === 'Coffee & food sales') {
+      // A card payout every day, and the sales tax inside them moved out by the bookkeeper at month end.
+      const tax = Math.round(cents * 0.065);
+      const days = Array.from({ length: lastDay }, (_, i) => part(i + 1, 'Deposit', null, 'TOAST PAYOUT CARD SALES', 0.8 + random() * 0.4));
+      const amounts = splitCents(cents + tax, days.map((d) => d.weight));
+      parts = [
+        ...days.map((d, i) => ({ ...d, cents: amounts[i] ?? 0 })),
+        { ...part(lastDay, 'Journal Entry', null, ''), cents: -tax },
+      ];
+    } else {
+      const plan = LEDGER_PLAN[line.name] ?? [part(15, 'Expense', null, line.name)];
+      const amounts = splitCents(cents, plan.map((p) => p.weight * (0.9 + random() * 0.2)));
+      parts = plan.map((p, i) => ({ ...p, cents: amounts[i] ?? 0 }));
+    }
+    const accountId = randomUUID();
+    accounts.push({
+      id: accountId, ledger_id: ledger.id, business_entity_id: entityId, name: line.name, position,
+      printed_total: line.current, total: line.current, transaction_count: parts.length, client_visible: true,
+    });
+    for (const p of parts) {
+      txns.push({
+        ledger_id: ledger.id, account_id: accountId, business_entity_id: entityId, txn_date: on(p.day), txn_type: p.type,
+        num: p.type === 'Journal Entry' ? String(1000 + position) : null, name: p.name, description: p.description || null,
+        split: p.type === 'Journal Entry' ? null : p.type === 'Credit Card Expense' ? CARD : CHECKING,
+        amount: p.cents / 100, position: txns.length,
+      });
+    }
+  }
+  const { error: accountError } = await admin.from('ledger_accounts').insert(accounts);
+  if (accountError) throw new Error(`insert ledger accounts: ${accountError.message}`);
+  const { error: txError } = await admin.from('ledger_transactions').insert(txns);
+  if (txError) throw new Error(`insert ledger transactions: ${txError.message}`);
 }
 
 /** The balance sheet `step` months before the latest: the figures drift back from the closing ones. */

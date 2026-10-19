@@ -8,6 +8,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 
 import { getAnthropic } from '@/lib/ai/client';
+import { looksLikeGeneralLedger, persistGeneralLedger } from '@/lib/ledger/persist';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 
@@ -88,7 +89,20 @@ async function processJob(admin: Admin, job: Job): Promise<JobOutcome> {
     await setJob(admin, job.id, { step: 'classify' });
 
     let summary: PersistSummary;
-    if (version.mime_type === 'application/pdf') {
+    const text = version.mime_type === 'application/pdf' ? null : buffer.toString('utf8');
+    // A General Ledger CSV uploaded as a plain CSV export is still a ledger: it
+    // is recognised by its title lines and typed before it is read.
+    if (text !== null && doc.document_type === 'csv_transactions' && looksLikeGeneralLedger(text)) {
+      await admin.from('documents').update({ document_type: 'general_ledger' }).eq('id', doc.id);
+      doc.document_type = 'general_ledger';
+    }
+
+    if (doc.document_type === 'general_ledger') {
+      if (text === null) throw new WorkerError('ledger_needs_csv');
+      await setJob(admin, job.id, { step: 'extract' });
+      const documentPeriod = doc.period_start && doc.period_end ? { start: doc.period_start, end: doc.period_end } : null;
+      summary = await persistGeneralLedger(admin, ctx, text, documentPeriod);
+    } else if (version.mime_type === 'application/pdf') {
       const output = await runPdfPipeline({
         pdf: buffer,
         anthropic: getAnthropic(),
@@ -99,7 +113,7 @@ async function processJob(admin: Admin, job: Job): Promise<JobOutcome> {
       await fillDocumentMeta(admin, doc, output);
     } else {
       await setJob(admin, job.id, { step: 'extract' });
-      summary = await persistCsv(admin, ctx, buffer.toString('utf8'), getAnthropic());
+      summary = await persistCsv(admin, ctx, text ?? '', getAnthropic());
     }
 
     await setJob(admin, job.id, { step: 'reconcile' });

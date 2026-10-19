@@ -14,6 +14,9 @@ export const DOCUMENT_TYPES = [
   'income_tax_document',
   'payroll_summary',
   'csv_transactions',
+  // The QuickBooks General Ledger behind a month's P&L (0026): the
+  // transactions a client sees when they click a P&L account.
+  'general_ledger',
   'other_report',
 ] as const;
 
@@ -25,8 +28,11 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 // figures — net sales, tips, tax collected — not the file. Publishing it is
 // still what makes those figures visible, so this is a visibility rule on the
 // document row alone, enforced in the database by 0025 and mirrored here so
-// the firm's "preview as client" shows what the client actually has.
-export const FIRM_ONLY_DOCUMENT_TYPES: readonly DocumentType[] = ['sales_report'];
+// the firm's "preview as client" shows what the client actually has. A General
+// Ledger follows the same rule (0026): its P&L accounts reach the client as
+// transactions, and the file — bank, card and equity accounts included — stays
+// with the firm.
+export const FIRM_ONLY_DOCUMENT_TYPES: readonly DocumentType[] = ['sales_report', 'general_ledger'];
 
 export function isClientVisibleDocumentType(documentType: string): boolean {
   return !(FIRM_ONLY_DOCUMENT_TYPES as readonly string[]).includes(documentType);

@@ -22,31 +22,39 @@ body { font-family: 'Archivo', Arial, sans-serif; color: ${BRAND.body}; -webkit-
 a { color: ${BRAND.blue}; text-decoration: none; }
 
 /* ── Cover letter ──────────────────────────────────────────────────────── */
-.cover { break-after: page; display: flex; flex-direction: column; min-height: 9.33in; padding: 0.23in 0.1in 0.2in; }
-.letterhead { display: flex; align-items: center; justify-content: space-between; }
-.letterhead-logo { height: 58px; mix-blend-mode: multiply; }
-.letterhead-right { text-align: right; display: flex; flex-direction: column; gap: 2px; }
-.letterhead-tagline { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: ${BRAND.navy}; }
-.letterhead-site { font-size: 12px; font-weight: 500; }
-.letterhead-bar { height: 3px; border-radius: 2px; margin: 4px 0 34px; background: linear-gradient(90deg, ${BRAND.navy} 0 38%, ${BRAND.blue} 38% 100%); }
-.cover-date { margin: 0 0 26px; font-size: 14px; color: ${BRAND.secondary}; }
-.cover-to { margin: 0 0 24px; font-size: 14.5px; line-height: 1.55; }
-.cover-company { margin: 0; font-weight: 700; color: ${BRAND.navy}; }
-.cover-attn { margin: 0; color: ${BRAND.secondary}; }
-.cover-re { margin: 0 0 22px; font-size: 14.5px; font-weight: 700; color: ${BRAND.navy}; }
-.cover-p { margin: 0 0 16px; font-size: 14.5px; line-height: 1.62; text-wrap: pretty; }
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 22px; }
+/* The template's page is 0.75in 0.9in 0.55in; the print margin already gives 0.62in 0.8in 0.55in,
+   so the cover adds the difference. It fills the page so the enclosure footer sits on the bottom margin,
+   a hair short of the full 9.83in so rounding never pushes it onto a second page. */
+.cover { break-after: page; display: flex; flex-direction: column; min-height: 9.8in; padding: 0.13in 0.1in 0; }
+.letterhead { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; }
+.letterhead-logo { height: 52px; mix-blend-mode: multiply; }
+.letterhead-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.letterhead-tagline { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: ${BRAND.navy}; }
+.letterhead-site { font-size: 12px; color: ${BRAND.secondary}; }
+/* Navy 38% / blue 62% as two solid blocks: Chromium prints the hard-stop gradient as a PDF shading that
+   macOS Preview draws entirely navy. */
+.letterhead-bar { height: 3px; flex-shrink: 0; display: flex; }
+.letterhead-bar::before { content: ''; flex: 0 0 38%; background: ${BRAND.navy}; }
+.letterhead-bar::after { content: ''; flex: 1; background: ${BRAND.blue}; }
+.cover-date { margin: 0; padding: 26px 0 14px; font-size: 13.5px; color: ${BRAND.secondary}; }
+.cover-company { margin: 0; font-size: 14px; font-weight: 700; color: ${BRAND.navy}; }
+.cover-heading { margin: 0; padding-top: 22px; font-size: 14.5px; font-weight: 700; color: ${BRAND.navy}; }
+.cover-body { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }
+.cover-p { margin: 0; font-size: 14.5px; line-height: 1.62; text-wrap: pretty; }
+.cover-closing { padding-top: 22px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding-top: 22px; }
 /* space-between so the figures stay on one line across all four cards even when a label wraps ('Capital de Trabajo'). */
-.kpi { border: 1px solid ${BRAND.cardBorder}; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 3px; }
-.kpi-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: ${BRAND.secondary}; }
-.kpi-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.signature { margin-top: auto; display: flex; flex-direction: column; gap: 2px; }
-.signature-sincerely { margin-bottom: 6px; }
-.signature-image { width: 180px; margin: 0 0 2px -6px; mix-blend-mode: multiply; }
-.signature-rule { width: 265px; height: 1px; background: ${BRAND.navy}; margin-bottom: 8px; }
-.signature-name { margin: 0; font-size: 14.5px; font-weight: 700; color: ${BRAND.navy}; }
-.signature-role { margin: 0; font-size: 14px; color: ${BRAND.secondary}; }
-.signature-contact { margin: 0; font-size: 14px; color: ${BRAND.secondary}; }
+.kpi { border: 1px solid ${BRAND.cardBorder}; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+.kpi-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${BRAND.secondary}; }
+.kpi-value { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.signature { margin-top: auto; flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 20px; }
+.signature-sincerely { margin: 0; padding-bottom: 16px; font-size: 13.5px; }
+.signature-image { width: 175px; mix-blend-mode: multiply; }
+.signature-rule { width: 230px; height: 1px; background: ${BRAND.navy}; margin-bottom: 5px; }
+.signature-name { margin: 0; font-size: 13.5px; font-weight: 700; color: ${BRAND.navy}; }
+.signature-detail { margin: 0; font-size: 12px; color: ${BRAND.secondary}; }
+.signature-detail a { color: inherit; }
+.cover-footer { flex-shrink: 0; display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; padding-top: 10px; border-top: 1px solid ${BRAND.footerRule}; font-size: 10.5px; color: ${BRAND.secondary}; }
 
 /* ── Statement pages ───────────────────────────────────────────────────── */
 .statement-head { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 3px solid ${BRAND.navy}; padding-bottom: 10px; margin-bottom: 0; }

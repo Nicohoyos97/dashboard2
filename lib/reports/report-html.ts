@@ -5,9 +5,9 @@
 // Puppeteer's own templates. Rows carry the KILL-PDF classes; the two banded
 // lines (the key subtotal and the closing figure) are identified by line id
 // from the metric models, never by matching text here.
-import { BRAND, FIRM } from './brand';
+import { BRAND } from './brand';
 import type { ReportAssets } from './report-assets';
-import { type CoverInput, coverSection } from './report-cover';
+import { type CoverInput, coverSection, preparedBy } from './report-cover';
 import { escapeHtml, fillTemplate } from './report-format';
 import type { ReportLabels } from './report-labels';
 import { fontFaces, reportStyles } from './report-styles';
@@ -31,10 +31,7 @@ export type ReportHtmlInput = {
   bands: Bands;
   format: (cents: number | null) => string;
   formatTotal: (cents: number | null) => string;
-  cover: Omit<
-    CoverInput,
-    'labels' | 'assets' | 'entityName' | 'title' | 'periodLabel' | 'basisLabel'
-  >;
+  cover: Omit<CoverInput, 'labels' | 'assets' | 'entityName'>;
 };
 
 function amountCell(text: string, cents: number | null, extra: string): string {
@@ -100,7 +97,7 @@ export function reportHtml(input: ReportHtmlInput): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(documentTitle(input))}</title><style>${reportStyles(input.assets)}</style></head>
 <body>
-${coverSection({ ...input.cover, labels: t, assets: input.assets, entityName: input.entityName, title: input.title, periodLabel: input.periodLabel, basisLabel: input.basisLabel })}
+${coverSection({ ...input.cover, labels: t, assets: input.assets, entityName: input.entityName })}
 <section class="statement">
   <header class="statement-head">
     <div>
@@ -137,11 +134,7 @@ export function headerTemplate(input: ReportHtmlInput): string {
 
 /** KILL-PDF §5. Page numbering spans the whole document, cover included. */
 export function footerTemplate(input: ReportHtmlInput): string {
-  const left = fillTemplate(input.labels.footerLeft, {
-    firm: FIRM.name,
-    signer: FIRM.signer,
-    role: FIRM.signerRole,
-  });
+  const left = preparedBy(input.labels);
   const right = fillTemplate(input.labels.footerRight, {
     basis: input.basisLabel,
     currency: input.currency,

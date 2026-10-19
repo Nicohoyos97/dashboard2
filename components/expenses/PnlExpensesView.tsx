@@ -10,9 +10,11 @@ import { TrendBars } from '@/components/charts/TrendBars';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
+import { type LedgerAccountRow, LedgerAccountsTable } from '@/components/ledger/LedgerAccountsTable';
 import { PortalPage } from '@/components/portal/PortalPage';
 import { Link } from '@/i18n/navigation';
 import { logAccess } from '@/lib/audit/logAccess';
+import { type LedgerTxn, loadLedgerDetail, loadLedgerTransactions } from '@/lib/ledger/load';
 import { formatCents } from '@/lib/money';
 import { loadReportLinesFor } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
@@ -35,6 +37,7 @@ export async function PnlExpensesView({
   entity,
   reports,
   period,
+  line,
   locale,
   today,
 }: {
@@ -43,14 +46,17 @@ export async function PnlExpensesView({
   /** Published Profit & Loss reports, newest first; at least one. */
   reports: ReportRow[];
   period: string | undefined;
+  /** The P&L line the client clicked to get here, opened on arrival. */
+  line?: string | undefined;
   locale: string;
   /** todayIn(business timezone). */
   today: string;
 }) {
-  const [t, tStatements, tOverview] = await Promise.all([
+  const [t, tStatements, tOverview, tLedger] = await Promise.all([
     getTranslations('Expenses'),
     getTranslations('Statements'),
     getTranslations('Overview'),
+    getTranslations('Ledger'),
   ]);
   const report = selectReport(reports, period);
   if (!report) return null;
@@ -74,6 +80,15 @@ export async function PnlExpensesView({
   const trendMetrics = trendReports.map(metricsOf);
   const lines = pnlExpenseLines(roots);
   const operatingLines = lines.filter((line) => line.kind === 'operating');
+
+  // The month's General Ledger, when the firm published one: the transactions
+  // behind each account, for the lines whose figure they add up to exactly.
+  const ledger = await loadLedgerDetail(supabase, entity.id, report, roots);
+  const ledgerAccounts = ledger ? lines.flatMap((l) => ledger.lines.get(l.id)?.accountId ?? []) : [];
+  const ledgerTxns = new Map<string, LedgerTxn[]>();
+  for (const tx of await loadLedgerTransactions(supabase, entity.id, ledgerAccounts)) {
+    ledgerTxns.set(tx.accountId, [...(ledgerTxns.get(tx.accountId) ?? []), tx]);
+  }
   const largest = operatingLines[0] ?? lines[0] ?? null;
 
   const currency = report.currency;
@@ -198,6 +213,27 @@ export async function PnlExpensesView({
         <Section title={t('pnlTableTitle')} className="mt-6">
           {lines.length === 0 ? (
             <Muted text={t('pnlNoLines')} />
+          ) : ledger ? (
+            <>
+              <p className="text-muted-foreground -mt-2 mb-3 text-[13px]">{tLedger('expensesHint', { period: periodLabel })}</p>
+              <LedgerAccountsTable
+                currency={currency}
+                openId={line ?? null}
+                rows={lines.map((l): LedgerAccountRow => {
+                  const accountId = ledger.lines.get(l.id)?.accountId;
+                  return {
+                    id: l.id,
+                    label: l.label,
+                    group: l.group,
+                    kindLabel: kindLabel[l.kind],
+                    cents: l.cents,
+                    share: shareOf(l.cents, totals[l.kind]),
+                    txns: accountId ? (ledgerTxns.get(accountId) ?? null) : null,
+                  };
+                })}
+              />
+              <p className="text-muted-foreground mt-3 text-[12.5px]">{t('pnlShareNote')}</p>
+            </>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13.5px]">

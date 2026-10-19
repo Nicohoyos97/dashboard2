@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { logAccess } from '@/lib/audit/logAccess';
 import { requireFirmAdmin } from '@/lib/auth/requireFirm';
 import type { ActionResult } from '@/lib/firm/result';
+import { type LedgerBlocker, reviewLedger } from '@/lib/ledger/review';
 import { notifyEntityMembers } from '@/lib/notifications/notify';
 import { createClient } from '@/lib/supabase/server';
 
@@ -33,7 +34,8 @@ export type PublishBlocker =
   | 'publishBlockedStatus'
   | 'publishBlockedReconciliation'
   | 'publishBlockedLowConfidence'
-  | 'publishBlockedNoData';
+  | 'publishBlockedNoData'
+  | LedgerBlocker;
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
@@ -93,7 +95,7 @@ export async function publishBlockers(
   // out the same way and it bit the same way: a sales report's own passing
   // reconciliation was never read, and once the obligation stopped carrying its
   // version (see persistSalesReport) the document had nothing derived at all.
-  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }, { data: sales }, { data: payments }] =
+  const [{ data: reports }, { data: statements }, { data: taxes }, { data: payroll }, { data: sales }, { data: payments }, { data: ledgers }] =
     await Promise.all([
       supabase
         .from('financial_reports')
@@ -116,6 +118,10 @@ export async function publishBlockers(
         .select('id, reconciliation')
         .eq('document_version_id', reviewVersionId),
       supabase.from('tax_payments').select('id').eq('document_version_id', reviewVersionId),
+      supabase
+        .from('general_ledgers')
+        .select('id, business_entity_id, period_start, period_end, basis, reconciliation')
+        .eq('document_version_id', reviewVersionId),
     ]);
   const derived = [
     ...(reports ?? []),
@@ -123,6 +129,7 @@ export async function publishBlockers(
     ...(taxes ?? []),
     ...(payroll ?? []),
     ...(sales ?? []),
+    ...(ledgers ?? []),
   ];
   // A payment confirmation produces payment rows and no obligation of its own
   // — the obligation belongs to the return (lib/ingestion/tax-roles.ts). A
@@ -143,6 +150,13 @@ export async function publishBlockers(
       .lt('confidence', CONFIDENCE_THRESHOLD)
       .is('corrected_at', null);
     if ((count ?? 0) > 0) blockers.add('publishBlockedLowConfidence');
+  }
+
+  // A ledger also has to explain the published P&L of its month, to the cent
+  // (lib/ledger/review.ts) — its own arithmetic passing is not enough.
+  for (const ledger of ledgers ?? []) {
+    const { blocker } = await reviewLedger(supabase, ledger);
+    if (blocker) blockers.add(blocker);
   }
 
   return { blockers: [...blockers], versionId: reviewVersionId, entityId: doc.business_entity_id };
@@ -187,10 +201,33 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     }
   }
 
+  // A ledger replaces the month's previous one, and only the accounts behind a
+  // P&L line become readable by the client (0026). Both happen before the
+  // stamp: the published-period index allows one published ledger per month.
+  const { data: ledgers } = await supabase
+    .from('general_ledgers')
+    .select('id, business_entity_id, period_start, period_end, basis')
+    .eq('document_version_id', versionId);
+  for (const ledger of ledgers ?? []) {
+    const { match } = await reviewLedger(supabase, ledger);
+    const visible = (match?.lines ?? []).flatMap((line) => (line.status === 'matched' && line.accountId ? [line.accountId] : []));
+    await supabase.from('ledger_accounts').update({ client_visible: false }).eq('ledger_id', ledger.id);
+    if (visible.length > 0) await supabase.from('ledger_accounts').update({ client_visible: true }).in('id', visible);
+    await supabase
+      .from('general_ledgers')
+      .update({ status: 'superseded', published_at: null, published_by: null, superseded_by: ledger.id })
+      .eq('business_entity_id', ledger.business_entity_id)
+      .eq('period_start', ledger.period_start)
+      .eq('period_end', ledger.period_end)
+      .eq('status', 'published')
+      .neq('id', ledger.id);
+  }
+
   const publishRow = { status: 'published', published_at: now, published_by: firm.userId };
   // tax_obligations / tax_payments / payroll_obligations have no `status`
   // column: publication is `published_at` alone, and every reader gates on it.
   const stamp = { published_at: now, published_by: firm.userId };
+  await supabase.from('general_ledgers').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('financial_reports').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('bank_statements').update(publishRow).eq('document_version_id', versionId);
   await supabase.from('sales_reports').update(publishRow).eq('document_version_id', versionId);
@@ -278,6 +315,7 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
     await supabase.from('financial_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
     await supabase.from('bank_statements').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
     await supabase.from('sales_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
+    await supabase.from('general_ledgers').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
     // These three carry publication in `published_at` alone — no status column.
     await supabase.from('tax_obligations').update(unstamp).in('document_version_id', versionIds);
     await supabase.from('tax_payments').update(unstamp).in('document_version_id', versionIds);

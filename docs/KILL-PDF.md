@@ -21,13 +21,15 @@ Binding spec for ALL client-facing financial documents (Profit & Loss, Balance S
 - Team sender: "Hoyos Baker Team — Business Services Department" · info@hoyosbaker.com
 
 ## Document structure (every report)
-1. **Page 1 — Cover letter** (padding 0.85in 0.9in):
-   - Letterhead: logo left (~58px), right column "BOOKKEEPING & ACCOUNTING" + hoyosbaker.com
-   - 3px gradient bar under letterhead: navy 38% / blue 62%
-   - Date, client block (bold navy name + "Attn: Management"), bold navy RE: line with period + basis
-   - 1–2 short analysis paragraphs (14.5px, line-height 1.62)
+1. **Page 1 — Cover letter**, after `P&L Cover Letter Template.dc.html` (padding 0.75in 0.9in 0.55in):
+   - Letterhead: logo left (~52px), right column "BOOKKEEPING & ACCOUNTING" (11px, 700, letter-spacing 0.12em) + hoyosbaker.com
+   - 3px bar under letterhead: navy 38% / blue 62% — two solid blocks, not a hard-stop gradient (macOS Preview draws that gradient all navy)
+   - Date, client name (bold navy), then one bold navy line: document · period · basis ("Balance Sheet · As of …" for a snapshot)
+   - "To Whom It May Concern:", the enclosure paragraph (what, for whom, for when, on what basis, and what it summarizes — cash and accrual say different things), the review request (14.5px, line-height 1.62)
    - 4 KPI cards in a grid (1px `#DDE6F2` border, radius 6px; last card = key figure, bg `#F4F8FD`, negative in red)
+   - The compilation paragraph: compiled from the client's information, not audited or reviewed
    - Signature block pinned at bottom-left: "Sincerely," + signature image + 1px navy rule + name (bold navy) + "Account Specialist · Hoyos Baker" + Tel / Email on separate lines
+   - Footer row: "Prepared by …" left, "Enclosure: {document}" right, 1px `#E3EAF4` top border, 10.5px
 2. **Statement pages** (padding ~0.55–0.65in 0.8in):
    - First statement page header: company name (16px, 800, navy), report title (26px, 700, blue), period + basis (13px), logo right (~46px), 3px navy bottom border
    - Continuation pages: compact header (13px company, 12px "Report (continued) · period · basis"), logo 46px, 2px navy border

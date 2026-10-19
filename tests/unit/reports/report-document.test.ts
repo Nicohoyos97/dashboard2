@@ -13,7 +13,6 @@ import {
   pnlRows,
   report,
   resetPositions,
-  withoutPrior,
 } from './fixtures';
 
 const TODAY = '2026-09-04';
@@ -34,7 +33,6 @@ const build = (
     roots: buildTree(rows),
     entityName: 'Sabor a Cafe Steak House Inc.',
     locale: 'en',
-    expenses: [],
     today: TODAY,
     ...extra,
   });
@@ -90,30 +88,30 @@ describe('report input (KILL-PDF cover + bands)', () => {
     ]);
   });
 
-  it('derives the analysis from printed totals and drops what is missing', () => {
-    const withExpenses = build(pnlRows(), report(), {
-      expenses: [
-        { label: 'Payroll Expenses', cents: 16_008_800 },
-        { label: 'Entertainment', cents: 5_421_900 },
-        { label: 'Rent', cents: 200_000 },
-      ],
-    });
-    const [income, expenses, result] = withExpenses.cover.analysis;
-    expect(income).toContain('total income of $15,000.00');
-    expect(income).toContain('gross profit of $11,000.00');
-    expect(income).toContain('(73.3% margin)');
-    // Only the two largest expense leaves, in the locale's list style.
-    expect(expenses).toContain('Payroll Expenses ($160,088.00) and Entertainment ($54,219.00)');
-    expect(expenses).not.toContain('Rent');
-    expect(result).toBe('The period closed with a net income of $4,000.00.');
-
-    const noTotals = build(withoutPrior(amend(pnlRows(), 'L15', { currentCents: null })));
-    expect(noTotals.cover.analysis.some((s) => s.includes('net income'))).toBe(false);
+  it('fills the cover letter template from the period, basis and date of the statement', () => {
+    const cover = build(pnlRows(), report({ basis: 'cash' })).cover;
+    expect(cover.heading).toBe(
+      'Profit & Loss Statement · January 1, 2026 – June 30, 2026 · Cash Basis',
+    );
+    expect(cover.intro).toBe(
+      'Please find enclosed the Profit & Loss Statement for Sabor a Cafe Steak House Inc. for the period January 1, 2026 – June 30, 2026, prepared on a cash basis. The statement summarizes the income received and expenses paid during the period, based on the bank records, receipts and information provided by your business.',
+    );
+    expect(cover.enclosure).toBe('Enclosure: Profit & Loss Statement');
   });
 
-  it('says net loss when the closing figure is negative', () => {
-    const input = build(amend(pnlRows(), 'L15', { currentCents: -1_054_231 }));
-    expect(input.cover.analysis.at(-1)).toBe('The period closed with a net loss of $(10,542.31).');
+  it('describes an accrual statement in accrual terms, article included', () => {
+    const { intro, heading } = build().cover;
+    expect(heading).toContain('· Accrual Basis');
+    expect(intro).toContain('prepared on an accrual basis.');
+    expect(intro).toContain('the income earned and expenses incurred during the period');
+  });
+
+  it('dates a balance sheet as of the day it closes', () => {
+    const cover = build(balanceRows(), balanceReport()).cover;
+    expect(cover.heading).toBe('Balance Sheet · As of June 30, 2026 · Accrual Basis');
+    expect(cover.intro).toContain('the Balance Sheet for Sabor a Cafe Steak House Inc. as of June 30, 2026');
+    expect(cover.intro).toContain('what the business owns, what it owes and the owner’s equity');
+    expect(cover.enclosure).toBe('Enclosure: Balance Sheet');
   });
 
   it('dates the letter on the day the business is having, not UTC', () => {
@@ -127,7 +125,11 @@ describe('report input (KILL-PDF cover + bands)', () => {
     const input = build(pnlRows(), report(), { locale: 'es' });
     expect(input.title).toBe('Estado de Resultados');
     expect(input.cover.kpis[0]?.label).toBe('Ingresos Totales');
-    expect(input.cover.analysis[0]).toContain('La empresa registró ingresos totales');
+    expect(input.cover.heading).toBe(
+      'Estado de Resultados · 1 de enero de 2026 – 30 de junio de 2026 · Base Devengada',
+    );
+    expect(input.cover.intro).toContain('Adjunto encontrarás el Estado de Resultados');
+    expect(input.cover.enclosure).toBe('Adjunto: Estado de Resultados');
   });
 });
 
@@ -167,12 +169,21 @@ describe('report HTML', () => {
     expect((html().match(/<th class="amount">/g) ?? []).length).toBe(2);
   });
 
-  it('carries the letterhead, the signature and the derived analysis', () => {
+  it('carries the letterhead, the letter, the signature and the enclosure', () => {
     const out = html();
     expect(out).toContain(ASSETS.logo);
     expect(out).toContain(ASSETS.signature);
+    expect(out).toContain('To Whom It May Concern:');
+    expect(out).toContain('has not been audited or reviewed');
     expect(out).toContain('Nicolas Hoyos Restrepo');
     expect(out).toContain('Account Specialist · Hoyos Baker');
-    expect(out).toContain('RE: Profit and Loss —');
+    expect(out).toContain('Prepared by Hoyos Baker · Nicolas Hoyos Restrepo, Account Specialist');
+    expect(out).toContain('Enclosure: Profit &amp; Loss Statement');
+  });
+
+  it('escapes a client-set business name on the cover', () => {
+    const out = html(pnlRows(), report(), { entityName: '<b>Co</b> & Sons' });
+    expect(out).not.toContain('<b>Co</b>');
+    expect(out).toContain('&lt;b&gt;Co&lt;/b&gt; &amp; Sons');
   });
 });

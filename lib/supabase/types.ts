@@ -1362,6 +1362,85 @@ export type Database = {
         }
         Relationships: []
       }
+      general_ledgers: {
+        Row: {
+          basis: string | null
+          business_entity_id: string
+          company_name: string | null
+          created_at: string
+          currency: string
+          document_version_id: string | null
+          id: string
+          period_end: string
+          period_start: string
+          published_at: string | null
+          published_by: string | null
+          reconciliation: Json | null
+          source: string
+          status: string
+          superseded_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          basis?: string | null
+          business_entity_id: string
+          company_name?: string | null
+          created_at?: string
+          currency?: string
+          document_version_id?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          published_at?: string | null
+          published_by?: string | null
+          reconciliation?: Json | null
+          source?: string
+          status?: string
+          superseded_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          basis?: string | null
+          business_entity_id?: string
+          company_name?: string | null
+          created_at?: string
+          currency?: string
+          document_version_id?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          published_at?: string | null
+          published_by?: string | null
+          reconciliation?: Json | null
+          source?: string
+          status?: string
+          superseded_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "general_ledgers_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "general_ledgers_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "general_ledgers_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "general_ledgers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_exports: {
         Row: {
           business_entity_id: string
@@ -1500,6 +1579,143 @@ export type Database = {
             columns: ["business_entity_id"]
             isOneToOne: false
             referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_accounts: {
+        Row: {
+          business_entity_id: string
+          client_visible: boolean
+          created_at: string
+          depth: number
+          id: string
+          ledger_id: string
+          name: string
+          parent_id: string | null
+          position: number
+          printed_total: number | null
+          total: number
+          transaction_count: number
+        }
+        Insert: {
+          business_entity_id: string
+          client_visible?: boolean
+          created_at?: string
+          depth?: number
+          id?: string
+          ledger_id: string
+          name: string
+          parent_id?: string | null
+          position: number
+          printed_total?: number | null
+          total?: number
+          transaction_count?: number
+        }
+        Update: {
+          business_entity_id?: string
+          client_visible?: boolean
+          created_at?: string
+          depth?: number
+          id?: string
+          ledger_id?: string
+          name?: string
+          parent_id?: string | null
+          position?: number
+          printed_total?: number | null
+          total?: number
+          transaction_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_accounts_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_accounts_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "general_ledgers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_accounts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          business_entity_id: string
+          created_at: string
+          description: string | null
+          id: string
+          ledger_id: string
+          name: string | null
+          num: string | null
+          position: number
+          split: string | null
+          txn_date: string
+          txn_type: string | null
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          business_entity_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ledger_id: string
+          name?: string | null
+          num?: string | null
+          position: number
+          split?: string | null
+          txn_date: string
+          txn_type?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          business_entity_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ledger_id?: string
+          name?: string | null
+          num?: string | null
+          position?: number
+          split?: string | null
+          txn_date?: string
+          txn_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_transactions_business_entity_id_fkey"
+            columns: ["business_entity_id"]
+            isOneToOne: false
+            referencedRelation: "business_entities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_transactions_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "general_ledgers"
             referencedColumns: ["id"]
           },
         ]
@@ -2282,10 +2498,22 @@ export type Database = {
         Args: { object_name: string }
         Returns: boolean
       }
+      document_type_is_client_visible: {
+        Args: { doc_type: string }
+        Returns: boolean
+      }
+      general_ledger_is_published: {
+        Args: { ledger: string }
+        Returns: boolean
+      }
       is_entity_member: { Args: { entity: string }; Returns: boolean }
       is_entity_owner: { Args: { entity: string }; Returns: boolean }
       is_firm_admin: { Args: never; Returns: boolean }
       is_firm_member: { Args: never; Returns: boolean }
+      ledger_account_is_client_visible: {
+        Args: { account: string }
+        Returns: boolean
+      }
       object_entity_id: { Args: { object_name: string }; Returns: string }
       portal_expense_summary: {
         Args: {

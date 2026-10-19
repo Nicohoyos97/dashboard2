@@ -10,6 +10,7 @@ import { BankReview } from '@/components/admin/review/BankReview';
 import { DocumentMetaForm } from '@/components/admin/review/DocumentMetaForm';
 import { PagesTable } from '@/components/admin/review/PagesTable';
 import { DeleteDocumentBar } from '@/components/admin/review/DeleteDocumentBar';
+import { LedgerReview } from '@/components/admin/review/LedgerReview';
 import { PublishBar } from '@/components/admin/review/PublishBar';
 import { SalesReportReview } from '@/components/admin/review/SalesReportReview';
 import { ReportHistory } from '@/components/admin/review/ReportHistory';
@@ -105,6 +106,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   ]);
 
   const canEdit = firm.role === 'master_admin';
+  const isLedger = doc.document_type === 'general_ledger';
   const versionNo = new Map((versions ?? []).map((v) => [v.id, v.version_no]));
   const dayFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const currency = doc.business_entities?.currency ?? 'USD';
@@ -160,20 +162,25 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
         </section>
         <section className={`${card} overflow-x-auto`}>
           <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('reviewPages')}</h2>
-          <PagesTable
-            pages={(pages ?? []).map((p) => ({
-              pageNumber: p.page_number,
-              kind: p.kind,
-              reportType: p.report_type,
-              periodStart: p.period_start,
-              periodEnd: p.period_end,
-              confidence: p.confidence,
-            }))}
-          />
+          {isLedger ? (
+            <p className="text-muted-foreground text-[14px]">{t('ledgerNoPages')}</p>
+          ) : (
+            <PagesTable
+              pages={(pages ?? []).map((p) => ({
+                pageNumber: p.page_number,
+                kind: p.kind,
+                reportType: p.report_type,
+                periodStart: p.period_start,
+                periodEnd: p.period_end,
+                confidence: p.confidence,
+              }))}
+            />
+          )}
         </section>
       </div>
 
-      {(reports ?? []).length === 0 && (statements ?? []).length === 0 && (
+      {/* A ledger says for itself whether anything was read (LedgerReview). */}
+      {!isLedger && (reports ?? []).length === 0 && (statements ?? []).length === 0 && (salesReports ?? []).length === 0 && (
         <p className="text-muted-foreground mt-6 text-[14px]">{t('noExtraction')}</p>
       )}
 
@@ -264,6 +271,8 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           );
         }),
       )}
+
+      {versionId && isLedger && <LedgerReview versionId={versionId} currency={currency} />}
 
       {(statements ?? []).map((s) => (
         <section key={s.id} className={`${card} mt-6`}>

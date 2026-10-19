@@ -14,7 +14,7 @@ import { DOCUMENT_TYPES } from '@/lib/documents/types';
 // never heard of the label. These read the migrations rather than the database
 // so they run without one.
 function constraintValues(pattern: RegExp): string[] {
-  const sql = ['0003_documents.sql', '0022_sales_reports.sql', '0023_document_pages_sales_report.sql']
+  const sql = ['0003_documents.sql', '0022_sales_reports.sql', '0023_document_pages_sales_report.sql', '0026_general_ledger.sql']
     .map((file) => readFileSync(`supabase/migrations/${file}`, 'utf8'))
     .join('\n');
   // The last definition wins, the way the migrations apply.
