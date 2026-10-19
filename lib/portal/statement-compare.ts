@@ -4,7 +4,7 @@ import { amountsByPath, hasAnyPrior, withComparison } from '@/lib/reports/compar
 import { comparableTo } from '@/lib/reports/series';
 import { type RelativePreset, presetChoices, presetOf } from '@/lib/reports/presets';
 import { buildTree } from '@/lib/reports/tree';
-import type { LineNode, ReportRow } from '@/lib/reports/types';
+import type { LineNode, LineRow, ReportRow } from '@/lib/reports/types';
 import { formatPeriod } from '@/lib/utils/dates';
 
 import { loadReportLines } from './load';
@@ -43,6 +43,14 @@ export type CompareResolution = {
  * length, and never the one already on screen. Comparing a month against a year
  * would produce numbers that mean nothing.
  */
+/** The published statement `requested` names, when it is comparable to `report`: what resolveComparison will set beside it. */
+export function chosenComparison(reports: ReportRow[], report: ReportRow, requested: string | undefined): ReportRow | undefined {
+  if (!requested) return undefined;
+  return comparableTo(reports, report).find(
+    (candidate) => candidate.id !== report.id && periodParam({ start: candidate.periodStart, end: candidate.periodEnd }) === requested,
+  );
+}
+
 export async function resolveComparison({
   supabase,
   entityId,
@@ -50,6 +58,7 @@ export async function resolveComparison({
   reports,
   roots,
   requested,
+  preloaded,
   locale,
   today,
   labels,
@@ -60,6 +69,8 @@ export async function resolveComparison({
   reports: ReportRow[];
   roots: LineNode[];
   requested: string | undefined;
+  /** Lines the page already read in its one batch (chosenComparison tells it which); the compared statement's are taken from here when present. */
+  preloaded?: ReadonlyMap<string, LineRow[]>;
   locale: string;
   /** todayIn(business timezone), so "last quarter" is the client's quarter. */
   today: string;
@@ -122,7 +133,7 @@ export async function resolveComparison({
     };
   }
 
-  const comparison = amountsByPath(buildTree(await loadReportLines(supabase, entityId, chosen.id)));
+  const comparison = amountsByPath(buildTree(preloaded?.get(chosen.id) ?? (await loadReportLines(supabase, entityId, chosen.id))));
   const compared = withComparison(roots, comparison);
   const chosenValue = periodParam({ start: chosen.periodStart, end: chosen.periodEnd });
   const chosenRange = { start: chosen.periodStart, end: chosen.periodEnd };

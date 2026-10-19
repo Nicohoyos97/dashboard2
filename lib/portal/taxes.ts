@@ -25,8 +25,11 @@ function readError(code: string): Error {
 
 const cents = (value: number | null): number | null => (value === null ? null : Math.round(value * 100));
 
+// The payments ride along with their obligation (tax_payments.obligation_id is
+// its only foreign key to it), so a tax page waits on one round trip, not two
+// in a row. RLS still decides which payments a client gets.
 const OBLIGATION_COLUMNS =
-  'id, tax_type, tax_year, period_start, period_end, due_date, filing_status, amount_estimated, amount_confirmed, amount_paid, amount_payable, taxable_sales, non_taxable_sales, tax_collected, status, confirmation_number, notes, source, document_version_id, page_number, tax_jurisdictions (name, level, code, filing_frequency)';
+  'id, tax_type, tax_year, period_start, period_end, due_date, filing_status, amount_estimated, amount_confirmed, amount_paid, amount_payable, taxable_sales, non_taxable_sales, tax_collected, status, confirmation_number, notes, source, document_version_id, page_number, tax_jurisdictions (name, level, code, filing_frequency), tax_payments (id, obligation_id, paid_on, amount, method, confirmation_number, document_version_id, page_number, published_at)';
 
 type JurisdictionRow = { name: string; level: string; code: string; filing_frequency: string | null } | null;
 
@@ -52,6 +55,7 @@ type ObligationRow = {
   document_version_id: string | null;
   page_number: number | null;
   tax_jurisdictions: JurisdictionRow;
+  tax_payments: PaymentRow[];
 };
 
 type PaymentRow = {
@@ -63,6 +67,7 @@ type PaymentRow = {
   confirmation_number: string | null;
   document_version_id: string | null;
   page_number: number | null;
+  published_at: string | null;
 };
 
 function statusOf(value: string): TaxStatus {
@@ -128,17 +133,6 @@ export async function loadTaxObligations(
     .limit(MAX_OBLIGATIONS);
   if (error) throw readError('portal_tax_obligations_read_failed');
   const rows = (data ?? []) as ObligationRow[];
-  if (rows.length === 0) return [];
-
-  const { data: paidData, error: paidError } = await supabase
-    .from('tax_payments')
-    .select('id, obligation_id, paid_on, amount, method, confirmation_number, document_version_id, page_number')
-    .eq('business_entity_id', entityId)
-    .not('published_at', 'is', null)
-    .in('obligation_id', rows.map((row) => row.id))
-    .order('paid_on');
-  if (paidError) throw readError('portal_tax_payments_read_failed');
-  const payments = (paidData ?? []) as PaymentRow[];
 
   return rows.map((row) => ({
     id: row.id,
@@ -162,8 +156,11 @@ export async function loadTaxObligations(
     documentVersionId: row.document_version_id,
     pageNumber: row.page_number,
     jurisdiction: jurisdictionOf(row.tax_jurisdictions),
-    payments: payments
-      .filter((payment) => payment.obligation_id === row.id)
+    // Published only, oldest first: a firm previewing as the client reads the
+    // unpublished ones too, and the client never sees them.
+    payments: (row.tax_payments ?? [])
+      .filter((payment) => payment.published_at !== null)
+      .sort((a, b) => a.paid_on.localeCompare(b.paid_on))
       .map<TaxPayment>((payment) => ({
         id: payment.id,
         paidOn: payment.paid_on,

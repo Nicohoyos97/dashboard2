@@ -50,7 +50,7 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
     resourceId: entity.id,
     businessEntityId: entity.id,
     metadata: { obligation_count: all.length },
-  });
+  }, { afterResponse: true });
 
   if (all.length === 0) {
     return (

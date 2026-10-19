@@ -19,7 +19,7 @@ export default async function ReportsLibraryPage() {
 
   const supabase = await createClient();
   const documents = await loadPublishedDocuments(supabase, entity.id);
-  await logAccess({ action: 'reports.library.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
+  await logAccess({ action: 'reports.library.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
 
   return (
     <PortalPage title={t('reportsPageTitle')} lede={t('reportsPageLede', { business: entity.name })}>

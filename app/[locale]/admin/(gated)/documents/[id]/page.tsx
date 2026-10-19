@@ -56,7 +56,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
     resourceType: 'document',
     resourceId: doc.id,
     businessEntityId: doc.business_entity_id,
-  });
+  }, { afterResponse: true });
 
   // The newest uploaded version, which is what the firm reviews next — not
   // necessarily the one the client is seeing. Same helper publishBlockers uses,

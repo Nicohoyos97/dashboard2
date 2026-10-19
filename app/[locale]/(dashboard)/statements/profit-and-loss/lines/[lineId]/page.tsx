@@ -36,11 +36,14 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
   if (!entity) notFound();
 
   const supabase = await createClient();
-  const settings = await loadPortalEntitySettings(supabase, entity.id);
+  // The module gate and the reads beside it: nothing is shown before the gate
+  // has answered. The line names its statement; RLS returns it only from a
+  // published one.
+  const [settings, found] = await Promise.all([
+    loadPortalEntitySettings(supabase, entity.id),
+    loadLineLedger(supabase, entity.id, lineId),
+  ]);
   if (!settings.modules.bookkeeping) notFound();
-
-  // The line names its statement; RLS returns it only from a published one.
-  const found = await loadLineLedger(supabase, entity.id, lineId);
   if (!found) notFound();
   const { line, report, detail, txns } = found;
   const currency = report.currency;
@@ -53,7 +56,7 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
     resourceId: report.id,
     businessEntityId: entity.id,
     metadata: { transaction_count: txns.length },
-  });
+  }, { afterResponse: true });
 
   return (
     <PortalPage title={line.accountName} lede={`${entity.name} · ${period}`}>

@@ -55,14 +55,23 @@ export async function loadPublishedLedgers(supabase: Db, entityId: string): Prom
   return data ?? [];
 }
 
-export async function loadLedgerDetail(
+type LedgerAccountRow = { id: string; name: string; parent_id: string | null; total: number; transaction_count: number };
+
+/** The month's published ledger and the accounts this client can read on it: the reads, before any matching. */
+export type LedgerAccounts = { ledger: PublishedLedger; accounts: LedgerAccountRow[] };
+
+/**
+ * The reads behind loadLedgerDetail. They need the statement's period and not
+ * its lines, so a page runs them beside loadReportLinesFor rather than after
+ * it; `published`, when the page already has it, saves the first of the two.
+ */
+export async function loadLedgerAccounts(
   supabase: Db,
   entityId: string,
-  report: ReportRow,
-  roots: readonly LineNode[],
-  /** Already loaded by a caller reading several months. */
+  report: Pick<ReportRow, 'reportType' | 'periodStart' | 'periodEnd'>,
+  /** Already loaded by a caller reading several months, or alongside the page's first reads. */
   published?: readonly PublishedLedger[],
-): Promise<LedgerDetail | null> {
+): Promise<LedgerAccounts | null> {
   if (report.reportType !== 'profit_and_loss') return null;
   const ledger = (published ?? (await loadPublishedLedgers(supabase, entityId))).find(
     (l) => l.period_start === report.periodStart && l.period_end === report.periodEnd,
@@ -76,11 +85,28 @@ export async function loadLedgerDetail(
     .eq('business_entity_id', entityId)
     .order('position');
   if (error) throw new Error('ledger_accounts_read_failed');
+  return { ledger, accounts: accounts ?? [] };
+}
 
-  const counts = new Map((accounts ?? []).map((a) => [a.id, a.transaction_count]));
+export async function loadLedgerDetail(
+  supabase: Db,
+  entityId: string,
+  report: ReportRow,
+  roots: readonly LineNode[],
+  /** Already loaded by a caller reading several months. */
+  published?: readonly PublishedLedger[],
+): Promise<LedgerDetail | null> {
+  return ledgerDetailFrom(await loadLedgerAccounts(supabase, entityId, report, published), roots);
+}
+
+/** The accounts matched against the statement on screen (match.ts). */
+export function ledgerDetailFrom(read: LedgerAccounts | null, roots: readonly LineNode[]): LedgerDetail | null {
+  if (!read) return null;
+  const { ledger, accounts } = read;
+  const counts = new Map(accounts.map((a) => [a.id, a.transaction_count]));
   const match = matchLedger(
     roots,
-    (accounts ?? []).map((a) => ({ id: a.id, name: a.name, parentId: a.parent_id, totalCents: toCents(a.total) })),
+    accounts.map((a) => ({ id: a.id, name: a.name, parentId: a.parent_id, totalCents: toCents(a.total) })),
   );
   const lines = new Map<string, LedgerLine>();
   for (const line of match.lines) {
@@ -108,16 +134,28 @@ export type LineLedger = {
  * Profit & Loss this client can read (RLS returns nothing else).
  */
 export async function loadLineLedger(supabase: Db, entityId: string, lineId: string): Promise<LineLedger | null> {
-  const { data: line } = await supabase
-    .from('financial_statement_lines')
-    .select('id, report_id, account_name')
-    .eq('id', lineId)
-    .eq('business_entity_id', entityId)
-    .maybeSingle();
-  const report = line ? await loadPublishedReport(supabase, entityId, line.report_id) : null;
-  if (!line || !report || report.reportType !== 'profit_and_loss') return null;
-  const roots = buildTree(await loadReportLines(supabase, entityId, report.id));
-  const detail = (await loadLedgerDetail(supabase, entityId, report, roots))?.lines.get(lineId) ?? null;
+  // The statement's period rides along with the line (one foreign key), so the
+  // ledger can be found beside the statement and its lines instead of after
+  // them: three waves where there were six round trips in a row.
+  const [{ data: line }, published] = await Promise.all([
+    supabase
+      .from('financial_statement_lines')
+      .select('id, report_id, account_name, financial_reports (report_type, period_start, period_end)')
+      .eq('id', lineId)
+      .eq('business_entity_id', entityId)
+      .maybeSingle(),
+    loadPublishedLedgers(supabase, entityId),
+  ]);
+  const period = line?.financial_reports;
+  if (!line || !period || period.report_type !== 'profit_and_loss') return null;
+  const [report, rows, accounts] = await Promise.all([
+    loadPublishedReport(supabase, entityId, line.report_id),
+    loadReportLines(supabase, entityId, line.report_id),
+    loadLedgerAccounts(supabase, entityId, { reportType: 'profit_and_loss', periodStart: period.period_start, periodEnd: period.period_end }, published),
+  ]);
+  // Published is checked here, not on the embed: the firm previewing as a client reads drafts too.
+  if (!report || report.reportType !== 'profit_and_loss') return null;
+  const detail = ledgerDetailFrom(accounts, buildTree(rows))?.lines.get(lineId) ?? null;
   const txns = detail ? await loadLedgerTransactions(supabase, entityId, detail.accountIds) : [];
   return { line: { id: line.id, accountName: line.account_name }, report, detail, txns };
 }

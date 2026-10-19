@@ -23,7 +23,7 @@ import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
 import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
-import { loadLedgerDetail } from '@/lib/ledger/load';
+import { ledgerDetailFrom, loadLedgerAccounts, loadPublishedLedgers } from '@/lib/ledger/load';
 import { MAX_INSIGHTS, type PnlInput } from '@/lib/insights/types';
 import {
   loadPortalEntitySettings,
@@ -34,7 +34,7 @@ import {
   loadReminders,
   loadReportLinesFor,
 } from '@/lib/portal/load';
-import { downloadItemsFor } from '@/lib/portal/downloads';
+import { DOWNLOAD_MENU_READ, downloadItemsFor } from '@/lib/portal/downloads';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
 import { leafItems } from '@/lib/portal/statement-page';
@@ -90,33 +90,52 @@ function metricDelta(metric: Metric | undefined, priorMetric: Metric | undefined
 }
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
-  const [t, locale, user, entity, params] = await Promise.all([
+  const [t, locale, user, entity, params, supabase] = await Promise.all([
     getTranslations('Overview'),
     getLocale(),
     getCurrentUser(),
     getCurrentEntity(),
     searchParams,
+    createClient(),
   ]);
 
-  let firstName = '';
-  if (user) {
-    const profileClient = await createClient();
-    const { data } = await profileClient.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
-    firstName = data?.full_name?.trim().split(/\s+/)[0] ?? '';
-  }
-
-  const greeting = firstName ? t('greeting', { name: firstName }) : t('greetingAnon');
+  // The same columns the layout reads for the avatar: an identical request is
+  // shared within a render instead of being sent twice.
+  const profileRead = user
+    ? supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle()
+    : Promise.resolve({ data: null });
+  const greetingFor = (fullName: string | null | undefined) => {
+    const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
+    return firstName ? t('greeting', { name: firstName }) : t('greetingAnon');
+  };
 
   if (!entity) {
+    const { data: profile } = await profileRead;
     return (
-      <OverviewShell greeting={greeting} subtitle={t('subtitlePending')}>
+      <OverviewShell greeting={greetingFor(profile?.full_name)} subtitle={t('subtitlePending')}>
         <OverviewEmpty title={t('pendingTitle')} body={t('pendingBody')} />
       </OverviewShell>
     );
   }
 
-  const supabase = await createClient();
-  const settings = await loadPortalEntitySettings(supabase, entity.id);
+  // Everything that needs only the business, in one wave: these used to wait
+  // on the profile and then on the settings, one round trip after another. The
+  // sales-tax-only client below uses only some of them; the rest cost a
+  // parallel read, not a wait.
+  const [{ data: profile }, settings, reports, bankStatements, documents, reminders, incomeTaxes, dismissedInsights, publishedLedgers] =
+    await Promise.all([
+      profileRead,
+      loadPortalEntitySettings(supabase, entity.id),
+      loadPublishedReports(supabase, entity.id),
+      loadPublishedBankStatements(supabase, entity.id),
+      // The layout reads the same newest few for its menu: one shared request.
+      loadPublishedDocuments(supabase, entity.id, DOWNLOAD_MENU_READ),
+      loadReminders(supabase, entity.id),
+      loadTaxObligations(supabase, entity.id, 'income'),
+      loadInsightDismissals(supabase, entity.id),
+      loadPublishedLedgers(supabase, entity.id),
+    ]);
+  const greeting = greetingFor(profile?.full_name);
 
   // Everything below reads the Profit & Loss, which a client who bought only
   // sales tax does not have: the period picker, the KPI cards and the charts
@@ -127,15 +146,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     return <SalesTaxOverview entity={entity} settings={settings} greeting={greeting} />;
   }
 
-  const [reports, bankStatements, documents, reminders, incomeTaxes, dismissedInsights] = await Promise.all([
-    loadPublishedReports(supabase, entity.id),
-    loadPublishedBankStatements(supabase, entity.id),
-    loadPublishedDocuments(supabase, entity.id),
-    loadReminders(supabase, entity.id),
-    loadTaxObligations(supabase, entity.id, 'income'),
-    loadInsightDismissals(supabase, entity.id),
-  ]);
-
   const defaultCurrencyStatements = bankStatements.filter((statement) => statement.currency === settings.currency);
   const periods = availablePeriods(reports, defaultCurrencyStatements, { locale }).filter((period) =>
     period.sources.some((source) => source === 'pnl' || source === 'bank'),
@@ -145,7 +155,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const downloadItems = downloadItemsFor(documents, locale);
 
   if (!selected) {
-    await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
+    await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
     return (
       <OverviewShell
         greeting={greeting}
@@ -186,7 +196,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const lineReportIds = [
     ...new Set([currentPnlReport?.id, priorPnlReport?.id, balanceReport?.id, ...pnlTrendReports.map((report) => report.id)].filter((id): id is string => id !== undefined)),
   ];
-  const linesById = await loadReportLinesFor(supabase, entity.id, lineReportIds);
+  // The month's ledger needs only the statement's period, so its accounts are
+  // read beside the lines rather than after them.
+  const [linesById, ledgerAccounts] = await Promise.all([
+    loadReportLinesFor(supabase, entity.id, lineReportIds),
+    currentPnlReport ? loadLedgerAccounts(supabase, entity.id, currentPnlReport, publishedLedgers) : Promise.resolve(null),
+  ]);
   const linesOf = (report: ReportRow | null) => (report ? (linesById.get(report.id) ?? []) : []);
   const currentLines = linesOf(currentPnlReport);
   const priorLines = linesOf(priorPnlReport);
@@ -256,7 +271,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   );
   // Each bar opens its account's transactions on Expenses when the month has a General Ledger.
   const expenseLinks = currentPnlReport
-    ? compositionLinks(currentRoots, ledgerLinks(currentRoots, await loadLedgerDetail(supabase, entity.id, currentPnlReport, currentRoots)))
+    ? compositionLinks(currentRoots, ledgerLinks(currentRoots, ledgerDetailFrom(ledgerAccounts, currentRoots)))
     : new Map<string, string>();
   const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
     const href = expenseLinks.get(item.label);
@@ -283,7 +298,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     return [{ label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale), incomeCents: income, expenseCents: expense }];
   });
 
-  await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
+  await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
 
   // The Overview reads top to bottom as the owner's questions do: how the
   // period went (the four figures), what moved (trend and where the money

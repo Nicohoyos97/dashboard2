@@ -18,7 +18,7 @@ import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
 import { BOTTOM_NAV_ITEMS, REPORTS_NAV_ITEM, clientNavItems } from '@/lib/nav';
-import { downloadItemsFor } from '@/lib/portal/downloads';
+import { DOWNLOAD_MENU_READ, downloadItemsFor } from '@/lib/portal/downloads';
 import { ALL_MODULES } from '@/lib/portal/modules';
 import { loadPortalEntitySettings, loadPublishedDocuments } from '@/lib/portal/load';
 import { loadNotifications } from '@/lib/portal/notifications';
@@ -49,7 +49,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // it rides the shell's compact bar, so the shell needs the documents on
     // every route. The Overview asks for the same rows, and Next memoizes the
     // GET for the render, so this costs the layout no extra round trip there.
-    currentEntity ? loadPublishedDocuments(supabase, currentEntity.id).catch(() => []) : Promise.resolve([]),
+    currentEntity ? loadPublishedDocuments(supabase, currentEntity.id, DOWNLOAD_MENU_READ).catch(() => []) : Promise.resolve([]),
     getLocale(),
     preview ? getTranslations('Overview') : Promise.resolve(null),
   ]);

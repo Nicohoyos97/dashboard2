@@ -4,6 +4,12 @@ import type { PublishedDocument } from './load';
 
 export type DownloadItem = { versionId: string; title: string; subtitle: string };
 
+/** Documents the Download Reports menu lists before it points to the library. */
+export const DOWNLOAD_MENU_LIMIT = 12;
+
+/** What the menu's callers load: one past the limit, so the menu knows there is more. */
+export const DOWNLOAD_MENU_READ = { limit: DOWNLOAD_MENU_LIMIT + 1 } as const;
+
 /**
  * The published documents as rows of the Download Reports menu.
  *

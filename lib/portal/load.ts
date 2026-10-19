@@ -260,7 +260,16 @@ export type PublishedDocument = {
  * previewing the portal reads through `is_firm_member()` and would otherwise be
  * shown a tile the client does not have.
  */
-export async function loadPublishedDocuments(supabase: Db, entityId: string): Promise<PublishedDocument[]> {
+export async function loadPublishedDocuments(
+  supabase: Db,
+  entityId: string,
+  /**
+   * The newest `limit` only. Every portal page renders the download menu, and
+   * the whole library used to travel with each of them; the library page and
+   * Nick still read it all.
+   */
+  options: { limit?: number } = {},
+): Promise<PublishedDocument[]> {
   const rows: {
     id: string;
     title: string;
@@ -270,7 +279,8 @@ export async function loadPublishedDocuments(supabase: Db, entityId: string): Pr
     published_at: string | null;
     current_version_id: string | null;
   }[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
+  const pageSize = Math.min(options.limit ?? PAGE_SIZE, PAGE_SIZE);
+  for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from('documents')
       .select('id, title, document_type, period_start, period_end, published_at, current_version_id')
@@ -279,10 +289,10 @@ export async function loadPublishedDocuments(supabase: Db, entityId: string): Pr
       .not('document_type', 'in', `(${FIRM_ONLY_DOCUMENT_TYPES.join(',')})`)
       .order('period_end', { ascending: false, nullsFirst: false })
       .order('id')
-      .range(from, from + PAGE_SIZE - 1);
+      .range(from, from + pageSize - 1);
     if (error) throw readError('portal_documents_read_failed');
     rows.push(...(data ?? []));
-    if ((data ?? []).length < PAGE_SIZE) break;
+    if ((data ?? []).length < pageSize || options.limit !== undefined) break;
   }
   return rows.map((d) => ({
     id: d.id,

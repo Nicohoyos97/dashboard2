@@ -40,10 +40,10 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   if (!entity) return <PortalPage title={t('salesTitle')} lede={t('salesLede')}><PortalEmpty kind="pending" /></PortalPage>;
 
   const supabase = await createClient();
-  const settings = await loadPortalEntitySettings(supabase, entity.id);
-  if (!settings.salesTaxEnabled) notFound();
-
-  const [all, salesReports, registeredIn] = await Promise.all([
+  // The module gate and the reads beside it, in one wave; nothing is shown
+  // before the gate has answered.
+  const [settings, all, salesReports, registeredIn] = await Promise.all([
+    loadPortalEntitySettings(supabase, entity.id),
     loadTaxObligations(supabase, entity.id, 'sales'),
     // The client's own register. Read even when there are no filings yet: a
     // business that has sent us a month of sales should see it. Several
@@ -52,6 +52,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     // Where the firm registered this business — the pills under the title.
     loadSalesTaxJurisdictions(supabase, entity.id),
   ]);
+  if (!settings.salesTaxEnabled) notFound();
   const latestSales = salesReports[0] ?? null;
   const currency = settings.currency;
 
@@ -61,7 +62,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
     resourceId: entity.id,
     businessEntityId: entity.id,
     metadata: { obligation_count: all.length },
-  });
+  }, { afterResponse: true });
 
   // The empty state is for a business with nothing at all. A published sales
   // report with no filing yet is not nothing: those are the client's own sales,

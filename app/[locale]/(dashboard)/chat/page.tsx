@@ -44,16 +44,19 @@ export default async function ChatPage({
 
   const supabase = await createClient();
   const requested = sessionParam.safeParse(params.session);
-  const [sessions, active] = await Promise.all([
+  // One wave. The thread is read beside the check that the session is this
+  // user's own and kept only if it is, so a session id in the URL never shows
+  // anyone else's conversation; the profile uses the layout's columns, so the
+  // two share one request.
+  const [sessions, active, requestedThread, { data: profile }] = await Promise.all([
     listSessions(supabase, entity.id, user.id),
     requested.success
       ? loadSession(supabase, entity.id, user.id, requested.data)
       : Promise.resolve(null),
+    requested.success ? loadThread(supabase, requested.data) : Promise.resolve([]),
+    supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
   ]);
-  const [thread, { data: profile }] = await Promise.all([
-    active ? loadThread(supabase, active.id) : Promise.resolve([]),
-    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-  ]);
+  const thread = active ? requestedThread : [];
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? '';
   const question =
     !active && typeof params.q === 'string'
@@ -65,7 +68,7 @@ export default async function ChatPage({
     resourceId: entity.id,
     businessEntityId: entity.id,
     metadata: { session_count: sessions.length },
-  });
+  }, { afterResponse: true });
 
   return (
     // A definite height, not a minimum: the thread below scrolls inside itself

@@ -85,7 +85,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     resourceType: 'business_entity',
     resourceId: entity.id,
     businessEntityId: entity.id,
-  });
+  }, { afterResponse: true });
 
   const cents = (value: number | null) => (value === null ? null : Math.round(value * 100));
   const obligationItems: ObligationItem[] = (obligations ?? []).map((o) => {

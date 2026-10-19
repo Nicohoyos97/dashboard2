@@ -16,10 +16,10 @@ import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
 import { PortalPage } from '@/components/portal/PortalPage';
 import { StatementTable } from '@/components/statements/StatementTable';
-import { resolveComparison } from '@/lib/portal/statement-compare';
+import { chosenComparison, resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
-import { loadPortalEntitySettings, loadPublishedReports, loadReportLines, loadReportLinesFor } from '@/lib/portal/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLinesFor } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
 import { BALANCE_SYNONYMS, balanceSheetMetrics } from '@/lib/reports/balance-sheet';
@@ -37,16 +37,30 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   if (!entity) return <PortalPage title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></PortalPage>;
 
   const supabase = await createClient();
-  const settings = await loadPortalEntitySettings(supabase, entity.id);
+  // The settings gate the page; the reports beside them only need the business.
+  const [settings, allReports] = await Promise.all([
+    loadPortalEntitySettings(supabase, entity.id),
+    loadPublishedReports(supabase, entity.id),
+  ]);
   // The nav hides this page when the firm did not sell the add-on; the route
   // has to agree, or the URL is a way around the sale.
   if (!settings.modules.balance_sheet) notFound();
-  const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'balance_sheet');
+  const reports = allReports.filter((r) => r.reportType === 'balance_sheet');
   const report = selectReport(reports, params.period);
   if (!report) return <PortalPage title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
 
-  const rows = await loadReportLines(supabase, entity.id, report.id);
-  const roots = buildTree(rows);
+  // The statement on screen, the one it is compared with and the trend, in
+  // one query (the statement on screen is in the trend too).
+  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
+  const compared = chosenComparison(reports, report, params.compare);
+  const linesById = await loadReportLinesFor(
+    supabase,
+    entity.id,
+    [...new Set([report.id, compared?.id, ...(trendReports.length >= 2 ? trendReports.map((r) => r.id) : [])])].filter(
+      (id): id is string => id !== undefined,
+    ),
+  );
+  const roots = buildTree(linesById.get(report.id) ?? []);
   const assets = leafItems(findSection(roots, BALANCE_SYNONYMS.totalAssets));
   const liabilities = leafItems(findSection(roots, BALANCE_SYNONYMS.totalLiabilities));
   // Which column PRIOR is: the comparative the document prints, or another
@@ -58,6 +72,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
     reports,
     roots,
     requested: params.compare,
+    preloaded: linesById,
     locale,
     today: todayIn(settings.timezone),
     labels: {
@@ -70,10 +85,8 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   // shows two changes measured against different periods.
   const m = balanceSheetMetrics(report, comparison.roots);
 
-  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
-  // Every period's lines in one query rather than one query per period.
-  const trendLines =
-    trendReports.length >= 2 ? await loadReportLinesFor(supabase, entity.id, trendReports.map((r) => r.id)) : null;
+  // Trend across published dates, only when there are ≥ 2; their lines came with the batch above.
+  const trendLines = trendReports.length >= 2 ? linesById : null;
   const trend = trendLines
     ? trendReports.map((r) => {
         const bm = balanceSheetMetrics(r, buildTree(trendLines.get(r.id) ?? []));
@@ -89,7 +102,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
     .filter(Boolean)
     .join(' · ');
 
-  await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id });
+  await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id }, { afterResponse: true });
 
   return (
     <NickProvider>

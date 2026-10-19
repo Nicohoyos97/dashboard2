@@ -17,12 +17,12 @@ import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
 import { PortalPage } from '@/components/portal/PortalPage';
 import { StatementTable } from '@/components/statements/StatementTable';
-import { resolveComparison } from '@/lib/portal/statement-compare';
+import { chosenComparison, resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
-import { loadLedgerDetail } from '@/lib/ledger/load';
-import { loadPortalEntitySettings, loadPublishedReports, loadReportLines, loadReportLinesFor } from '@/lib/portal/load';
+import { ledgerDetailFrom, loadLedgerAccounts, loadPublishedLedgers } from '@/lib/ledger/load';
+import { loadPortalEntitySettings, loadPublishedReports, loadReportLinesFor } from '@/lib/portal/load';
 import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
 import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
@@ -42,16 +42,33 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   if (!entity) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></PortalPage>;
 
   const supabase = await createClient();
-  const settings = await loadPortalEntitySettings(supabase, entity.id);
+  // The settings gate the page, but the reads beside them only need the
+  // business: one wave instead of three round trips in a row.
+  const [settings, allReports, publishedLedgers] = await Promise.all([
+    loadPortalEntitySettings(supabase, entity.id),
+    loadPublishedReports(supabase, entity.id),
+    loadPublishedLedgers(supabase, entity.id),
+  ]);
   // The nav hides this page when the firm did not sell the module; the route has
   // to agree, or the URL is a way around the sale.
   if (!settings.modules.bookkeeping) notFound();
-  const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'profit_and_loss');
+  const reports = allReports.filter((r) => r.reportType === 'profit_and_loss');
   const report = selectReport(reports, params.period);
   if (!report) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
 
-  const rows = await loadReportLines(supabase, entity.id, report.id);
-  const roots = buildTree(rows);
+  // Every statement this page draws — the one on screen, the one it is compared
+  // with, the trend — in one query, and the month's ledger beside it. The
+  // statement on screen is in the trend too; it used to be read twice.
+  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
+  const compared = chosenComparison(reports, report, params.compare);
+  const lineIds = [...new Set([report.id, compared?.id, ...(trendReports.length >= 2 ? trendReports.map((r) => r.id) : [])])].filter(
+    (id): id is string => id !== undefined,
+  );
+  const [linesById, ledgerAccounts] = await Promise.all([
+    loadReportLinesFor(supabase, entity.id, lineIds),
+    loadLedgerAccounts(supabase, entity.id, report, publishedLedgers),
+  ]);
+  const roots = buildTree(linesById.get(report.id) ?? []);
   // Which column PRIOR is: the comparative the document prints, or another
   // published statement the client chose to sit beside this one.
   const comparison = await resolveComparison({
@@ -61,6 +78,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
     reports,
     roots,
     requested: params.compare,
+    preloaded: linesById,
     locale,
     today: todayIn(settings.timezone),
     labels: {
@@ -71,18 +89,16 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   });
   const metrics = pnlMetrics(report, comparison.roots);
   // The month's General Ledger: a click on an account opens its transactions.
-  const lineLinks = ledgerLinks(roots, await loadLedgerDetail(supabase, entity.id, report, roots));
+  const lineLinks = ledgerLinks(roots, ledgerDetailFrom(ledgerAccounts, roots));
   const expenseLinks = compositionLinks(roots, lineLinks);
   const expenses = leafItems(findSection(comparison.roots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
     const href = expenseLinks.get(item.label);
     return href ? { ...item, href } : item;
   });
 
-  // Trend across published periods (oldest → newest), only when there are ≥ 2.
-  const trendReports = comparableSeries(reports, report).slice(0, TREND_LIMIT).reverse();
-  // Every period's lines in one query rather than one query per period.
-  const trendLines =
-    trendReports.length >= 2 ? await loadReportLinesFor(supabase, entity.id, trendReports.map((r) => r.id)) : null;
+  // Trend across published periods (oldest → newest), only when there are ≥ 2;
+  // their lines came with the batch above.
+  const trendLines = trendReports.length >= 2 ? linesById : null;
   const trendMetrics = trendLines ? trendReports.map((r) => pnlMetrics(r, buildTree(trendLines.get(r.id) ?? []))) : [];
   const trend = trendLines
     ? trendReports.map((r, index) => {
@@ -118,7 +134,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
     .filter(Boolean)
     .join(' · ');
 
-  await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id });
+  await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id }, { afterResponse: true });
 
   return (
     <NickProvider>

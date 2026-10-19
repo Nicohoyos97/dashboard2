@@ -4,7 +4,7 @@ import { NetSalesChart } from '@/components/charts/NetSalesChart';
 import { TrendBars } from '@/components/charts/TrendBars';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { logAccess } from '@/lib/audit/logAccess';
-import { downloadItemsFor } from '@/lib/portal/downloads';
+import { DOWNLOAD_MENU_READ, downloadItemsFor } from '@/lib/portal/downloads';
 import { loadPublishedDocuments, loadPublishedSalesReports, loadReminders, type PortalEntitySettings } from '@/lib/portal/load';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { taxPaidSeries } from '@/lib/reports/taxes';
@@ -54,7 +54,7 @@ export async function SalesTaxOverview({
   const [salesReports, obligations, documents, reminders] = await Promise.all([
     loadPublishedSalesReports(supabase, entity.id, TREND_LIMIT),
     loadTaxObligations(supabase, entity.id, 'sales'),
-    loadPublishedDocuments(supabase, entity.id),
+    loadPublishedDocuments(supabase, entity.id, DOWNLOAD_MENU_READ),
     loadReminders(supabase, entity.id),
   ]);
 
@@ -63,7 +63,7 @@ export async function SalesTaxOverview({
     resourceType: 'business_entity',
     resourceId: entity.id,
     businessEntityId: entity.id,
-  });
+  }, { afterResponse: true });
 
   const currency = settings.currency;
   const today = todayIn(settings.timezone);

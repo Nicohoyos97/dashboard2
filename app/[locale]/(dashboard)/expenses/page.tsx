@@ -92,7 +92,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   }
 
   if (!selected) {
-    await logAccess({ action: 'expenses.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
+    await logAccess({ action: 'expenses.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
     return (
       <PortalPage title={t('title')} lede={t('lede')}>
         <PortalEmpty kind="none" title={t('emptyTitle')} body={t('emptyBody', { business: entity.name })} />
@@ -217,7 +217,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     resourceId: entity.id,
     businessEntityId: entity.id,
     metadata: { transaction_count: totals.count },
-  });
+  }, { afterResponse: true });
 
   return (
     <>
