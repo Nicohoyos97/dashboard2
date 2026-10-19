@@ -44,10 +44,13 @@ export async function notifyEntityMembers(input: {
   payload?: Record<string, string | number>;
 }): Promise<void> {
   const admin = createAdminClient();
-  const { data: members } = await admin
+  const { data: members, error: membersError } = await admin
     .from('entity_memberships')
     .select('user_id')
     .eq('business_entity_id', input.entityId);
+  // Read as "nobody to tell", a failure here would let the deadline job keep
+  // its dispatch claim with the milestone never sent.
+  if (membersError) throw new Error('entity_memberships_read_failed');
   if (!members?.length) return;
 
   const channel = CHANNEL[input.kind];

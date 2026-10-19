@@ -188,17 +188,27 @@ export async function finalizeDocumentUpload(
     .select('status')
     .eq('id', version.document_id)
     .maybeSingle();
+  // supabase-js resolves with `{ error }` rather than throwing. Without a job
+  // row nothing ever processes the file and Retry has nothing to act on, so a
+  // failed write hands the version back to `uploading`: the upload reports the
+  // failure and finalizing again picks up from here.
+  const unfinalize = async (): Promise<ActionResult<{ documentId: string }>> => {
+    await supabase.from('document_versions').update({ upload_status: 'uploading' }).eq('id', version.id);
+    return { ok: false, error: t('errorSave') };
+  };
   if (doc?.status !== 'published') {
-    await supabase
+    const { error: pointerError } = await supabase
       .from('documents')
       .update({ current_version_id: version.id, status: 'uploaded' })
       .eq('id', version.document_id);
+    if (pointerError) return unfinalize();
   }
 
-  await supabase.from('document_processing_jobs').insert({
+  const { error: jobError } = await supabase.from('document_processing_jobs').insert({
     business_entity_id: version.business_entity_id,
     document_version_id: version.id,
   });
+  if (jobError) return unfinalize();
 
   await logAccess({
     action: 'document.upload',

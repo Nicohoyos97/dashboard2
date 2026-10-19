@@ -32,7 +32,9 @@ export async function logAccess(input: LogInput): Promise<void> {
     // never a security source of truth.
     const ip = headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
 
-    await createAdminClient()
+    // supabase-js resolves with `{ error }` rather than throwing, so without
+    // this check a lost audit row never reached the catch below.
+    const { error } = await createAdminClient()
       .from('audit_logs')
       .insert({
         actor_id: user?.id ?? null,
@@ -44,6 +46,7 @@ export async function logAccess(input: LogInput): Promise<void> {
         ip,
         user_agent: headerList.get('user-agent') ?? null,
       });
+    if (error) throw new Error(`audit insert failed (${error.code})`);
   } catch (err) {
     // Auditing must never break the user action it accompanies.
     console.error('[audit] logAccess failed:', err instanceof Error ? err.message : 'unknown');

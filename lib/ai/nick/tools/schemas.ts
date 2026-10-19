@@ -135,7 +135,7 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   create_financial_export:
     'Sensitive. Creates a CSV export of a published statement and returns its download link. First call returns requires_confirmation; ask the user to confirm and call again with confirmed: true only after they do.',
   search_transactions:
-    'Call this when the user asks how much they paid a vendor or payee, how much a customer paid them, or to find specific transactions ("how much did I pay Meta?", "¿cuánto le pagué a Restaurant Depot?"). Searches the transactions behind the Profit & Loss accounts, from the General Ledgers the firm published. Returns what was paid (cost and expense accounts) and what was received (income accounts) separately, with totals, counts, the split by account and by payee, and the latest matching transactions — all computed by the server. Never add paid and received together.',
+    'Call this when the user asks how much they paid a vendor or payee, how much a customer paid them, or to find specific transactions ("how much did I pay Meta?", "¿cuánto le pagué a Restaurant Depot?"). Searches the transactions behind the Profit & Loss accounts, from the General Ledgers the firm published. Returns what was paid (cost of goods sold, expense and other expense accounts) and what was received (income and other income accounts) separately, with totals, counts, the split by account and by payee, and the latest matching transactions — all computed by the server. Never add paid and received together.',
 };
 
 type JsonSchema = Record<string, unknown>;

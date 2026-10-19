@@ -19,7 +19,9 @@ import { CONFIDENCE_THRESHOLD, parseReconciliation } from './reconciliation';
 // `published` in one go, and supersedes any older published report for the
 // same business / type / period. Unpublishing reverses the visibility; nothing
 // is ever deleted. Both are strict: unreconciled or low-confidence data cannot
-// be published — the firm corrects lines instead.
+// be published — the firm corrects lines instead. The checks run here; the
+// writes are one transaction each in Postgres (0029), so a failure part-way can
+// no longer leave the document and the figures the client sees disagreeing.
 const idSchema = z.object({ documentId: z.string().uuid() });
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const metaSchema = z.object({
@@ -38,6 +40,15 @@ export type PublishBlocker =
   | LedgerBlocker;
 
 type Db = Awaited<ReturnType<typeof createClient>>;
+
+/** What publish_document_version (0029) reports back. */
+const publishedSchema = z.object({
+  title: z.string(),
+  document_type: z.string(),
+  reports: z.number(),
+  superseded: z.number(),
+  replaced_version: z.boolean(),
+});
 
 /**
  * The version the firm reviews and publishes next, which is not always the one
@@ -70,17 +81,23 @@ export async function reviewVersion(
 export async function publishBlockers(
   supabase: Db,
   documentId: string,
-): Promise<{ blockers: PublishBlocker[]; versionId: string | null; entityId: string | null }> {
+): Promise<{
+  blockers: PublishBlocker[];
+  versionId: string | null;
+  entityId: string | null;
+  /** The ledger accounts behind the P&L's lines, sub-accounts of a collapsed parent included: what publishing lets the client read. */
+  visibleLedgerAccounts: string[];
+}> {
   const { data: doc } = await supabase
     .from('documents')
     .select('id, status, current_version_id, business_entity_id')
     .eq('id', documentId)
     .maybeSingle();
-  if (!doc) return { blockers: ['publishBlockedNoData'], versionId: null, entityId: null };
+  if (!doc) return { blockers: ['publishBlockedNoData'], versionId: null, entityId: null, visibleLedgerAccounts: [] };
 
   const reviewVersionId = await reviewVersion(supabase, documentId, doc.current_version_id);
   if (!reviewVersionId) {
-    return { blockers: ['publishBlockedNoData'], versionId: null, entityId: doc.business_entity_id };
+    return { blockers: ['publishBlockedNoData'], versionId: null, entityId: doc.business_entity_id, visibleLedgerAccounts: [] };
   }
 
   const blockers = new Set<PublishBlocker>();
@@ -154,120 +171,61 @@ export async function publishBlockers(
 
   // A ledger also has to explain the published P&L of its month, to the cent
   // (lib/ledger/review.ts) — its own arithmetic passing is not enough.
+  const visibleLedgerAccounts: string[] = [];
   for (const ledger of ledgers ?? []) {
-    const { blocker } = await reviewLedger(supabase, ledger);
+    const { blocker, match } = await reviewLedger(supabase, ledger);
     if (blocker) blockers.add(blocker);
+    for (const line of match?.lines ?? []) if (line.status === 'matched') visibleLedgerAccounts.push(...line.accountIds);
   }
 
-  return { blockers: [...blockers], versionId: reviewVersionId, entityId: doc.business_entity_id };
+  return { blockers: [...blockers], versionId: reviewVersionId, entityId: doc.business_entity_id, visibleLedgerAccounts };
 }
 
 export async function publishDocument(input: unknown): Promise<ActionResult> {
   const t = await getTranslations('Admin');
   const parsed = idSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: t('errorInvalid') };
-  const firm = await requireFirmAdmin();
+  await requireFirmAdmin();
   const supabase = await createClient();
 
-  const { blockers, versionId, entityId } = await publishBlockers(supabase, parsed.data.documentId);
+  const { blockers, versionId, entityId, visibleLedgerAccounts } = await publishBlockers(supabase, parsed.data.documentId);
   if (blockers.length > 0 || !versionId) return { ok: false, error: t(blockers[0] ?? 'errorSave') };
 
-  const now = new Date().toISOString();
-  const { data: reports } = await supabase
-    .from('financial_reports')
-    .select('id, business_entity_id, report_type, period_start, period_end')
-    .eq('document_version_id', versionId);
-
-  // Supersede older published reports covering the same statement. The count
-  // goes into the audit entry (identifiers and counts only) so a replacement is
-  // traceable from the trail, not only from the document's report history.
-  let supersededCount = 0;
-  for (const report of reports ?? []) {
-    const { data: older } = await supabase
-      .from('financial_reports')
-      .select('id')
-      .eq('business_entity_id', report.business_entity_id)
-      .eq('report_type', report.report_type)
-      .eq('period_start', report.period_start)
-      .eq('period_end', report.period_end)
-      .eq('status', 'published')
-      .neq('id', report.id);
-    for (const old of older ?? []) {
-      const { error: supersedeError } = await supabase
-        .from('financial_reports')
-        .update({ status: 'superseded', published_at: null, superseded_by: report.id })
-        .eq('id', old.id);
-      if (!supersedeError) supersededCount += 1;
-    }
+  // Supersedes, ledger visibility, the stamps on every derived table and the
+  // document itself, in one transaction (0029). The superseded count goes into
+  // the audit entry (identifiers and counts only) so a replacement is traceable
+  // from the trail, not only from the document's report history.
+  const { data, error } = await supabase.rpc('publish_document_version', {
+    p_document_id: parsed.data.documentId,
+    p_version_id: versionId,
+    p_visible_ledger_accounts: [...new Set(visibleLedgerAccounts)],
+  });
+  const published = publishedSchema.safeParse(data);
+  if (error || !published.success) {
+    console.error('[publish] publish failed', parsed.data.documentId, error?.code ?? 'shape');
+    return { ok: false, error: t('errorSave') };
   }
-
-  // A ledger replaces the month's previous one, and only the accounts behind a
-  // P&L line become readable by the client (0026). Both happen before the
-  // stamp: the published-period index allows one published ledger per month.
-  const { data: ledgers } = await supabase
-    .from('general_ledgers')
-    .select('id, business_entity_id, period_start, period_end, basis')
-    .eq('document_version_id', versionId);
-  for (const ledger of ledgers ?? []) {
-    const { match } = await reviewLedger(supabase, ledger);
-    const visible = (match?.lines ?? []).flatMap((line) => (line.status === 'matched' && line.accountId ? [line.accountId] : []));
-    await supabase.from('ledger_accounts').update({ client_visible: false }).eq('ledger_id', ledger.id);
-    if (visible.length > 0) await supabase.from('ledger_accounts').update({ client_visible: true }).in('id', visible);
-    await supabase
-      .from('general_ledgers')
-      .update({ status: 'superseded', published_at: null, published_by: null, superseded_by: ledger.id })
-      .eq('business_entity_id', ledger.business_entity_id)
-      .eq('period_start', ledger.period_start)
-      .eq('period_end', ledger.period_end)
-      .eq('status', 'published')
-      .neq('id', ledger.id);
-  }
-
-  const publishRow = { status: 'published', published_at: now, published_by: firm.userId };
-  // tax_obligations / tax_payments / payroll_obligations have no `status`
-  // column: publication is `published_at` alone, and every reader gates on it.
-  const stamp = { published_at: now, published_by: firm.userId };
-  await supabase.from('general_ledgers').update(publishRow).eq('document_version_id', versionId);
-  await supabase.from('financial_reports').update(publishRow).eq('document_version_id', versionId);
-  await supabase.from('bank_statements').update(publishRow).eq('document_version_id', versionId);
-  await supabase.from('sales_reports').update(publishRow).eq('document_version_id', versionId);
-  await supabase.from('tax_obligations').update(stamp).eq('document_version_id', versionId);
-  await supabase.from('tax_payments').update(stamp).eq('document_version_id', versionId);
-  await supabase.from('payroll_obligations').update(stamp).eq('document_version_id', versionId);
-
-  // A replaced version: the previous current version is marked superseded.
-  const { data: doc } = await supabase
-    .from('documents')
-    .select('current_version_id')
-    .eq('id', parsed.data.documentId)
-    .maybeSingle();
-  const replacedVersion = Boolean(doc?.current_version_id && doc.current_version_id !== versionId);
-  if (replacedVersion && doc?.current_version_id) {
-    await supabase
-      .from('document_versions')
-      .update({ superseded_at: now })
-      .eq('id', doc.current_version_id);
-  }
-  const { data: published, error } = await supabase
-    .from('documents')
-    .update({ ...publishRow, current_version_id: versionId })
-    .eq('id', parsed.data.documentId)
-    .select('title, document_type');
-  if (error || !published?.[0]) return { ok: false, error: t('errorSave') };
+  const result = published.data;
 
   // A firm-only document (0025) has no tile and no download for the client, so
   // the bell must not name it either — its figures reach them silently, the way
-  // the register numbers on their Sales Taxes page always have.
-  if (entityId && isClientVisibleDocumentType(published[0].document_type)) {
+  // the register numbers on their Sales Taxes page always have. The document is
+  // published by now, so a failed notification is logged rather than reported
+  // as a failed publish.
+  if (entityId && isClientVisibleDocumentType(result.document_type)) {
     // A republish is still a publication for the client — same channel, but the
     // bell says "updated" so a corrected statement does not read as a new one.
-    await notifyEntityMembers({
-      entityId,
-      kind: 'document.published',
-      title: published[0].title,
-      linkPath: '/dashboard',
-      payload: { replaced: supersededCount > 0 || replacedVersion ? 'true' : 'false' },
-    });
+    try {
+      await notifyEntityMembers({
+        entityId,
+        kind: 'document.published',
+        title: result.title,
+        linkPath: '/dashboard',
+        payload: { replaced: result.superseded > 0 || result.replaced_version ? 'true' : 'false' },
+      });
+    } catch (notifyError) {
+      console.error('[publish] notify failed', parsed.data.documentId, notifyError instanceof Error ? notifyError.message : 'unknown');
+    }
   }
 
   await logAccess({
@@ -275,7 +233,7 @@ export async function publishDocument(input: unknown): Promise<ActionResult> {
     resourceType: 'document',
     resourceId: parsed.data.documentId,
     businessEntityId: entityId,
-    metadata: { version_id: versionId, reports: (reports ?? []).length, superseded: supersededCount },
+    metadata: { version_id: versionId, reports: result.reports, superseded: result.superseded },
   });
   revalidatePath('/admin/documents');
   revalidatePath(`/admin/documents/${parsed.data.documentId}`);
@@ -291,50 +249,42 @@ export async function unpublishDocument(input: unknown): Promise<ActionResult> {
 
   const { data: doc } = await supabase
     .from('documents')
-    .select('id, status, current_version_id, business_entity_id, document_type')
+    .select('id, status, business_entity_id, document_type')
     .eq('id', parsed.data.documentId)
     .maybeSingle();
   if (!doc || doc.status !== 'published') return { ok: false, error: t('errorInvalid') };
 
-  const hidden = { status: 'reconciled', published_at: null, published_by: null };
   // Withdraw everything publishing stamped, or the client keeps seeing figures
   // from a document the firm has retracted. Publishing writes to five tables;
   // this used to reverse two, so a withdrawn sales-tax filing left its
   // obligations `published_at` and visible — and, because the delete guard in
   // 0020 reads exactly those rows, the document could then never be deleted
-  // either. Scoped to every version of the document rather than
-  // `current_version_id`: publication stamps the *review* version, which is not
-  // always the one the pointer names (see reviewVersion).
-  const { data: allVersions } = await supabase
-    .from('document_versions')
-    .select('id')
-    .eq('document_id', doc.id);
-  const versionIds = (allVersions ?? []).map((v) => v.id);
-  if (versionIds.length > 0) {
-    const unstamp = { published_at: null, published_by: null };
-    await supabase.from('financial_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
-    await supabase.from('bank_statements').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
-    await supabase.from('sales_reports').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
-    await supabase.from('general_ledgers').update(hidden).in('document_version_id', versionIds).eq('status', 'published');
-    // These three carry publication in `published_at` alone — no status column.
-    await supabase.from('tax_obligations').update(unstamp).in('document_version_id', versionIds);
-    await supabase.from('tax_payments').update(unstamp).in('document_version_id', versionIds);
-    await supabase.from('payroll_obligations').update(unstamp).in('document_version_id', versionIds);
+  // either. One transaction (0029), scoped to every version of the document
+  // rather than `current_version_id`: publication stamps the *review* version,
+  // which is not always the one the pointer names (see reviewVersion).
+  const { data, error } = await supabase.rpc('unpublish_document', { p_document_id: doc.id });
+  if (error) {
+    console.error('[publish] unpublish failed', doc.id, error.code);
+    return { ok: false, error: t('errorSave') };
   }
-  const { data: withdrawn, error } = await supabase.from('documents').update(hidden).eq('id', doc.id).select('title');
-  if (error) return { ok: false, error: t('errorSave') };
+  const withdrawn = z.object({ title: z.string() }).safeParse(data);
+  if (!withdrawn.success) return { ok: false, error: t('errorInvalid') };
 
   // The client had this report and no longer does; that belongs on the document
   // activity channel they opted into, not silently in the background. A
   // firm-only document (0025) was never in their portal, so there is nothing to
   // tell them it has left.
-  if (doc.business_entity_id && withdrawn?.[0] && isClientVisibleDocumentType(doc.document_type)) {
-    await notifyEntityMembers({
-      entityId: doc.business_entity_id,
-      kind: 'document.unpublished',
-      title: withdrawn[0].title,
-      linkPath: '/reports',
-    });
+  if (doc.business_entity_id && isClientVisibleDocumentType(doc.document_type)) {
+    try {
+      await notifyEntityMembers({
+        entityId: doc.business_entity_id,
+        kind: 'document.unpublished',
+        title: withdrawn.data.title,
+        linkPath: '/reports',
+      });
+    } catch (notifyError) {
+      console.error('[publish] notify failed', doc.id, notifyError instanceof Error ? notifyError.message : 'unknown');
+    }
   }
 
   await logAccess({

@@ -22,7 +22,15 @@ export type { LedgerTxn } from './display';
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
-export type LedgerLine = { lineId: string; accountId: string; count: number; totalCents: number };
+export type LedgerLine = {
+  lineId: string;
+  /** The ledger account the line names. */
+  accountId: string;
+  /** Every account whose transactions make up the line's figure (match.ts): the sub-accounts of a collapsed parent too. */
+  accountIds: string[];
+  count: number;
+  totalCents: number;
+};
 
 export type LedgerDetail = {
   ledgerId: string;
@@ -34,22 +42,31 @@ export type LedgerDetail = {
 
 const PAGE = 1000;
 
+export type PublishedLedger = { id: string; period_start: string; period_end: string };
+
+/**
+ * The business's published ledgers, newest first: id and period only. The
+ * client has no read on the row itself — its reconciliation lists every
+ * account of the file, the firm-only ones too (0028).
+ */
+export async function loadPublishedLedgers(supabase: Db, entityId: string): Promise<PublishedLedger[]> {
+  const { data, error } = await supabase.rpc('published_ledgers', { entity: entityId });
+  if (error) throw new Error('published_ledgers_read_failed');
+  return data ?? [];
+}
+
 export async function loadLedgerDetail(
   supabase: Db,
   entityId: string,
   report: ReportRow,
   roots: readonly LineNode[],
+  /** Already loaded by a caller reading several months. */
+  published?: readonly PublishedLedger[],
 ): Promise<LedgerDetail | null> {
   if (report.reportType !== 'profit_and_loss') return null;
-  const { data: ledger } = await supabase
-    .from('general_ledgers')
-    .select('id, period_start, period_end')
-    .eq('business_entity_id', entityId)
-    .eq('status', 'published')
-    .eq('period_start', report.periodStart)
-    .eq('period_end', report.periodEnd)
-    .limit(1)
-    .maybeSingle();
+  const ledger = (published ?? (await loadPublishedLedgers(supabase, entityId))).find(
+    (l) => l.period_start === report.periodStart && l.period_end === report.periodEnd,
+  );
   if (!ledger) return null;
 
   const { data: accounts, error } = await supabase
@@ -68,8 +85,11 @@ export async function loadLedgerDetail(
   const lines = new Map<string, LedgerLine>();
   for (const line of match.lines) {
     if (line.status !== 'matched' || !line.accountId) continue;
-    const count = counts.get(line.accountId) ?? 0;
-    if (count > 0) lines.set(line.lineId, { lineId: line.lineId, accountId: line.accountId, count, totalCents: line.statementCents });
+    // transaction_count is each account's own rows; a collapsed parent's line counts its sub-accounts' too.
+    const count = line.accountIds.reduce((sum, id) => sum + (counts.get(id) ?? 0), 0);
+    if (count > 0) {
+      lines.set(line.lineId, { lineId: line.lineId, accountId: line.accountId, accountIds: line.accountIds, count, totalCents: line.statementCents });
+    }
   }
   return lines.size > 0 ? { ledgerId: ledger.id, periodStart: ledger.period_start, periodEnd: ledger.period_end, lines } : null;
 }
@@ -98,11 +118,12 @@ export async function loadLineLedger(supabase: Db, entityId: string, lineId: str
   if (!line || !report || report.reportType !== 'profit_and_loss') return null;
   const roots = buildTree(await loadReportLines(supabase, entityId, report.id));
   const detail = (await loadLedgerDetail(supabase, entityId, report, roots))?.lines.get(lineId) ?? null;
-  const txns = detail ? await loadLedgerTransactions(supabase, entityId, [detail.accountId]) : [];
+  const txns = detail ? await loadLedgerTransactions(supabase, entityId, detail.accountIds) : [];
   return { line: { id: line.id, accountName: line.account_name }, report, detail, txns };
 }
 
-const SEARCH_LIMIT = 1000;
+/** Rows one search reads at most, in pages; past it the result says it is partial rather than present a part as the whole. */
+const SEARCH_LIMIT = 10_000;
 const TXN_COLUMNS = 'id, account_id, txn_date, txn_type, num, name, description, split, amount';
 
 function toTxn(row: {
@@ -129,37 +150,63 @@ function toTxn(row: {
   };
 }
 
-/** `%`, `_` and `\` in what the user typed are literal, not wildcards. */
+/**
+ * `%`, `_` and `\` in what the user typed are literal, not wildcards. PostgREST
+ * also reads `*` as `%` and offers no escape for it, so a `*` becomes `_` (any
+ * one character) here and the literal check in searchLedgerTransactions drops
+ * whatever that lets through.
+ */
 function containsPattern(text: string): string {
-  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`).replace(/\*/g, '_')}%`;
 }
 
+export type LedgerSearch = { txns: LedgerTxn[]; truncated: boolean };
+
 /**
- * Transactions of these accounts whose payee or description contains `text`,
- * case-insensitively, newest first. Two filtered reads rather than one `or`
- * filter, so nothing the user typed is ever parsed as PostgREST syntax.
+ * Transactions of these ledgers whose payee or description contains `text`,
+ * case-insensitively, newest first, kept to `accountIds`. Filtered by ledger
+ * (at most a year of them) rather than by account, because a year of P&L
+ * accounts is hundreds of ids — too long for a URL. Two filtered reads rather
+ * than one `or` filter, so nothing the user typed is ever parsed as PostgREST
+ * syntax, each paged so a busy payee is not cut at PostgREST's row cap.
  */
 export async function searchLedgerTransactions(
   supabase: Db,
   entityId: string,
-  accountIds: readonly string[],
+  ledgerIds: readonly string[],
+  accountIds: ReadonlySet<string>,
   text: string,
-): Promise<LedgerTxn[]> {
-  if (accountIds.length === 0 || text.trim() === '') return [];
-  const pattern = containsPattern(text.trim());
-  const read = (column: 'name' | 'description') =>
-    supabase
-      .from('ledger_transactions')
-      .select(TXN_COLUMNS)
-      .eq('business_entity_id', entityId)
-      .in('account_id', [...accountIds])
-      .ilike(column, pattern)
-      .limit(SEARCH_LIMIT);
+): Promise<LedgerSearch> {
+  const needle = text.trim();
+  if (ledgerIds.length === 0 || accountIds.size === 0 || needle === '') return { txns: [], truncated: false };
+  const pattern = containsPattern(needle);
+  let truncated = false;
+  const read = async (column: 'name' | 'description') => {
+    const rows: LedgerTxn[] = [];
+    for (let from = 0; from < SEARCH_LIMIT; from += PAGE) {
+      const { data, error } = await supabase
+        .from('ledger_transactions')
+        .select(TXN_COLUMNS)
+        .eq('business_entity_id', entityId)
+        .in('ledger_id', [...ledgerIds])
+        .ilike(column, pattern)
+        .order('id')
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error('ledger_transactions_read_failed');
+      for (const row of data ?? []) rows.push(toTxn(row));
+      if ((data ?? []).length < PAGE) return rows;
+    }
+    truncated = true;
+    return rows;
+  };
   const [byName, byDescription] = await Promise.all([read('name'), read('description')]);
-  if (byName.error || byDescription.error) throw new Error('ledger_transactions_read_failed');
+  const lower = needle.toLowerCase();
+  const contains = (value: string | null) => value !== null && value.toLowerCase().includes(lower);
   const found = new Map<string, LedgerTxn>();
-  for (const row of [...(byName.data ?? []), ...(byDescription.data ?? [])]) found.set(row.id, toTxn(row));
-  return [...found.values()].sort((a, b) => b.date.localeCompare(a.date));
+  for (const tx of [...byName, ...byDescription]) {
+    if (accountIds.has(tx.accountId) && (contains(tx.name) || contains(tx.description))) found.set(tx.id, tx);
+  }
+  return { txns: [...found.values()].sort((a, b) => b.date.localeCompare(a.date)), truncated };
 }
 
 /** Every transaction of these accounts, newest first. Paged: a month of sales can pass PostgREST's row cap. */

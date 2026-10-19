@@ -48,13 +48,43 @@ export async function persistGeneralLedger(
       currency: ctx.currency,
       company_name: parsed.company,
       document_version_id: ctx.versionId,
-      status: reconciliation.passed ? 'reconciled' : 'needs_review',
+      // `processing` until every account and transaction is in: a row that
+      // already read `reconciled` while a later chunk failed was a ledger with
+      // part of its transactions that review and publish could both reach.
+      status: 'processing',
       reconciliation: JSON.parse(JSON.stringify(reconciliation)) as Json,
     })
     .select('id')
     .single();
   if (error || !ledger) throw new WorkerError('persist_ledger');
 
+  try {
+    await insertRows(admin, ledger.id, ctx, parsed);
+  } catch (insertError) {
+    // Accounts and transactions cascade with the row; the retry starts clean.
+    await admin.from('general_ledgers').delete().eq('id', ledger.id);
+    throw insertError;
+  }
+  const { error: statusError } = await admin
+    .from('general_ledgers')
+    .update({ status: reconciliation.passed ? 'reconciled' : 'needs_review' })
+    .eq('id', ledger.id);
+  if (statusError) throw new WorkerError('persist_ledger');
+
+  // What the export says fills in whatever the firm left blank at upload.
+  const { data: doc } = await admin.from('documents').select('period_start, period_end').eq('id', ctx.documentId).maybeSingle();
+  if (doc && (!doc.period_start || !doc.period_end)) {
+    await admin.from('documents').update({ period_start: period.start, period_end: period.end }).eq('id', ctx.documentId);
+  }
+
+  return {
+    results: 1,
+    passed: reconciliation.passed,
+    warnings: parsed.basis ? [] : ['ledger: no basis printed'],
+  };
+}
+
+async function insertRows(admin: Admin, ledgerId: string, ctx: PersistContext, parsed: ReturnType<typeof parseGeneralLedger>): Promise<void> {
   const totals = accountTotals(parsed);
   const counts = parsed.accounts.map(() => 0);
   for (const tx of parsed.transactions) counts[tx.accountIndex] = (counts[tx.accountIndex] ?? 0) + 1;
@@ -62,7 +92,7 @@ export async function persistGeneralLedger(
   const ids = parsed.accounts.map(() => randomUUID());
   const accountRows = parsed.accounts.map((account, index) => ({
     id: ids[index] ?? randomUUID(),
-    ledger_id: ledger.id,
+    ledger_id: ledgerId,
     business_entity_id: ctx.entityId,
     parent_id: account.parentIndex === null ? null : (ids[account.parentIndex] ?? null),
     name: account.name,
@@ -80,7 +110,7 @@ export async function persistGeneralLedger(
   }
 
   const txRows = parsed.transactions.map((tx, index) => ({
-    ledger_id: ledger.id,
+    ledger_id: ledgerId,
     account_id: ids[tx.accountIndex] ?? '',
     business_entity_id: ctx.entityId,
     txn_date: tx.date,
@@ -96,16 +126,4 @@ export async function persistGeneralLedger(
     const { error: txError } = await admin.from('ledger_transactions').insert(txRows.slice(i, i + CHUNK));
     if (txError) throw new WorkerError('persist_ledger_transactions');
   }
-
-  // What the export says fills in whatever the firm left blank at upload.
-  const { data: doc } = await admin.from('documents').select('period_start, period_end').eq('id', ctx.documentId).maybeSingle();
-  if (doc && (!doc.period_start || !doc.period_end)) {
-    await admin.from('documents').update({ period_start: period.start, period_end: period.end }).eq('id', ctx.documentId);
-  }
-
-  return {
-    results: 1,
-    passed: reconciliation.passed,
-    warnings: parsed.basis ? [] : ['ledger: no basis printed'],
-  };
 }

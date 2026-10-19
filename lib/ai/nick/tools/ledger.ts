@@ -1,18 +1,21 @@
 // "How much did I pay Meta?" — Nick reads the transactions behind the P&L
 // accounts, from the General Ledgers the firm published (0026). Every total,
 // count and split is computed here; the model only quotes them, each with its
-// citation. Money paid (cost and expense accounts) and money received (every
-// other P&L account) are never added together: a vendor that is also a
-// customer gets two figures, not one meaningless net.
+// citation. Money paid (cost of goods sold, expenses and other expenses) and
+// money received (income and other income) are never added together: a vendor
+// that is also a customer gets two figures, not one meaningless net. Which side
+// a line is on comes from the P&L section it sits in; a line under a heading
+// that names neither is left out rather than guessed.
 import { citationLabel } from '@/lib/ai/nick/citations';
 import { type LedgerTxn, isAdjustment, txnTitle } from '@/lib/ledger/display';
 import { ledgerLinks } from '@/lib/ledger/links';
-import { loadLedgerDetail, searchLedgerTransactions } from '@/lib/ledger/load';
+import { loadLedgerDetail, loadPublishedLedgers, searchLedgerTransactions } from '@/lib/ledger/load';
 import { fromCents, sumCents } from '@/lib/money';
 import { loadPublishedReports, loadReportLines } from '@/lib/portal/load';
-import { pnlExpenseLines } from '@/lib/reports/pnl-expenses';
+import { PNL_SYNONYMS } from '@/lib/reports/pnl';
+import { findSection } from '@/lib/reports/sections';
 import { buildTree, flattenTree } from '@/lib/reports/tree';
-import type { ReportRow } from '@/lib/reports/types';
+import type { LineNode, ReportRow } from '@/lib/reports/types';
 
 import {
   type ShapeContext,
@@ -32,6 +35,28 @@ export type MonthAccount = { lineId: string; lineName: string; side: Side; href:
 
 /** One published month: its P&L and the ledger accounts behind its lines, by ledger account id. */
 export type LedgerMonth = { report: ReportRow; accounts: ReadonlyMap<string, MonthAccount> };
+
+/** Section headings a QuickBooks P&L prints, after normalizeName, by the side their accounts' money moves. */
+const SIDE_SECTIONS: Record<Side, readonly string[]> = {
+  received: [...PNL_SYNONYMS.revenue, 'other income', 'other revenue'],
+  paid: [...PNL_SYNONYMS.cogs, ...PNL_SYNONYMS.operatingExpenses, 'other expenses', 'other expense'],
+};
+
+/** Every line of the P&L under a heading whose side is known, by line id. */
+export function lineSides(roots: readonly LineNode[]): Map<string, Side> {
+  const sides = new Map<string, Side>();
+  const mark = (node: LineNode, side: Side) => {
+    sides.set(node.id, side);
+    for (const child of node.children) mark(child, side);
+  };
+  for (const side of ['received', 'paid'] as const) {
+    for (const heading of SIDE_SECTIONS[side]) {
+      const section = findSection(roots, [heading]);
+      if (section) mark(section, side);
+    }
+  }
+  return sides;
+}
 
 const MAX_MONTHS = 12;
 const MAX_TRANSACTIONS = 15;
@@ -140,7 +165,7 @@ export function transactionSearchOut(
     byPayee,
     transactions,
     moreTransactions: Math.max(0, located.length - transactions.length),
-    note: 'paid = cost and expense accounts, received = income accounts; each amount keeps its account\'s own direction, so a refund or an adjustment that reduces an account is negative.',
+    note: 'paid = cost of goods sold, expense and other expense accounts; received = income and other income accounts; each amount keeps its account\'s own direction, so a refund or an adjustment that reduces an account is negative.',
   };
 }
 
@@ -148,13 +173,7 @@ export async function searchTransactions(ctx: ToolContext, input: ToolInput<'sea
   const query = input.query.trim();
   if (query.length < 2) return { available: false, reason: 'query_too_short' };
 
-  const { data: ledgers } = await ctx.supabase
-    .from('general_ledgers')
-    .select('period_start, period_end')
-    .eq('business_entity_id', ctx.entityId)
-    .eq('status', 'published')
-    .order('period_end', { ascending: false });
-  const published = ledgers ?? [];
+  const published = await loadPublishedLedgers(ctx.supabase, ctx.entityId);
   const availableMonths = published.map((l) => periodText(l.period_start, l.period_end, ctx.locale));
   if (published.length === 0) return { available: false, reason: 'no_published_ledger' };
 
@@ -167,38 +186,45 @@ export async function searchTransactions(ctx: ToolContext, input: ToolInput<'sea
   if (inRange.length === 0) return { available: false, reason: 'no_ledger_for_period', availableMonths };
 
   const reports = (await loadPublishedReports(ctx.supabase, ctx.entityId)).filter((r) => r.reportType === 'profit_and_loss');
-  const months: LedgerMonth[] = [];
-  for (const ledger of inRange.slice(0, MAX_MONTHS)) {
-    const report = reports.find((r) => r.periodStart === ledger.period_start && r.periodEnd === ledger.period_end);
-    if (!report) continue;
-    const roots = buildTree(await loadReportLines(ctx.supabase, ctx.entityId, report.id));
-    // Matched against the statement the client sees, exactly as the portal links it.
-    const detail = await loadLedgerDetail(ctx.supabase, ctx.entityId, report, roots);
-    if (!detail) continue;
-    const links = ledgerLinks(roots, detail);
-    const expenseIds = new Set(pnlExpenseLines(roots).map((l) => l.id));
-    const names = new Map(flattenTree(roots).map((n) => [n.id, n.accountName]));
-    const accounts = new Map<string, MonthAccount>();
-    for (const line of detail.lines.values()) {
-      accounts.set(line.accountId, {
-        lineId: line.lineId,
-        lineName: names.get(line.lineId) ?? '',
-        side: expenseIds.has(line.lineId) ? 'paid' : 'received',
-        href: links[line.lineId]?.href ?? null,
-      });
-    }
-    months.push({ report, accounts });
-  }
+  // Months are independent reads, so a year is one wave of round trips rather than twelve.
+  const loaded = await Promise.all(
+    inRange.slice(0, MAX_MONTHS).map(async (ledger) => {
+      const report = reports.find((r) => r.periodStart === ledger.period_start && r.periodEnd === ledger.period_end);
+      if (!report) return null;
+      const roots = buildTree(await loadReportLines(ctx.supabase, ctx.entityId, report.id));
+      // Matched against the statement the client sees, exactly as the portal links it.
+      const detail = await loadLedgerDetail(ctx.supabase, ctx.entityId, report, roots, published);
+      if (!detail) return null;
+      const links = ledgerLinks(roots, detail);
+      const sides = lineSides(roots);
+      const names = new Map(flattenTree(roots).map((n) => [n.id, n.accountName]));
+      const accounts = new Map<string, MonthAccount>();
+      for (const line of detail.lines.values()) {
+        const side = sides.get(line.lineId);
+        if (!side) continue;
+        const account = { lineId: line.lineId, lineName: names.get(line.lineId) ?? '', side, href: links[line.lineId]?.href ?? null };
+        for (const id of line.accountIds) accounts.set(id, account);
+      }
+      return { ledgerId: detail.ledgerId, month: { report, accounts } satisfies LedgerMonth };
+    }),
+  );
+  const found = loaded.flatMap((entry) => (entry ? [entry] : []));
+  const months = found.map((entry) => entry.month);
   if (months.length === 0) return { available: false, reason: 'no_ledger_for_period', availableMonths };
 
-  const txns = await searchLedgerTransactions(
+  const { txns, truncated } = await searchLedgerTransactions(
     ctx.supabase,
     ctx.entityId,
-    months.flatMap((m) => [...m.accounts.keys()]),
+    found.map((entry) => entry.ledgerId),
+    new Set(months.flatMap((m) => [...m.accounts.keys()])),
     query,
   );
   return {
     ...transactionSearchOut(ctx, query, months, txns),
     ...(inRange.length > MAX_MONTHS ? { truncatedToMonths: MAX_MONTHS } : {}),
+    // Totals over a partial set would read as complete: say so, so the answer can.
+    ...(truncated
+      ? { partial: true, partialNote: 'More transactions matched than one search reads, so these totals cover only part of them. Say so, and suggest a shorter period.' }
+      : {}),
   };
 }

@@ -2,10 +2,41 @@
 import { describe, expect, it } from 'vitest';
 
 import { CitationRegistry } from '@/lib/ai/nick/citations';
-import { type LedgerMonth, transactionSearchOut } from '@/lib/ai/nick/tools/ledger';
+import { type LedgerMonth, lineSides, transactionSearchOut } from '@/lib/ai/nick/tools/ledger';
 import type { LedgerTxn } from '@/lib/ledger/display';
+import { buildTree } from '@/lib/reports/tree';
 
-import { report } from '../reports/fixtures';
+import { line, report, resetPositions } from '../reports/fixtures';
+
+describe('which side of the P&L a line is on', () => {
+  it('reads it from the section: other expenses are paid, other income is received, an unknown heading is neither', () => {
+    resetPositions();
+    const sides = lineSides(
+      buildTree([
+        line('S1', 'Income', { isSection: true }),
+        line('A1', 'Catering', { parent: 'S1', current: 100_000 }),
+        line('S2', 'Cost of Goods Sold', { isSection: true }),
+        line('A2', 'Coffee beans', { parent: 'S2', current: 40_000 }),
+        line('S3', 'Expenses', { isSection: true }),
+        line('A3', 'Marketing', { parent: 'S3', current: 20_000 }),
+        line('S4', 'Other Income', { isSection: true }),
+        line('A4', 'Interest earned', { parent: 'S4', current: 1_200 }),
+        line('S5', 'Other Expenses', { isSection: true }),
+        line('A5', 'Interest expense', { parent: 'S5', current: 124_000 }),
+        line('S6', 'Memo items', { isSection: true }),
+        line('A6', 'Unclassified', { parent: 'S6', current: 500 }),
+      ]),
+    );
+    expect(['A1', 'A2', 'A3', 'A4', 'A5', 'A6'].map((id) => sides.get(id) ?? null)).toEqual([
+      'received',
+      'paid',
+      'paid',
+      'received',
+      'paid',
+      null,
+    ]);
+  });
+});
 
 const shape = (locale: 'en' | 'es' = 'en') => ({ locale, currency: 'USD', registry: new CitationRegistry() });
 

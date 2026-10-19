@@ -83,11 +83,17 @@ export async function PnlExpensesView({
 
   // The month's General Ledger, when the firm published one: the transactions
   // behind each account, for the lines whose figure they add up to exactly.
+  // Grouped by P&L line: a collapsed parent's line holds its sub-accounts' transactions too.
   const ledger = await loadLedgerDetail(supabase, entity.id, report, roots);
-  const ledgerAccounts = ledger ? lines.flatMap((l) => ledger.lines.get(l.id)?.accountId ?? []) : [];
+  const lineOfAccount = new Map<string, string>();
+  for (const l of lines) for (const id of ledger?.lines.get(l.id)?.accountIds ?? []) lineOfAccount.set(id, l.id);
   const ledgerTxns = new Map<string, LedgerTxn[]>();
-  for (const tx of await loadLedgerTransactions(supabase, entity.id, ledgerAccounts)) {
-    ledgerTxns.set(tx.accountId, [...(ledgerTxns.get(tx.accountId) ?? []), tx]);
+  for (const tx of await loadLedgerTransactions(supabase, entity.id, [...lineOfAccount.keys()])) {
+    const lineId = lineOfAccount.get(tx.accountId);
+    if (!lineId) continue;
+    const group = ledgerTxns.get(lineId);
+    if (group) group.push(tx);
+    else ledgerTxns.set(lineId, [tx]);
   }
   const largest = operatingLines[0] ?? lines[0] ?? null;
 
@@ -218,18 +224,17 @@ export async function PnlExpensesView({
               <LedgerAccountsTable
                 currency={currency}
                 openId={line ?? null}
-                rows={lines.map((l): LedgerAccountRow => {
-                  const accountId = ledger.lines.get(l.id)?.accountId;
-                  return {
+                rows={lines.map(
+                  (l): LedgerAccountRow => ({
                     id: l.id,
                     label: l.label,
                     group: l.group,
                     kindLabel: kindLabel[l.kind],
                     cents: l.cents,
                     share: shareOf(l.cents, totals[l.kind]),
-                    txns: accountId ? (ledgerTxns.get(accountId) ?? null) : null,
-                  };
-                })}
+                    txns: ledger.lines.has(l.id) ? (ledgerTxns.get(l.id) ?? null) : null,
+                  }),
+                )}
               />
               <p className="text-muted-foreground mt-3 text-small">{t('pnlShareNote')}</p>
             </>

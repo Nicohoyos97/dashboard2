@@ -105,8 +105,12 @@ test.describe('General Ledger: what a client may read', () => {
     const { tenant, documentId, ledgerId } = await ledgerFor('gl-pub');
     await publish(documentId, ledgerId);
 
-    const { data: ledgers } = await tenant.client.from('general_ledgers').select('id').eq('id', ledgerId);
-    expect(ledgers).toHaveLength(1);
+    // The row is the firm's (0028): its reconciliation names every account in
+    // the file. The client gets the period through published_ledgers().
+    const { data: ledgers } = await tenant.client.from('general_ledgers').select('id, reconciliation, company_name').eq('id', ledgerId);
+    expect(ledgers).toEqual([]);
+    const { data: periods } = await tenant.client.rpc('published_ledgers', { entity: tenant.entityId });
+    expect(periods).toEqual([{ id: ledgerId, period_start: '2026-09-01', period_end: '2026-09-30' }]);
     const { data: accounts } = await tenant.client.from('ledger_accounts').select('id, name').eq('ledger_id', ledgerId);
     expect(accounts?.map((a) => a.name).sort()).toEqual([...P_AND_L_ACCOUNTS].sort());
     const { data: txns } = await tenant.client.from('ledger_transactions').select('account_id').eq('ledger_id', ledgerId);

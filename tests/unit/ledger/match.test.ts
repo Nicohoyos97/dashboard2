@@ -69,6 +69,44 @@ describe('matchLedger', () => {
     expect(matchLedger(pnl(), accounts()).unmatched.map((a) => a.id)).toEqual(['g-checking']);
   });
 
+  it('a collapsed parent carries its sub-accounts: the line is the subtree, transactions included', () => {
+    resetPositions();
+    const collapsed = buildTree([
+      line('S3', 'Expenses', { isSection: true }),
+      line('A5', 'Utilities', { parent: 'S3', number: '6300', current: 74_040 }),
+    ]);
+    const withOwn = [...accounts(), { id: 'g-gas', name: '63009 - Gas', parentId: 'g-elec', totalCents: 0 }].map((a) =>
+      a.id === 'g-util' ? { ...a, totalCents: 74_040 } : a,
+    );
+    const [utilities] = matchLedger(collapsed, withOwn).lines;
+    expect(utilities).toMatchObject({ accountId: 'g-util', status: 'matched', ledgerCents: 74_040 });
+    expect(utilities?.accountIds).toEqual(['g-util', 'g-elec', 'g-gas', 'g-net']);
+  });
+
+  it("an expanded parent's own postings match its own total, not the subtree's", () => {
+    resetPositions();
+    const expanded = (own: string) =>
+      buildTree([
+        line('S3', 'Expenses', { isSection: true }),
+        line('H1', 'Utilities', { parent: 'S3', isSection: true, number: '6300' }),
+        line('A3', 'Electricity', { parent: 'H1', number: '63001', current: 51_240 }),
+        line('A4', 'Internet', { parent: 'H1', current: 12_800 }),
+        line('A6', own, { parent: 'H1', current: 10_000 }),
+        line('T2', 'Total Utilities', { parent: 'H1', isTotal: true, current: 74_040 }),
+      ]);
+    // $100 posted to Utilities itself, on top of its two sub-accounts.
+    const ledger = accounts().map((a) => (a.id === 'g-util' ? { ...a, totalCents: 74_040 } : a));
+    for (const own of ['Utilities', 'Utilities - Other']) {
+      const result = matchLedger(expanded(own), ledger);
+      expect(result.lines.find((l) => l.lineId === 'A6')).toMatchObject({ accountId: 'g-util', status: 'matched', ledgerCents: 10_000, accountIds: ['g-util'] });
+      expect(result.lines.find((l) => l.lineId === 'A3')?.accountIds).toEqual(['g-elec']);
+      expect(result.passed).toBe(true);
+    }
+    // A cent off the parent's own postings is still a mismatch.
+    const off = matchLedger(expanded('Utilities'), ledger.map((a) => (a.id === 'g-util' ? { ...a, totalCents: 74_041 } : a)));
+    expect(off.lines.find((l) => l.lineId === 'A6')).toMatchObject({ status: 'mismatch', accountIds: [] });
+  });
+
   it('keys accounts the way QuickBooks and extraction both write them', () => {
     expect(accountKey('1001- Sales (POS)')).toBe(accountKey('1001 Sales (POS)'));
     expect(accountKey('6300 - Utilities')).toBe('6300 utilities');

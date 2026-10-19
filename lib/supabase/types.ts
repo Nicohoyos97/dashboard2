@@ -2543,9 +2543,26 @@ export type Database = {
           vendor: string
         }[]
       }
+      publish_document_version: {
+        Args: {
+          p_document_id: string
+          p_version_id: string
+          p_visible_ledger_accounts?: string[]
+        }
+        Returns: Json
+      }
+      published_ledgers: {
+        Args: { entity: string }
+        Returns: {
+          id: string
+          period_end: string
+          period_start: string
+        }[]
+      }
       report_is_published: { Args: { report: string }; Returns: boolean }
       sales_report_is_published: { Args: { report: string }; Returns: boolean }
       shares_entity_with: { Args: { target: string }; Returns: boolean }
+      unpublish_document: { Args: { p_document_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
