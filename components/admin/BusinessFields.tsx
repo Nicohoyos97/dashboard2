@@ -114,7 +114,7 @@ export function BusinessFields({
             a trade name somebody typed earlier. */}
         <fieldset className="sm:col-span-2">
           <legend className={labelClass}>{t('dbaQuestion')}</legend>
-          <div className="mt-1.5 flex items-center gap-5 text-[14px]">
+          <div className="mt-1.5 flex items-center gap-5 text-ui">
             {[false, true].map((answer) => (
               <label key={String(answer)} className="flex items-center gap-2">
                 <input
@@ -124,7 +124,7 @@ export function BusinessFields({
                   onChange={() =>
                     onChange({ ...values, hasDba: answer, dbaName: answer ? values.dbaName : '' })
                   }
-                  className="accent-blue size-4"
+                  className="accent-brand size-4"
                 />
                 {answer ? t('yes') : t('no')}
               </label>
@@ -196,7 +196,7 @@ export function BusinessFields({
             <option value="cash">{t('basisCash')}</option>
             <option value="accrual">{t('basisAccrual')}</option>
           </select>
-          <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('accountingBasisHelp')}</p>
+          <p className="text-muted-foreground mt-1.5 text-small">{t('accountingBasisHelp')}</p>
         </div>
         <div>
           <label htmlFor={id('currency')} className={labelClass}>
@@ -230,11 +230,11 @@ export function BusinessFields({
             </option>
           ))}
         </select>
-        <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('timezoneHelp')}</p>
+        <p className="text-muted-foreground mt-1.5 text-small">{t('timezoneHelp')}</p>
       </div>
 
       <fieldset className="border-line mt-1 rounded-xl border p-4">
-        <legend className="text-muted-foreground px-1 text-[11px] font-semibold tracking-[0.12em] uppercase">
+        <legend className="text-muted-foreground px-1 text-micro font-semibold tracking-[0.12em] uppercase">
           {t('modules')}
         </legend>
 
@@ -252,8 +252,8 @@ export function BusinessFields({
                 onClick={() => applyPackage(name)}
                 className={
                   active
-                    ? 'bg-blue rounded-full px-3 py-1.5 text-[13px] font-semibold text-white'
-                    : 'border-line text-muted-foreground hover:bg-secondary rounded-full border px-3 py-1.5 text-[13px] font-semibold'
+                    ? 'bg-blue rounded-full px-3 py-1.5 text-small font-semibold text-white'
+                    : 'border-line text-muted-foreground hover:bg-secondary rounded-full border px-3 py-1.5 text-small font-semibold'
                 }
               >
                 {t(`package_${name}`)}
@@ -262,7 +262,7 @@ export function BusinessFields({
           })}
         </div>
 
-        <div className="flex flex-col gap-3 text-[14px]">
+        <div className="flex flex-col gap-3 text-ui">
           <Toggle
             label={t('moduleBookkeeping')}
             hint={t('moduleBookkeepingHint')}
@@ -297,10 +297,10 @@ export function BusinessFields({
 
         {/* Sold on top of the services above, each at its own price, so they
             are asked apart and start off. */}
-        <p className="text-muted-foreground mt-5 mb-3 text-[11px] font-semibold tracking-[0.12em] uppercase">
+        <p className="text-muted-foreground mt-5 mb-3 text-micro font-semibold tracking-[0.12em] uppercase">
           {t('addons')}
         </p>
-        <div className="flex flex-col gap-3 text-[14px]">
+        <div className="flex flex-col gap-3 text-ui">
           <Toggle
             label={t('moduleBalanceSheet')}
             hint={t(values.enabledModules.bookkeeping ? 'moduleBalanceSheetHint' : 'moduleBalanceSheetNeedsBooks')}
@@ -348,11 +348,11 @@ function Toggle({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange?.(e.target.checked)}
-        className="accent-blue mt-0.5 size-4"
+        className="accent-brand mt-0.5 size-4"
       />
       <span>
         <span className="text-ink font-medium">{label}</span>
-        <span className="text-muted-foreground block text-[12.5px]">{hint}</span>
+        <span className="text-muted-foreground block text-small">{hint}</span>
       </span>
     </label>
   );

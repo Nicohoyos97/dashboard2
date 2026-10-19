@@ -25,28 +25,30 @@ export async function TaxOpportunities() {
   return (
     <section
       aria-labelledby="tax-opportunities"
-      className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-card"
     >
-      <h2 id="tax-opportunities" className="text-ink flex items-center gap-2 text-[16px] font-semibold">
-        <Lightbulb className="text-blue size-[18px] shrink-0" aria-hidden="true" />
+      <h2 id="tax-opportunities" className="text-ink flex items-center gap-2 text-title font-semibold">
+        <Lightbulb className="text-link size-[18px] shrink-0" aria-hidden="true" />
         {t('opportunitiesTitle')}
       </h2>
-      <p className="text-muted-foreground mt-1 text-[13px] leading-[1.5]">
+      <p className="text-muted-foreground mt-1 text-small leading-[1.5]">
         {t('opportunitiesLede')}
       </p>
 
-      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* A reading list, not six tiles: each topic is a question to take to
+          the accountant, and a box around each made them look like buttons. */}
+      <ul className="mt-2 grid grid-cols-1 gap-x-10 sm:grid-cols-2">
         {TOPICS.map((topic) => (
-          <li key={topic} className="border-line-soft rounded-xl border p-3.5">
-            <p className="text-ink text-[14px] font-semibold">{t(`topic_${topic}_title`)}</p>
-            <p className="text-muted-foreground mt-1 text-[13px] leading-[1.5]">
+          <li key={topic} className="border-line-soft border-b py-4 sm:[&:nth-last-child(-n+2)]:border-b-0 max-sm:last:border-b-0">
+            <p className="text-ink text-ui font-semibold">{t(`topic_${topic}_title`)}</p>
+            <p className="text-muted-foreground mt-1 text-small leading-[1.55] text-pretty">
               {t(`topic_${topic}_body`)}
             </p>
           </li>
         ))}
       </ul>
 
-      <p className="text-muted-foreground mt-4 text-[12.5px] leading-[1.5]">
+      <p className="text-muted-foreground border-line mt-2 border-t pt-4 text-caption leading-[1.5]">
         {t('opportunitiesDisclaimer')}
       </p>
     </section>

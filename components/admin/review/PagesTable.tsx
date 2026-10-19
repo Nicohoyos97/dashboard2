@@ -13,11 +13,11 @@ export type PageRow = {
 // Only `financial_statement` pages ever reach extraction.
 export async function PagesTable({ pages }: { pages: PageRow[] }) {
   const t = await getTranslations('Admin');
-  if (pages.length === 0) return <p className="text-muted-foreground text-[14px]">{t('noPagesYet')}</p>;
+  if (pages.length === 0) return <p className="text-muted-foreground text-ui">{t('noPagesYet')}</p>;
 
   return (
-    <table className="w-full text-left text-[13.5px]">
-      <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+    <table className="w-full text-left text-ui">
+      <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
         <tr>
           <th className="px-3 py-2">{t('colPage')}</th>
           <th className="px-3 py-2">{t('colKind')}</th>

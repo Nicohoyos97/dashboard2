@@ -7,7 +7,8 @@ import { notFound } from 'next/navigation';
 
 import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
-import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
+import { type StatCardItem } from '@/components/dashboard/StatCards';
+import { SummaryPanel } from '@/components/dashboard/SummaryPanel';
 import { TaxOpportunities } from '@/components/dashboard/TaxOpportunities';
 import { TaxYearChart } from '@/components/charts/TaxYearChart';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
@@ -78,18 +79,17 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
   const filed = obligations.filter((o) => o.filingStatus === 'filed' || o.filingStatus === 'amended').length;
   const notFinal = obligations.filter((o) => o.status !== 'firm_confirmed').length;
 
-  const cards: StatCardItem[] = [
+  const remainingItem: StatCardItem = {
+    label: t('cardRemaining'),
+    value: remaining === null ? null : money(remaining.cents),
+    unavailable: t('notPrinted'),
+    ...(remaining ? { detail: t(`basis_${remaining.basis}`) } : {}),
+    ...(remaining && remaining.cents > 0 ? { badge: { text: t('status_payable'), tone: 'warning' as const } } : {}),
+  };
+  const figures: StatCardItem[] = [
     { label: t('cardEstimated'), value: format(sumField(obligations, (o) => o.estimatedCents)), unavailable: t('notPrinted'), badge: { text: t('status_estimated'), tone: 'neutral' } },
     { label: t('cardConfirmed'), value: format(sumField(obligations, (o) => o.confirmedCents)), unavailable: t('notConfirmedYet'), badge: { text: t('status_firm_confirmed'), tone: 'positive' } },
     { label: t('cardPaid'), value: format(sumField(obligations, (o) => o.paidCents)), unavailable: t('nothingRecordedPaid') },
-    {
-      label: t('cardRemaining'),
-      value: remaining === null ? null : money(remaining.cents),
-      unavailable: t('notPrinted'),
-      ...(remaining ? { detail: t(`basis_${remaining.basis}`) } : {}),
-      ...(remaining && remaining.cents > 0 ? { badge: { text: t('status_payable'), tone: 'warning' as const } } : {}),
-    },
-    { label: t('cardNextDue'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
     { label: t('cardFilings'), value: t('filedOf', { filed, total: obligations.length }) },
   ];
 
@@ -104,23 +104,27 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
           ) : null
         }
       >
-        <p className="text-muted-foreground mt-3 text-[12.5px]">{t('incomeSourceNote')}</p>
         {notFinal > 0 && (
-          <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-[13px]">{t('notFinalWarning', { count: notFinal })}</p>
+          <p className="border-warning/30 bg-warning/10 text-ink mt-6 rounded-xl border px-4 py-3 text-small">{t('notFinalWarning', { count: notFinal })}</p>
         )}
 
         <div className="mt-6">
-          <StatCards items={cards} columns={3} />
+          <SummaryPanel
+            focal={remainingItem}
+            due={{ label: t('cardNextDue'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') }}
+            items={figures}
+          />
         </div>
+        <p className="text-muted-foreground mt-3 text-small">{t('incomeSourceNote')}</p>
 
         <TaxAlerts alerts={taxAlerts(obligations, today)} />
 
         {series.length >= 1 && (
-          <section aria-labelledby="income-tax-trend" className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <h2 id="income-tax-trend" className="text-ink text-[16px] font-semibold">
+          <section aria-labelledby="income-tax-trend" className="border-line bg-card mt-4 rounded-2xl border p-5 shadow-card sm:mt-6">
+            <h2 id="income-tax-trend" className="text-ink text-title font-semibold">
               {t('chartTitle')}
             </h2>
-            <p className="text-muted-foreground mt-1 text-[13px]">{t('chartLede')}</p>
+            <p className="text-muted-foreground mt-1 text-small">{t('chartLede')}</p>
             <div className="mt-4">
               <TaxYearChart points={series} currency={currency} summary={t('chartSummary', { count: series.length })} />
             </div>
@@ -130,7 +134,7 @@ export default async function IncomeTaxesPage({ searchParams }: { searchParams: 
         <TaxOpportunities />
 
         <section aria-labelledby="income-obligations" className="mt-6">
-          <h2 id="income-obligations" className="text-ink text-[16px] font-semibold">
+          <h2 id="income-obligations" className="text-ink text-title font-semibold">
             {t('obligationsTitle')}
           </h2>
           <div className="mt-3">

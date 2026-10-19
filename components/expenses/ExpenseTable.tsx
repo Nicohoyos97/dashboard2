@@ -62,13 +62,13 @@ export async function ExpenseTable({
   };
 
   if (total === 0) {
-    return <p className="text-muted-foreground text-[14px]">{t('tableEmpty')}</p>;
+    return <p className="text-muted-foreground text-ui">{t('tableEmpty')}</p>;
   }
 
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-[13.5px]">
+        <table className="w-full min-w-[720px] border-collapse text-ui">
           <caption className="sr-only">{t('tableCaption')}</caption>
           <thead>
             <tr className="border-line border-b text-left">
@@ -100,12 +100,12 @@ export async function ExpenseTable({
                   <span className="flex items-center gap-2">
                     <span className="max-w-[320px] truncate">{row.description}</span>
                     {row.isRecurring === true && (
-                      <span className="bg-secondary text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">{t('recurringYes')}</span>
+                      <span className="bg-secondary text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-micro font-semibold">{t('recurringYes')}</span>
                     )}
                     {row.documentVersionId && (
                       <a
                         href={`/api/documents/${row.documentVersionId}/download`}
-                        className="text-muted-foreground hover:text-blue flex shrink-0 items-center gap-1 text-[11px]"
+                        className="text-muted-foreground hover:text-link flex shrink-0 items-center gap-1 text-micro"
                         aria-label={t('openSource')}
                         title={t('openSource')}
                       >
@@ -126,14 +126,14 @@ export async function ExpenseTable({
         </table>
       </div>
 
-      <nav aria-label={t('paginationLabel')} className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px]">
+      <nav aria-label={t('paginationLabel')} className="mt-4 flex flex-wrap items-center justify-between gap-3 text-small">
         <p className="text-muted-foreground">{t('showing', { from, to, total })}</p>
         <div className="flex items-center gap-2">
           {/* At the ends these are disabled *controls*, not dimmed text: as a
               span the greyed label was a 2.46:1 contrast failure and a screen
               reader read it as stray words rather than an unavailable button. */}
           {page > 1 ? (
-            <Link href={expenseHref(path, params, { page: String(page - 1) })} className="text-blue font-semibold hover:underline">
+            <Link href={expenseHref(path, params, { page: String(page - 1) })} className="text-link font-semibold hover:underline">
               {t('previous')}
             </Link>
           ) : (
@@ -143,7 +143,7 @@ export async function ExpenseTable({
           )}
           <span className="text-muted-foreground">{t('pageOf', { page, pages })}</span>
           {page < pages ? (
-            <Link href={expenseHref(path, params, { page: String(page + 1) })} className="text-blue font-semibold hover:underline">
+            <Link href={expenseHref(path, params, { page: String(page + 1) })} className="text-link font-semibold hover:underline">
               {t('next')}
             </Link>
           ) : (

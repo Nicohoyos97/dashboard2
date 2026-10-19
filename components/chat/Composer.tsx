@@ -72,8 +72,8 @@ export function Composer({
         // screen readers, so nothing is lost with it gone.
         'text-ink sm:placeholder:text-muted-foreground w-full resize-none bg-transparent leading-[1.5] outline-none placeholder:text-transparent disabled:opacity-60',
         hero
-          ? 'max-h-60 min-h-[88px] px-2 py-1.5 text-[15.5px]'
-          : 'max-h-40 min-h-[40px] flex-1 px-2 py-2 text-[14.5px]',
+          ? 'max-h-60 min-h-[88px] px-2 py-1.5 text-body'
+          : 'max-h-40 min-h-[40px] flex-1 px-2 py-2 text-body',
       )}
     />
   );
@@ -85,7 +85,7 @@ export function Composer({
         submit();
       }}
       className={cn(
-        'border-line bg-card focus-within:border-blue/60 focus-within:ring-blue/20 rounded-2xl border shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus-within:ring-3',
+        'border-line bg-card focus-within:border-brand/60 focus-within:ring-brand/20 rounded-2xl border shadow-card focus-within:ring-3',
         hero ? 'flex flex-col gap-2 p-3 sm:p-4' : 'flex items-end gap-2 p-2',
       )}
     >
@@ -103,7 +103,7 @@ export function Composer({
             type="submit"
             aria-label={t('send')}
             disabled={disabled || value.trim() === ''}
-            className="bg-blue hover:bg-blue-soft focus-visible:ring-blue/40 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white transition outline-none focus-visible:ring-3 disabled:opacity-40"
+            className="bg-brand hover:bg-blue-hover focus-visible:ring-brand/40 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white transition outline-none focus-visible:ring-3 disabled:opacity-40"
           >
             <ArrowUp className="size-[18px]" strokeWidth={2} aria-hidden="true" />
           </button>
@@ -113,7 +113,7 @@ export function Composer({
           type="submit"
           aria-label={t('send')}
           disabled={disabled || value.trim() === ''}
-          className="bg-blue hover:bg-blue-soft focus-visible:ring-blue/40 inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-white transition outline-none focus-visible:ring-3 disabled:opacity-40"
+          className="bg-brand hover:bg-blue-hover focus-visible:ring-brand/40 inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-white transition outline-none focus-visible:ring-3 disabled:opacity-40"
         >
           <SendHorizontal className="size-[18px]" aria-hidden="true" />
         </button>

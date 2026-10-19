@@ -43,9 +43,9 @@ export function NotificationForm({
           setSaved(true);
         });
       }}
-      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-card"
     >
-      <p className="text-muted-foreground text-[13px]">{t('notifyForBusiness', { business: businessName })}</p>
+      <p className="text-muted-foreground text-small">{t('notifyForBusiness', { business: businessName })}</p>
 
       <ul className="mt-4 flex flex-col gap-1">
         {NOTIFICATION_CHANNELS.map((channel) => (
@@ -56,19 +56,19 @@ export function NotificationForm({
                 checked={values[channel]}
                 disabled={!canEdit || isPending}
                 onChange={() => toggle(channel)}
-                className="accent-blue mt-0.5 size-4 shrink-0"
+                className="accent-brand mt-0.5 size-4 shrink-0"
               />
               <span className="min-w-0">
-                <span className="text-ink block text-[14px] font-semibold">{t(`notify_${channel}`)}</span>
-                <span className="text-muted-foreground block text-[13px] leading-[1.45]">{t(`notify_${channel}_help`)}</span>
+                <span className="text-ink block text-ui font-semibold">{t(`notify_${channel}`)}</span>
+                <span className="text-muted-foreground block text-small leading-[1.45]">{t(`notify_${channel}_help`)}</span>
               </span>
             </label>
           </li>
         ))}
       </ul>
 
-      {error && <p className="text-danger mt-4 text-[13.5px]">{error}</p>}
-      {saved && <p className="text-success mt-4 text-[13.5px]">{t('saved')}</p>}
+      {error && <p className="text-danger mt-4 text-ui">{error}</p>}
+      {saved && <p className="text-success mt-4 text-ui">{t('saved')}</p>}
 
       <div className="mt-6">
         <button type="submit" disabled={!canEdit || isPending} className={primaryButton}>

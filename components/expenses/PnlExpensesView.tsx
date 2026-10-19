@@ -28,7 +28,7 @@ import { comparableSeries } from '@/lib/reports/series';
 import { buildTree } from '@/lib/reports/tree';
 import type { Metric, ReportRow } from '@/lib/reports/types';
 import type { createClient } from '@/lib/supabase/server';
-import { formatPeriod } from '@/lib/utils/dates';
+import { formatPeriod, formatPeriodCompact } from '@/lib/utils/dates';
 
 const TREND_LIMIT = 8;
 
@@ -99,7 +99,7 @@ export async function PnlExpensesView({
   // otherwise the published statement for the period before. Never both.
   const printedPrior = report.comparativeStart !== null && report.comparativeEnd !== null;
   const priorLabel = printedPrior
-    ? formatPeriod(report.comparativeStart ?? '', report.comparativeEnd ?? '', locale)
+    ? formatPeriodCompact(report.comparativeStart ?? '', report.comparativeEnd ?? '', locale)
     : priorReport && priorRange
       ? priorRange.label
       : null;
@@ -142,7 +142,7 @@ export async function PnlExpensesView({
   const trend =
     trendReports.length >= 2
       ? trendReports.map((r, index) => ({
-          label: formatPeriod(r.periodStart, r.periodEnd, locale),
+          label: formatPeriodCompact(r.periodStart, r.periodEnd, locale),
           a: trendMetrics[index]?.operatingExpenses.current?.cents ?? null,
           b: trendMetrics[index]?.cogs.current?.cents ?? null,
         }))
@@ -164,7 +164,7 @@ export async function PnlExpensesView({
       <PortalPage
         title={t('title')}
         lede={`${entity.name} · ${periodLabel}`}
-        controls={
+        filters={
           <PeriodPicker
             {...periodPickerProps({
               periods: statementPeriods(reports, locale),
@@ -176,18 +176,17 @@ export async function PnlExpensesView({
           />
         }
       >
-        <p className="text-muted-foreground mt-3 text-[12.5px]">
+        <div className="mt-6">
+          <StatCards items={cards} columns={3} />
+        </div>
+        <p className="text-muted-foreground mt-3 text-small">
           {t('pnlSourceNote')}{' '}
-          <Link href={statementHref} className="text-blue font-semibold hover:underline">
+          <Link href={statementHref} className="text-link hover:text-link-hover font-semibold hover:underline">
             {t('pnlViewStatement')}
           </Link>
         </p>
 
-        <div className="mt-6">
-          <StatCards items={cards} columns={3} />
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
           <Section title={t('pnlByAccountTitle')}>
             {operatingLines.some((line) => line.cents > 0) ? (
               <CompositionBars items={operatingLines.map((line) => ({ label: line.label, cents: line.cents }))} currency={currency} otherLabel={t('other')} />
@@ -215,7 +214,7 @@ export async function PnlExpensesView({
             <Muted text={t('pnlNoLines')} />
           ) : ledger ? (
             <>
-              <p className="text-muted-foreground -mt-2 mb-3 text-[13px]">{tLedger('expensesHint', { period: periodLabel })}</p>
+              <p className="text-muted-foreground -mt-2 mb-3 text-small">{tLedger('expensesHint', { period: periodLabel })}</p>
               <LedgerAccountsTable
                 currency={currency}
                 openId={line ?? null}
@@ -232,12 +231,12 @@ export async function PnlExpensesView({
                   };
                 })}
               />
-              <p className="text-muted-foreground mt-3 text-[12.5px]">{t('pnlShareNote')}</p>
+              <p className="text-muted-foreground mt-3 text-small">{t('pnlShareNote')}</p>
             </>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13.5px]">
-                <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+              <table className="w-full text-left text-ui">
+                <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
                   <tr>
                     <th scope="col" className="px-3 py-2">{tStatements('colAccount')}</th>
                     <th scope="col" className="hidden px-3 py-2 sm:table-cell">{t('pnlColType')}</th>
@@ -252,9 +251,9 @@ export async function PnlExpensesView({
                       <tr key={line.id}>
                         <th scope="row" className="px-3 py-2.5 font-normal">
                           <span className="text-ink font-medium">{line.label}</span>
-                          {line.group && <span className="text-muted-foreground block text-[12px]">{line.group}</span>}
+                          {line.group && <span className="text-muted-foreground block text-caption">{line.group}</span>}
                           {/* On a phone the type rides under the name, so the amount and its share fit without scrolling. */}
-                          <span className="text-muted-foreground block text-[12px] sm:hidden">{kindLabel[line.kind]}</span>
+                          <span className="text-muted-foreground block text-caption sm:hidden">{kindLabel[line.kind]}</span>
                         </th>
                         <td className="text-muted-foreground hidden px-3 py-2.5 sm:table-cell">{kindLabel[line.kind]}</td>
                         <td className="text-ink px-3 py-2.5 text-right whitespace-nowrap tabular-nums">{money(line.cents)}</td>
@@ -266,7 +265,7 @@ export async function PnlExpensesView({
                   })}
                 </tbody>
               </table>
-              <p className="text-muted-foreground mt-3 text-[12.5px]">{t('pnlShareNote')}</p>
+              <p className="text-muted-foreground mt-3 text-small">{t('pnlShareNote')}</p>
             </div>
           )}
         </Section>
@@ -278,13 +277,13 @@ export async function PnlExpensesView({
 
 function Section({ title, className = '', children }: { title: string; className?: string; children: React.ReactNode }) {
   return (
-    <section className={`border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
-      <h2 className="text-ink text-[16px] font-semibold">{title}</h2>
+    <section className={`border-line bg-card rounded-2xl border p-5 shadow-card ${className}`}>
+      <h2 className="text-ink text-title font-semibold">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 function Muted({ text }: { text: string }) {
-  return <p className="text-muted-foreground text-[14px]">{text}</p>;
+  return <p className="text-muted-foreground text-ui">{text}</p>;
 }

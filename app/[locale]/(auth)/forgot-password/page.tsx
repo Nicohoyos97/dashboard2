@@ -23,7 +23,7 @@ export default async function ForgotPasswordPage({
       footer={
         <>
           {t('rememberedIt')}{' '}
-          <Link href="/signin" className="text-foreground hover:text-blue font-semibold">
+          <Link href="/signin" className="text-foreground hover:text-link font-semibold">
             {t('signIn')}
           </Link>
         </>

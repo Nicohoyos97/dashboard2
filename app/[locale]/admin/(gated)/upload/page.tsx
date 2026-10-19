@@ -38,8 +38,8 @@ export default async function UploadPage({ searchParams }: { searchParams: Promi
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{t('uploadTitle')}</h1>
-      <p className="text-muted-foreground mt-1.5 mb-8 max-w-[720px] text-[15px]">{t('uploadLede')}</p>
+      <h1 className="text-ink text-display font-bold tracking-[-0.01em]">{t('uploadTitle')}</h1>
+      <p className="text-muted-foreground mt-1.5 mb-8 max-w-[720px] text-body">{t('uploadLede')}</p>
       <Uploader clients={clients} {...(replace ? { replace } : {})} />
     </main>
   );

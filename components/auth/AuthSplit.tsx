@@ -21,7 +21,7 @@ export function AuthSplit({ children }: { children: React.ReactNode }) {
                 once in `FIRM` — a second copy here is how the two would drift. */}
             <a
               href={FIRM.siteUrl}
-              className="text-muted-foreground hover:text-blue focus-visible:ring-blue/35 -ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-[14px] font-semibold transition-colors outline-none focus-visible:ring-3"
+              className="text-muted-foreground hover:text-link focus-visible:ring-brand/35 -ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ui font-semibold transition-colors outline-none focus-visible:ring-3"
             >
               <ArrowLeft className="size-[18px]" aria-hidden="true" />
               {t('backToWebsite')}

@@ -12,60 +12,77 @@ const ICON: Record<string, typeof FileText> = {
   income_tax_document: Receipt,
 };
 
-// Available reports / documents (§6 tiles grid): one tile per published
-// document, click to download the exact original through the audited route.
-export async function ReportTiles({ documents, showLibraryLink = false }: { documents: PublishedDocument[]; showLibraryLink?: boolean }) {
+// Available reports / documents: one row per published document, a click
+// downloads the exact original through the audited route. Rows rather than a
+// grid of bordered tiles: a tile inside the card was a card inside a card, and
+// a list reads at a glance in a narrow column and on a phone alike.
+export async function ReportTiles({
+  documents,
+  showLibraryLink = false,
+  bare = false,
+}: {
+  documents: PublishedDocument[];
+  showLibraryLink?: boolean;
+  /** No card and no heading: the reports library page is the list itself. */
+  bare?: boolean;
+}) {
   const [t, tAdmin, locale] = await Promise.all([getTranslations('Overview'), getTranslations('Admin'), getLocale()]);
+  const list =
+    documents.length === 0 ? (
+      <p className="text-muted-foreground mt-3 text-ui">{t('reportsEmpty')}</p>
+    ) : (
+      <ul className={`divide-line divide-y ${bare ? '' : 'mt-2'}`}>
+        {documents.map((d) => {
+          const Icon = ICON[d.documentType] ?? FileText;
+          const meta = `${tAdmin(`type_${d.documentType}`)}${d.periodStart && d.periodEnd ? ` · ${formatPeriod(d.periodStart, d.periodEnd, locale)}` : ''}`;
+          return (
+            <li key={d.id}>
+              {d.currentVersionId ? (
+                <a
+                  href={`/api/documents/${d.currentVersionId}/download`}
+                  className="group hover:bg-secondary focus-visible:ring-brand/40 -mx-2 flex items-center gap-3 rounded-xl px-2 py-3 transition-colors outline-none focus-visible:ring-3"
+                >
+                  <span className="bg-blue-pale text-link flex size-9 shrink-0 items-center justify-center rounded-lg">
+                    <Icon className="size-[18px]" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink line-clamp-2 block text-ui font-semibold break-words">{d.title}</span>
+                    <span className="text-muted-foreground block truncate text-small">{meta}</span>
+                  </span>
+                  <span className="text-muted-foreground group-hover:text-link flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
+                    <Download className="size-[18px]" aria-hidden="true" />
+                    <span className="sr-only">{t('downloadOriginal')}</span>
+                  </span>
+                </a>
+              ) : (
+                <div className="-mx-2 flex items-center gap-3 px-2 py-3">
+                  <span className="bg-secondary text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+                    <Icon className="size-[18px]" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink line-clamp-2 block text-ui font-semibold break-words">{d.title}</span>
+                    <span className="text-muted-foreground block truncate text-small">{t('reportsUnavailable')}</span>
+                  </span>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
+
+  if (bare) return list;
   return (
-    <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-ink text-[16px] font-semibold">{t('reportsTitle')}</h2>
+        <h2 className="text-ink text-title font-semibold">{t('reportsTitle')}</h2>
         {showLibraryLink && (
-          <Link href="/reports" className="text-blue text-[12.5px] font-semibold hover:underline">
+          <Link href="/reports" className="text-link hover:text-link-hover text-small font-semibold hover:underline">
             {t('reportsViewAll')}
           </Link>
         )}
       </div>
-      {documents.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-[14px]">{t('reportsEmpty')}</p>
-      ) : (
-        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {documents.map((d) => {
-            const Icon = ICON[d.documentType] ?? FileText;
-            return (
-              <li key={d.id}>
-                {d.currentVersionId ? (
-                  <a
-                    href={`/api/documents/${d.currentVersionId}/download`}
-                    className="border-line hover:border-blue/50 hover:bg-paper group flex h-full flex-col rounded-xl border p-4 transition"
-                  >
-                    <span className="bg-blue-pale text-blue flex size-9 items-center justify-center rounded-lg">
-                      <Icon className="size-[18px]" aria-hidden="true" />
-                    </span>
-                    <span className="text-ink mt-3 line-clamp-2 text-[14px] font-semibold">{d.title}</span>
-                    <span className="text-muted-foreground mt-1 text-[12.5px]">
-                      {tAdmin(`type_${d.documentType}`)}
-                      {d.periodStart && d.periodEnd ? ` · ${formatPeriod(d.periodStart, d.periodEnd, locale)}` : ''}
-                    </span>
-                    <span className="text-blue mt-auto inline-flex items-center gap-1 pt-3 text-[12.5px] font-semibold">
-                      <Download className="size-3.5" aria-hidden="true" />
-                      {t('downloadOriginal')}
-                    </span>
-                  </a>
-                ) : (
-                  <div className="border-line bg-paper flex h-full flex-col rounded-xl border p-4">
-                    <span className="bg-secondary text-muted-foreground flex size-9 items-center justify-center rounded-lg">
-                      <Icon className="size-[18px]" aria-hidden="true" />
-                    </span>
-                    <span className="text-ink mt-3 line-clamp-2 text-[14px] font-semibold">{d.title}</span>
-                    <span className="text-muted-foreground mt-1 text-[12.5px]">{t('reportsUnavailable')}</span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {list}
     </section>
   );
 }

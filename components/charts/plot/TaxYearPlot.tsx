@@ -17,7 +17,7 @@ import {
 import { CHART_CHROME, LIABILITY, SERIES } from '@/lib/charts/palette';
 
 import { ChartTooltip } from '../ChartTooltip';
-import { compactMoney, moneyAxisWidth } from '../format';
+import { CHART_INITIAL, compactMoney, moneyAxisWidth } from '../format';
 
 export type TaxYearChartPoint = {
   year: number;
@@ -36,7 +36,7 @@ export function TaxYearPlot({ points, currency }: { points: TaxYearChartPoint[];
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} />
         <XAxis

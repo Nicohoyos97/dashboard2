@@ -87,7 +87,7 @@ export function LogoField({
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-[13px]"
+          className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-small"
         >
           <X className="size-3.5" aria-hidden="true" />
           {t('logoRemove')}

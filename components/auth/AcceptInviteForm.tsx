@@ -67,7 +67,7 @@ export function AcceptInviteForm() {
 
   if (state === 'loading') {
     return (
-      <p className="text-muted-foreground flex items-center gap-2 text-[14px]">
+      <p className="text-muted-foreground flex items-center gap-2 text-ui">
         <Spinner />
         {t('inviteChecking')}
       </p>
@@ -76,10 +76,10 @@ export function AcceptInviteForm() {
 
   if (state === 'invalid') {
     return (
-      <div className="border-line bg-secondary rounded-[12px] border px-4 py-3 text-[14px]">
+      <div className="border-line bg-secondary rounded-[12px] border px-4 py-3 text-ui">
         <p className="text-ink font-semibold">{t('inviteInvalidTitle')}</p>
         <p className="text-muted-foreground mt-1">{t('inviteInvalidBody')}</p>
-        <Link href="/signin" className="text-blue mt-3 inline-block font-semibold">
+        <Link href="/signin" className="text-link mt-3 inline-block font-semibold">
           {t('signIn')}
         </Link>
       </div>
@@ -100,7 +100,7 @@ export function AcceptInviteForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="bg-blue hover:bg-blue-soft mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        className="bg-blue hover:bg-blue-hover mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-body font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? <Spinner /> : t('inviteCta')}
       </button>

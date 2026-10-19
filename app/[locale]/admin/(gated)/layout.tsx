@@ -26,7 +26,7 @@ export default async function AdminGatedLayout({ children }: { children: React.R
     <AppShell
       brandHref="/admin"
       brandBadge={t('portalBadge')}
-      topBar={<TopBar items={ADMIN_NAV_ITEMS} namespace="Admin" askNick={false} helpHref={null} />}
+      topBar={<TopBar key="top-bar" items={ADMIN_NAV_ITEMS} namespace="Admin" askNick={false} helpHref={null} />}
       sidebar={
         <AdminSidebar
           role={firm.role}

@@ -224,24 +224,22 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <PortalPage
         title={t('title')}
         lede={`${entity.name} · ${selected.label}`}
-        controls={
-          <>
-            <PeriodPicker {...periodPickerProps({ periods, selected, today: todayIn(settings.timezone), locale, presetLabel: (preset) => tOverview(`preset_${preset}`) })} />
-            <ExportMenu
-              formats={[
-                { format: 'csv', href: csvHref },
-                { format: 'pdf', href: null, unavailable: tStatements('exportPdfPending') },
-              ]}
-            />
-          </>
+        filters={<PeriodPicker {...periodPickerProps({ periods, selected, today: todayIn(settings.timezone), locale, presetLabel: (preset) => tOverview(`preset_${preset}`) })} />}
+        actions={
+          <ExportMenu
+            formats={[
+              { format: 'csv', href: csvHref },
+              { format: 'pdf', href: null, unavailable: tStatements('exportPdfPending') },
+            ]}
+          />
         }
       >
-        <p className="text-muted-foreground mt-3 text-[12.5px]">{t('sourceNote')}</p>
-        {!covered && <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-[13px]">{t('incompletePeriod')}</p>}
+        {!covered && <p className="border-warning/30 bg-warning/10 text-ink mt-6 rounded-xl border px-4 py-3 text-small">{t('incompletePeriod')}</p>}
 
         <div className="mt-6">
           <StatCards items={cards} />
         </div>
+        <p className="text-muted-foreground mt-3 text-small">{t('sourceNote')}</p>
 
         <div className="mt-6">
           <ExpenseFilterBar
@@ -336,14 +334,14 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
 function Section({ title, lede, className = '', children }: { title: string; lede?: string; className?: string; children: React.ReactNode }) {
   return (
-    <section className={`border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
-      <h2 className="text-ink text-[16px] font-semibold">{title}</h2>
-      {lede && <p className="text-muted-foreground mt-1 text-[13px]">{lede}</p>}
+    <section className={`border-line bg-card rounded-2xl border p-5 shadow-card ${className}`}>
+      <h2 className="text-ink text-title font-semibold">{title}</h2>
+      {lede && <p className="text-muted-foreground mt-1 text-small">{lede}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 function Muted({ text }: { text: string }) {
-  return <p className="text-muted-foreground text-[14px]">{text}</p>;
+  return <p className="text-muted-foreground text-ui">{text}</p>;
 }

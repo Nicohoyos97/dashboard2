@@ -145,7 +145,7 @@ export function StatementTable({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-[220px] flex-1">
+        <label className="relative w-full min-w-[220px] flex-1 sm:w-auto">
           <Search
             className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden="true"
@@ -159,42 +159,45 @@ export function StatementTable({
           />
         </label>
         {compare && <CompareSelector {...compare} />}
-        <label className="text-muted-foreground flex items-center gap-2 text-[13.5px]">
+        <label className="text-muted-foreground flex items-center gap-2 text-ui">
           <input
             type="checkbox"
             checked={hideZero}
             onChange={(e) => setHideZero(e.target.checked)}
-            className="accent-blue size-4"
+            className="accent-brand size-4"
           />
           {t('hideZero')}
         </label>
         <button
           type="button"
           onClick={() => setCollapsed(new Set())}
-          className="text-blue text-[13px] font-semibold hover:underline"
+          className="text-link text-small font-semibold hover:underline"
         >
           {t('expandAll')}
         </button>
         <button
           type="button"
           onClick={() => setCollapsed(new Set(allIds))}
-          className="text-blue text-[13px] font-semibold hover:underline"
+          className="text-link text-small font-semibold hover:underline"
         >
           {t('collapseAll')}
         </button>
       </div>
 
-      {hasDetails && <p className="text-muted-foreground -mt-1 mb-3 text-[13px]">{tLedger('clickHint')}</p>}
+      {hasDetails && <p className="text-muted-foreground -mt-1 mb-3 text-small">{tLedger('clickHint')}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[13.5px]">
-          <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+        <table className="w-full text-left text-ui">
+          <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] whitespace-nowrap uppercase">
             <tr>
-              <th className="px-3 py-2">{t('colAccount')}</th>
-              <th className="px-3 py-2 text-right">{t('colCurrent')}</th>
-              {meta.hasPrior && <th className="px-3 py-2 text-right">{t('colPrior')}</th>}
-              {meta.hasPrior && <th className="px-3 py-2 text-right">{t('colChange')}</th>}
-              {meta.hasPrior && <th className="px-3 py-2 text-right">{t('colChangePct')}</th>}
+              <th className="px-2 py-2 sm:px-3">{t('colAccount')}</th>
+              <th className="px-2 py-2 text-right sm:px-3">{t('colCurrent')}</th>
+              {/* On a phone the statement keeps the account, the figure and the
+                  change in percent; the prior figure and the change in dollars
+                  are one tap away in the line's drawer. */}
+              {meta.hasPrior && <th className="hidden px-3 py-2 text-right sm:table-cell">{t('colPrior')}</th>}
+              {meta.hasPrior && <th className="hidden px-3 py-2 text-right sm:table-cell">{t('colChange')}</th>}
+              {meta.hasPrior && <th className="px-2 py-2 text-right sm:px-3">{t('colChangePct')}</th>}
             </tr>
           </thead>
           <tbody className="divide-line divide-y">
@@ -214,7 +217,10 @@ export function StatementTable({
                   }}
                   className={`hover:bg-blue-pale/60 focus-visible:bg-blue-pale/60 cursor-pointer transition outline-none ${node.isTotal ? 'bg-paper' : ''}`}
                 >
-                  <td className="px-3 py-2" style={{ paddingLeft: `${12 + node.depth * 18}px` }}>
+                  <td
+                    className="py-2.5 pr-3 pl-[calc(0.5rem+var(--depth)*0.75rem)] sm:pl-[calc(0.75rem+var(--depth)*1.125rem)]"
+                    style={{ '--depth': node.depth } as React.CSSProperties}
+                  >
                     <span className="flex items-center gap-1.5">
                       {hasChildren ? (
                         <button
@@ -236,15 +242,15 @@ export function StatementTable({
                         <span className="inline-block size-5" aria-hidden="true" />
                       )}
                       {details[node.id] ? (
-                        <span className="flex flex-wrap items-baseline gap-x-2.5">
+                        <span className="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2.5">
                           <Link
                             href={details[node.id]?.href ?? ''}
                             onClick={(e) => e.stopPropagation()}
-                            className="text-ink hover:text-blue"
+                            className="text-ink hover:text-link"
                           >
                             {node.accountName}
                           </Link>
-                          <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[12.5px]">
+                          <span className="text-muted-foreground inline-flex items-center gap-0.5 text-caption whitespace-nowrap sm:text-small">
                             {tLedger('transactions', { count: details[node.id]?.count ?? 0 })}
                             <ChevronRight className="size-3.5" aria-hidden="true" />
                           </span>
@@ -257,24 +263,24 @@ export function StatementTable({
                     </span>
                   </td>
                   <td
-                    className={`px-3 py-2 text-right tabular-nums ${strong ? 'font-semibold' : ''}`}
+                    className={`px-2 py-2.5 text-right whitespace-nowrap tabular-nums sm:px-3 ${strong ? 'font-semibold' : ''}`}
                   >
                     {money(node.currentCents)}
                   </td>
                   {meta.hasPrior && (
-                    <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                    <td className="text-muted-foreground hidden px-3 py-2.5 text-right tabular-nums sm:table-cell">
                       {money(node.priorCents)}
                     </td>
                   )}
                   {meta.hasPrior && (
-                    <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(node)}`}>
+                    <td className={`hidden px-3 py-2.5 text-right tabular-nums sm:table-cell ${deltaTone(node)}`}>
                       {node.deltaCents === null
                         ? ''
                         : `${node.deltaCents > 0 ? '+' : ''}${money(node.deltaCents)}`}
                     </td>
                   )}
                   {meta.hasPrior && (
-                    <td className={`px-3 py-2 text-right tabular-nums ${deltaTone(node)}`}>
+                    <td className={`px-2 py-2.5 text-right tabular-nums sm:px-3 ${deltaTone(node)}`}>
                       {node.deltaPct === null
                         ? ''
                         : `${node.deltaPct > 0 ? '+' : ''}${node.deltaPct.toFixed(1)}%`}

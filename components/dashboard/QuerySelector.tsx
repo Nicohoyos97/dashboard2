@@ -26,8 +26,8 @@ export function QuerySelector({
   if (options.length === 0) return null;
 
   return (
-    <label className="flex items-center gap-2 text-[13.5px]">
-      <span className="text-muted-foreground font-medium">{label}</span>
+    <label className="flex items-center gap-2 text-ui">
+      <span className="text-muted-foreground font-medium whitespace-nowrap">{label}</span>
       <select
         aria-label={label}
         value={current}
@@ -37,7 +37,7 @@ export function QuerySelector({
           const query = search.toString();
           router.push(query ? `${pathname}?${query}` : pathname);
         }}
-        className={`${selectClass} h-10 w-auto min-w-[160px] text-[13.5px]`}
+        className={`${selectClass} h-10 w-auto min-w-[160px] text-ui`}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

@@ -47,13 +47,13 @@ export function NotesForm({
         className={textareaClass}
       />
       {error && (
-        <p role="alert" className="text-danger mt-2 text-[13.5px]">
+        <p role="alert" className="text-danger mt-2 text-ui">
           {error}
         </p>
       )}
       {canEdit && (
         <div className="mt-3 flex items-center justify-end gap-4">
-          {saved && <span className="text-success text-[13.5px] font-medium">{t('saved')}</span>}
+          {saved && <span className="text-success text-ui font-medium">{t('saved')}</span>}
           <button type="submit" disabled={isPending} className={primaryButton}>
             {isPending ? t('saving') : t('save')}
           </button>

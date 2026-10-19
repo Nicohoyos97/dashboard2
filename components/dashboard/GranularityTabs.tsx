@@ -37,11 +37,11 @@ export function GranularityTabs({ choices }: { choices: GranularityChoice[] }) {
           onClick={() => {
             if (choice.enabled && choice.value) router.push(`${pathname}?period=${choice.value}`);
           }}
-          className={`rounded-[10px] px-3 py-1.5 text-[13px] font-medium transition-colors ${
+          className={`rounded-[10px] px-3 py-1.5 text-small font-medium transition-colors ${
             choice.selected
-              ? 'bg-card text-ink shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+              ? 'bg-card text-ink shadow-card'
               : 'text-muted-foreground'
-          } ${choice.enabled ? 'hover:text-ink cursor-pointer' : 'cursor-not-allowed opacity-55'} focus-visible:ring-blue/40 outline-none focus-visible:ring-3`}
+          } ${choice.enabled ? 'hover:text-ink cursor-pointer' : 'cursor-not-allowed opacity-55'} focus-visible:ring-brand/40 outline-none focus-visible:ring-3`}
         >
           {t(`granularity_${choice.kind}`)}
         </button>

@@ -45,7 +45,7 @@ export function ClientOnboardingFields({
 
 function Section({ title }: { title: string }) {
   return (
-    <h3 className="text-muted-foreground border-line mt-2 border-t pt-4 text-[11px] font-semibold tracking-[0.12em] uppercase">
+    <h3 className="text-muted-foreground border-line mt-2 border-t pt-4 text-micro font-semibold tracking-[0.12em] uppercase">
       {title}
     </h3>
   );

@@ -8,7 +8,7 @@
 // my sales?" is a whole sentence on its own.
 export function RotatingWords({ words }: { words: string[] }) {
   return (
-    <span className="nick-rotator text-blue">
+    <span className="nick-rotator text-link">
       {words.map((word, index) => (
         <span
           key={word}

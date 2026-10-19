@@ -26,12 +26,12 @@ export function CompositionBars({ items, currency, otherLabel }: { items: Compos
       {rows.map((r, i) => {
         const pct = Math.round((r.cents / total) * 1000) / 10;
         return (
-          <li key={r.label} className="text-[13.5px]">
+          <li key={r.label} className="text-ui">
             <div className="flex items-center justify-between gap-3">
               <span className="text-ink flex min-w-0 items-center gap-2 font-medium">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: CATEGORICAL[i] }} aria-hidden="true" />
                 {r.href ? (
-                  <Link href={r.href} className="hover:text-blue inline-flex min-w-0 items-center gap-0.5">
+                  <Link href={r.href} className="hover:text-link inline-flex min-w-0 items-center gap-0.5">
                     <span className="truncate">{r.label}</span>
                     <ChevronRight className="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" />
                   </Link>

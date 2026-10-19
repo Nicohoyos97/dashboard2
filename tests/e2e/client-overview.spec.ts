@@ -46,7 +46,11 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     if (netIncome === null || revenue === null) throw new Error('P&L fixture has no headline totals');
     await expect(page.getByText(money(revenue)).first()).toBeVisible();
     await expect(page.getByText(money(netIncome)).first()).toBeVisible();
-    await expect(page.getByText(/income minus operating expenses/i)).toBeVisible();
+    // The trend chart carries no headline figure of its own: revenue less
+    // operating expenses is printed on no statement, and beside Net Income it
+    // read as a second profit (removed at the owner's request, 2026-10-19).
+    await expect(page.getByRole('heading', { name: /revenue vs operating expenses/i })).toBeVisible();
+    await expect(page.getByText(/income minus operating expenses/i)).toHaveCount(0);
     await expect(page.getByText('Equipment loan payment')).toBeVisible();
     await expect(page.getByText('Schedule the payment.')).toBeVisible();
 

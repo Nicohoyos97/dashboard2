@@ -11,12 +11,13 @@ import { redirect } from 'next/navigation';
 import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
+import { MobileTabBar } from '@/components/shell/MobileTabBar';
 import { NotificationBell } from '@/components/shell/NotificationBell';
 import { TopBar } from '@/components/shell/TopBar';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { exitPreview } from '@/lib/entities/actions';
-import { BOTTOM_NAV_ITEMS, clientNavItems } from '@/lib/nav';
+import { BOTTOM_NAV_ITEMS, REPORTS_NAV_ITEM, clientNavItems } from '@/lib/nav';
 import { downloadItemsFor } from '@/lib/portal/downloads';
 import { ALL_MODULES } from '@/lib/portal/modules';
 import { loadPortalEntitySettings, loadPublishedDocuments } from '@/lib/portal/load';
@@ -62,9 +63,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
       brandHref="/dashboard"
       mobileBell={<NotificationBell notifications={notifications} />}
       mobilePrimaryAction={<DownloadReportsMenu items={downloadItemsFor(documents, locale)} variant="compact" />}
+      tabBar={<MobileTabBar items={navItems} />}
       topBar={
+        // Keyed: AppShell renders it beside the page in one list, and an
+        // element serialised from the server arrives there without one.
         <TopBar
-          items={[...navItems, ...BOTTOM_NAV_ITEMS]}
+          key="top-bar"
+          items={[...navItems, ...BOTTOM_NAV_ITEMS, REPORTS_NAV_ITEM]}
           namespace="Nav"
           askNick={!preview}
           helpHref="/help"
@@ -85,6 +90,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           navItems={navItems}
           entities={entities}
           currentEntity={currentEntity}
+          logoUrl={settings?.logoUrl ?? null}
           user={{
             name: profile?.full_name ?? '',
             email: user.email ?? '',
@@ -94,10 +100,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
       }
     >
       {preview && t && (
-        <div className="bg-warning/10 border-warning/40 text-ink flex flex-wrap items-center gap-3 border-b px-6 py-2.5 text-[13.5px]">
+        <div className="bg-warning/10 border-warning/40 text-ink flex flex-wrap items-center gap-3 border-b px-6 py-2.5 text-ui">
           <span className="flex-1">{t('previewBanner', { business: preview.name })}</span>
           <form action={exitPreview.bind(null, { entityId: preview.id })}>
-            <button type="submit" className="text-blue font-semibold hover:underline">
+            <button type="submit" className="text-link font-semibold hover:underline">
               {t('exitPreview')}
             </button>
           </form>

@@ -1,15 +1,11 @@
 'use client';
 
-import { Download, Printer } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-
-import { secondaryButton } from '@/components/admin/ui';
 import { ExportMenu } from '@/components/dashboard/ExportMenu';
 
-// Print, CSV/PDF export and original-PDF download for a statement page (§7).
-// The PDF here is the firm's report template rendered from the published
-// lines; "Download PDF" below it is the original document the firm uploaded.
-// They are different artefacts, so both are offered.
+// A statement page's one take-away control (§7): the firm's report template as
+// CSV or PDF, the original document the firm uploaded, and print. The PDF
+// report and the original are different artefacts — one rendered from the
+// published lines, one the file itself — so both are offered, inside one menu.
 export function StatementActions({
   versionId,
   csvHref,
@@ -19,25 +15,16 @@ export function StatementActions({
   csvHref: string | null;
   pdfHref: string | null;
 }) {
-  const t = useTranslations('Statements');
   return (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
-      <button type="button" onClick={() => window.print()} className={`${secondaryButton} h-10`}>
-        <Printer className="size-4" aria-hidden="true" />
-        {t('print')}
-      </button>
+    <div className="print:hidden">
       <ExportMenu
         formats={[
           { format: 'csv', href: csvHref },
           { format: 'pdf', href: pdfHref },
         ]}
+        originalHref={versionId ? `/api/documents/${versionId}/download` : null}
+        print
       />
-      {versionId && (
-        <a href={`/api/documents/${versionId}/download`} className={`${secondaryButton} h-10`}>
-          <Download className="size-4" aria-hidden="true" />
-          {t('downloadPdf')}
-        </a>
-      )}
     </div>
   );
 }

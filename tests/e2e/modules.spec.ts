@@ -78,7 +78,7 @@ test.describe('the portal shows the modules the firm sold', () => {
     await signIn(page, user.email);
 
     const nav = page.getByRole('complementary', { name: /navigation/i });
-    await expect(nav.getByRole('link', { name: 'Sales', exact: true })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Sales Taxes', exact: true })).toBeVisible();
     await expect(nav.getByRole('link', { name: /ask nick/i })).toBeVisible();
     await expect(nav.getByRole('link', { name: /expenses/i })).toHaveCount(0);
     await expect(nav.getByRole('link', { name: /income taxes/i })).toHaveCount(0);
@@ -92,9 +92,9 @@ test.describe('the portal shows the modules the firm sold', () => {
     // And in their place, the two this client's engagement is made of.
     await expect(main.getByRole('heading', { name: 'Net sales' })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Sales tax paid' })).toBeVisible();
-    await expect(main.getByText('Gross Income')).toHaveCount(0);
-    await expect(main.getByText('Net Income')).toHaveCount(0);
-    await expect(main.getByText(/income vs expense/i)).toHaveCount(0);
+    await expect(main.getByText('Gross profit')).toHaveCount(0);
+    await expect(main.getByText('Net income')).toHaveCount(0);
+    await expect(main.getByText(/revenue vs operating expenses/i)).toHaveCount(0);
     await expect(main.getByText(/income tax, projected/i)).toHaveCount(0);
 
     // The link is gone; the URL has to be gone too. Asserted on what renders
@@ -115,7 +115,7 @@ test.describe('the portal shows the modules the firm sold', () => {
     const nav = page.getByRole('complementary', { name: /navigation/i });
     await expect(nav.getByRole('link', { name: /expenses/i })).toBeVisible();
     await expect(nav.getByRole('link', { name: /income taxes/i })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Sales', exact: true })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Sales Taxes', exact: true })).toHaveCount(0);
 
     await page.goto('/taxes/sales');
     await expect(page.getByText(/could not be found/i)).toBeVisible();
@@ -125,7 +125,7 @@ test.describe('the portal shows the modules the firm sold', () => {
 
     // And the Overview keeps the statement cards this client did buy.
     await page.goto('/dashboard');
-    await expect(page.getByRole('main').getByText('Gross Income')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Gross profit')).toBeVisible();
   });
 
   test('the Balance Sheet and Income Taxes are add-ons a bookkeeping client may not have bought', async ({ page }) => {

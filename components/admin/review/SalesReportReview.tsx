@@ -70,7 +70,7 @@ export async function SalesReportReview({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3 text-[13.5px]">
+      <div className="flex flex-wrap items-center gap-3 text-ui">
         <span className={`rounded-full px-2.5 py-1 font-semibold ${rec?.passed ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
           {rec?.passed ? t('reconciliationPassed') : t('reconciliationFailed')}
         </span>
@@ -81,19 +81,19 @@ export async function SalesReportReview({
         </span>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-[14px] sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-ui sm:grid-cols-4">
         {figures
           .filter(([, value]) => value !== null)
           .map(([label, value]) => (
             <div key={label}>
-              <dt className="text-muted-foreground text-[12.5px]">{label}</dt>
+              <dt className="text-muted-foreground text-small">{label}</dt>
               <dd className="text-ink font-semibold tabular-nums">{fmt(value)}</dd>
             </div>
           ))}
       </dl>
 
       {rec && rec.checks.length > 0 && (
-        <ul className="border-line divide-line divide-y rounded-xl border text-[13.5px]">
+        <ul className="border-line divide-line divide-y rounded-xl border text-ui">
           {rec.checks.map((c) => (
             <li key={c.key} className="flex items-center gap-3 px-4 py-2.5">
               <span className={`size-2.5 shrink-0 rounded-full ${c.ok ? 'bg-success' : 'bg-danger'}`} aria-hidden="true" />
@@ -108,10 +108,10 @@ export async function SalesReportReview({
 
       {tenders.length > 0 && (
         <div>
-          <h3 className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+          <h3 className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
             {t('salesTenders')}
           </h3>
-          <ul className="border-line divide-line mt-2 divide-y rounded-xl border text-[13.5px]">
+          <ul className="border-line divide-line mt-2 divide-y rounded-xl border text-ui">
             {tenders.map((tender) => (
               <li key={tender.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <span className="text-ink">{tender.label}</span>
@@ -161,11 +161,11 @@ async function CrossCheckNotice({
 
   return (
     <section className={`rounded-xl border p-4 ${tone}`}>
-      <h3 className="text-ink text-[14px] font-semibold">{t('crossCheckTitle')}</h3>
+      <h3 className="text-ink text-ui font-semibold">{t('crossCheckTitle')}</h3>
       {check.kind === 'ok' ? (
-        <p className="text-muted-foreground mt-1.5 text-[13.5px]">{t('crossCheckOk')}</p>
+        <p className="text-muted-foreground mt-1.5 text-ui">{t('crossCheckOk')}</p>
       ) : (
-        <p className="text-ink mt-1.5 text-[13.5px]">
+        <p className="text-ink mt-1.5 text-ui">
           {t('crossCheckTax', {
             collected: money(check.tax.collectedCents),
             payable: money(check.tax.payableCents),

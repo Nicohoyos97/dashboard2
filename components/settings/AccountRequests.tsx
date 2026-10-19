@@ -42,17 +42,17 @@ export function AccountRequests({
   const open = mine.find((request) => OPEN.has(request.status));
 
   return (
-    <section className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink text-[16px] font-semibold">{t(`request_${kind}_title`)}</h2>
-      <p className="text-muted-foreground mt-1.5 max-w-[560px] text-[13.5px] leading-[1.5]">{t(`request_${kind}_body`)}</p>
+    <section className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-card">
+      <h2 className="text-ink text-title font-semibold">{t(`request_${kind}_title`)}</h2>
+      <p className="text-muted-foreground mt-1.5 max-w-[560px] text-ui leading-[1.5]">{t(`request_${kind}_body`)}</p>
 
       {open ? (
         <div className="border-line bg-secondary/50 mt-4 rounded-xl border p-4">
-          <p className="text-ink text-[13.5px] font-semibold">{t(`requestStatus_${open.status}`)}</p>
-          <p className="text-muted-foreground mt-1 text-[12.5px]">{t('requestedOn', { date: open.requestedAt })}</p>
-          {open.message && <p className="text-muted-foreground mt-2 text-[13px] leading-[1.5]">{open.message}</p>}
+          <p className="text-ink text-ui font-semibold">{t(`requestStatus_${open.status}`)}</p>
+          <p className="text-muted-foreground mt-1 text-small">{t('requestedOn', { date: open.requestedAt })}</p>
+          {open.message && <p className="text-muted-foreground mt-2 text-small leading-[1.5]">{open.message}</p>}
           {open.firmNote && (
-            <p className="text-ink mt-2 text-[13px] leading-[1.5]">
+            <p className="text-ink mt-2 text-small leading-[1.5]">
               <span className="text-muted-foreground font-semibold">{t('firmReply')}: </span>
               {open.firmNote}
             </p>
@@ -92,7 +92,7 @@ export function AccountRequests({
           className="mt-4"
         >
           <label className="block">
-            <span className="text-ink mb-1.5 block text-[14px] font-semibold">{t('requestMessageLabel')}</span>
+            <span className="text-ink mb-1.5 block text-ui font-semibold">{t('requestMessageLabel')}</span>
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
@@ -109,17 +109,17 @@ export function AccountRequests({
         </form>
       )}
 
-      {error && <p className="text-danger mt-3 text-[13.5px]">{error}</p>}
-      {sent && !open && <p className="text-success mt-3 text-[13.5px]">{t('requestSent')}</p>}
+      {error && <p className="text-danger mt-3 text-ui">{error}</p>}
+      {sent && !open && <p className="text-success mt-3 text-ui">{t('requestSent')}</p>}
 
       {mine.filter((request) => !OPEN.has(request.status)).length > 0 && (
         <div className="border-line-soft mt-5 border-t pt-4">
-          <p className="text-muted-foreground text-[12px] font-semibold">{t('requestHistory')}</p>
+          <p className="text-muted-foreground text-caption font-semibold">{t('requestHistory')}</p>
           <ul className="mt-2 flex flex-col gap-1.5">
             {mine
               .filter((request) => !OPEN.has(request.status))
               .map((request) => (
-                <li key={request.id} className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-[13px]">
+                <li key={request.id} className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-small">
                   <span className="text-ink font-medium">{t(`requestStatus_${request.status}`)}</span>
                   <span>· {request.requestedAt}</span>
                   {request.firmNote && <span>· {request.firmNote}</span>}

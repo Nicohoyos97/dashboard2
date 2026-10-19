@@ -34,7 +34,7 @@ const EXAMPLE_ICONS: LucideIcon[] = [TrendingUp, CalendarClock, FileText, Receip
 const SIDEBAR_WIDTH = 272;
 
 const iconButton =
-  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition outline-none focus-visible:ring-3';
+  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition outline-none focus-visible:ring-3';
 
 type DayPart = 'Morning' | 'Afternoon' | 'Evening';
 
@@ -144,7 +144,7 @@ export function NickWorkspace({
   const hero = (send: (text: string) => void, disabled: boolean) => (
     <div className="mx-auto flex w-full max-w-[760px] flex-col items-center px-1 pt-4 sm:pt-10">
       <NickOrb size={116} active={chat.streaming} />
-      <h2 className="text-ink mt-7 text-center text-[27px] leading-[1.15] font-semibold tracking-[-0.015em] sm:text-[32px]">
+      <h2 className="text-ink mt-7 text-center text-display leading-[1.15] font-semibold tracking-[-0.015em] sm:text-hero">
         {greeting}
         <br />
         {t('heroQuestionLead')}
@@ -153,7 +153,7 @@ export function NickWorkspace({
       <div className="mt-8 w-full">
         <Composer onSend={send} disabled={disabled} autoFocus size="hero" />
       </div>
-      <p className="text-muted-foreground mt-9 self-start text-[11.5px] font-semibold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-9 self-start text-caption font-semibold tracking-[0.1em] uppercase">
         {t('examplesTitle')}
       </p>
       <ul className="mt-3 grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -165,7 +165,7 @@ export function NickWorkspace({
                 type="button"
                 disabled={disabled}
                 onClick={() => send(t(key))}
-                className="border-line bg-card text-ink hover:border-blue/50 hover:bg-blue-pale/60 focus-visible:ring-blue/40 flex h-full w-full flex-col justify-between gap-6 rounded-2xl border p-4 text-left text-[13.5px] leading-[1.5] transition outline-none focus-visible:ring-3 disabled:opacity-50"
+                className="border-line bg-card text-ink hover:border-brand/50 hover:bg-blue-pale/60 focus-visible:ring-brand/40 flex h-full w-full flex-col justify-between gap-6 rounded-2xl border p-4 text-left text-ui leading-[1.5] transition outline-none focus-visible:ring-3 disabled:opacity-50"
               >
                 <span>{t(key)}</span>
                 <Icon
@@ -178,7 +178,7 @@ export function NickWorkspace({
           );
         })}
       </ul>
-      <p className="text-muted-foreground mt-8 text-center text-[11.5px] leading-[1.5]">
+      <p className="text-muted-foreground mt-8 text-center text-caption leading-[1.5]">
         {t('disclaimer')}
       </p>
     </div>
@@ -217,7 +217,7 @@ export function NickWorkspace({
             href="/chat"
             tabIndex={isOpen ? 0 : -1}
             onClick={() => setOpen(false)}
-            className="text-ink hover:bg-secondary focus-visible:ring-blue/40 mt-2 flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-[14px] font-medium transition outline-none focus-visible:ring-3"
+            className="text-ink hover:bg-secondary focus-visible:ring-brand/40 mt-2 flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-ui font-medium transition outline-none focus-visible:ring-3"
           >
             <MessageSquarePlus className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
             {t('newConversation')}
@@ -236,17 +236,17 @@ export function NickWorkspace({
               tabIndex={isOpen ? 0 : -1}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('searchHistory')}
-              className="border-line bg-paper text-ink placeholder:text-muted-foreground/70 focus:border-blue focus:bg-card h-10 w-full rounded-lg border pr-3 pl-9 text-[13.5px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+              className="border-line bg-paper text-ink placeholder:text-muted-foreground/70 focus:border-brand focus:bg-card h-10 w-full rounded-lg border pr-3 pl-9 text-ui transition outline-none focus:shadow-focus"
             />
           </label>
 
-          <p className="text-muted-foreground mt-5 px-2.5 text-[11.5px] font-semibold tracking-[0.1em] uppercase">
+          <p className="text-muted-foreground mt-5 px-2.5 text-caption font-semibold tracking-[0.1em] uppercase">
             {t('history')}
           </p>
           {list.length === 0 ? (
-            <p className="text-muted-foreground mt-2 px-2.5 text-[13px]">{t('noConversations')}</p>
+            <p className="text-muted-foreground mt-2 px-2.5 text-small">{t('noConversations')}</p>
           ) : visible.length === 0 ? (
-            <p className="text-muted-foreground mt-2 px-2.5 text-[13px]">{t('noMatches')}</p>
+            <p className="text-muted-foreground mt-2 px-2.5 text-small">{t('noMatches')}</p>
           ) : (
             <ul className="mt-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
               {visible.map((session) => {
@@ -257,13 +257,13 @@ export function NickWorkspace({
                       key={session.id}
                       className="border-line bg-paper rounded-lg border px-2.5 py-2"
                     >
-                      <p className="text-ink text-[13px] font-medium">{t('deleteConfirm')}</p>
+                      <p className="text-ink text-small font-medium">{t('deleteConfirm')}</p>
                       <div className="mt-2 flex items-center gap-2">
                         <button
                           type="button"
                           disabled={isDeleting}
                           onClick={() => remove(session.id)}
-                          className="bg-danger hover:bg-danger/90 h-8 rounded-lg px-3 text-[12.5px] font-semibold text-white transition disabled:opacity-60"
+                          className="bg-danger hover:bg-danger/90 h-8 rounded-lg px-3 text-small font-semibold text-white transition disabled:opacity-60"
                         >
                           {t('delete')}
                         </button>
@@ -271,13 +271,13 @@ export function NickWorkspace({
                           type="button"
                           disabled={isDeleting}
                           onClick={() => setConfirmId(null)}
-                          className="text-muted-foreground hover:text-ink h-8 rounded-lg px-2 text-[12.5px] font-medium"
+                          className="text-muted-foreground hover:text-ink h-8 rounded-lg px-2 text-small font-medium"
                         >
                           {t('cancel')}
                         </button>
                       </div>
                       {deleteError && (
-                        <p role="alert" className="text-danger mt-2 text-[12px]">
+                        <p role="alert" className="text-danger mt-2 text-caption">
                           {t('deleteFailed')}
                         </p>
                       )}
@@ -295,10 +295,10 @@ export function NickWorkspace({
                         active ? 'bg-secondary text-ink' : 'text-ink hover:bg-secondary/70',
                       )}
                     >
-                      <span className="block truncate text-[13.5px]">
+                      <span className="block truncate text-ui">
                         {session.title ?? t('untitled')}
                       </span>
-                      <span className="text-muted-foreground block text-[11.5px]">
+                      <span className="text-muted-foreground block text-caption">
                         {dateOf(session)}
                       </span>
                     </Link>
@@ -308,7 +308,7 @@ export function NickWorkspace({
                       title={t('deleteConversation')}
                       tabIndex={isOpen ? 0 : -1}
                       onClick={() => setConfirmId(session.id)}
-                      className="text-muted-foreground/70 hover:bg-danger/10 hover:text-danger focus-visible:ring-blue/40 inline-flex size-8 shrink-0 items-center justify-center rounded-lg opacity-0 transition outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 [@media(hover:none)]:opacity-100"
+                      className="text-muted-foreground/70 hover:bg-danger/10 hover:text-danger focus-visible:ring-brand/40 inline-flex size-8 shrink-0 items-center justify-center rounded-lg opacity-0 transition outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 [@media(hover:none)]:opacity-100"
                     >
                       <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
                     </button>
@@ -354,7 +354,7 @@ export function NickWorkspace({
             <MessageSquarePlus className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
           </Link>
           {current?.title && (
-            <span className="text-muted-foreground ml-1 truncate text-[13px]">{current.title}</span>
+            <span className="text-muted-foreground ml-1 truncate text-small">{current.title}</span>
           )}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">

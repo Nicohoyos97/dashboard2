@@ -5,20 +5,24 @@ import { NavList } from '@/components/shell/NavList';
 import { type ShellUser, UserBlock } from '@/components/shell/UserBlock';
 import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { BOTTOM_NAV_ITEMS, type NavItem } from '@/lib/nav';
+import { initials } from '@/lib/utils/initials';
 
-// Client-portal sidebar body (INITIAL_PROMPT.md §7): nav, then the selected
-// business (a switcher when the user belongs to several), then the user with
-// Settings and Help & support under it.
-// Rendered by AppShell both in the desktop aside and in the mobile drawer.
+// Client-portal sidebar body (INITIAL_PROMPT.md §7): the business whose books
+// these are, directly under the logo — the way a workspace sits at the top of
+// any tool the owner already uses — then the nav, then Settings, Help and the
+// user at the foot. Rendered by AppShell both in the desktop aside and in the
+// mobile drawer.
 export async function Sidebar({
   navItems,
   entities,
   currentEntity,
+  logoUrl,
   user,
 }: {
   navItems: NavItem[];
   entities: CurrentEntity[];
   currentEntity: CurrentEntity | null;
+  logoUrl: string | null;
   user: ShellUser;
 }) {
   const t = await getTranslations('Shell');
@@ -31,19 +35,31 @@ export async function Sidebar({
 
   return (
     <>
-      <NavList items={navItems} namespace="Nav" />
-
       {currentEntity && entities.length > 1 && (
-        <div className="mt-3">
+        <div className="mt-5">
           <EntitySwitcher entities={entities} currentId={currentEntity.id} />
         </div>
       )}
       {currentEntity && entities.length === 1 && (
-        <div className="bg-secondary mt-3 rounded-xl px-3 py-2">
-          <p className="text-muted-foreground text-[11px] font-medium">{t('business')}</p>
-          <p className="text-ink truncate text-[13.5px] font-semibold">{currentEntity.name}</p>
+        <div className="border-line mt-5 flex items-center gap-2.5 rounded-xl border px-2.5 py-2">
+          <span className="border-line bg-secondary flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- firm-set, arbitrary host
+              <img src={logoUrl} alt="" className="size-full object-cover" />
+            ) : (
+              <span className="text-muted-foreground text-micro font-semibold" aria-hidden="true">
+                {initials(currentEntity.name)}
+              </span>
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="text-muted-foreground block text-micro font-medium">{t('business')}</span>
+            <span className="text-ink block truncate text-small font-semibold">{currentEntity.name}</span>
+          </span>
         </div>
       )}
+
+      <NavList items={navItems} namespace="Nav" />
 
       <UserBlock
         user={user}

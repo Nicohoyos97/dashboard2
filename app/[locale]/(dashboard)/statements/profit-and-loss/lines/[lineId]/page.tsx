@@ -57,34 +57,34 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
 
   return (
     <PortalPage title={line.accountName} lede={`${entity.name} · ${period}`}>
-      <Link href={back} className="text-muted-foreground hover:text-ink mt-3 inline-flex items-center gap-1 text-[13.5px] font-medium">
+      <Link href={back} className="text-muted-foreground hover:text-ink mt-3 inline-flex items-center gap-1 text-ui font-medium">
         <ChevronLeft className="size-4" aria-hidden="true" />
         {tStatements('pnlTitle')}
       </Link>
 
       {!detail ? (
-        <p className="border-line bg-card text-muted-foreground mt-6 rounded-2xl border p-5 text-[14px]">{t('notAvailable')}</p>
+        <p className="border-line bg-card text-muted-foreground mt-6 rounded-2xl border p-5 text-ui">{t('notAvailable')}</p>
       ) : (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="border-line bg-card rounded-2xl border p-5">
-              <p className="text-muted-foreground text-[13px] font-medium">{t('accountTotal', { period })}</p>
-              <p className="text-ink mt-1 text-[26px] font-bold tabular-nums">{formatCents(detail.totalCents, currency)}</p>
+              <p className="text-muted-foreground text-small font-medium">{t('accountTotal', { period })}</p>
+              <p className="text-ink mt-1 text-display font-bold tabular-nums">{formatCents(detail.totalCents, currency)}</p>
             </div>
             <div className="border-line bg-card rounded-2xl border p-5">
-              <p className="text-muted-foreground text-[13px] font-medium">{t('transactionsLabel')}</p>
-              <p className="text-ink mt-1 text-[26px] font-bold tabular-nums">{txns.length}</p>
+              <p className="text-muted-foreground text-small font-medium">{t('transactionsLabel')}</p>
+              <p className="text-ink mt-1 text-display font-bold tabular-nums">{txns.length}</p>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted-foreground flex items-center gap-2 text-[13px]">
+            <p className="text-muted-foreground flex items-center gap-2 text-small">
               <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
               {t('addsUp', { count: txns.length, total: formatCents(detail.totalCents, currency) })}
             </p>
             <a
               href={`/api/ledger/lines/${line.id}/csv`}
               download
-              className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-[13.5px] font-semibold"
+              className="border-line bg-card text-ink hover:bg-secondary inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-ui font-semibold"
             >
               <Download className="size-4" aria-hidden="true" />
               {t('downloadCsv')}
@@ -93,11 +93,11 @@ export default async function LedgerLinePage({ params }: { params: Promise<{ lin
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
             <section className="border-line bg-card self-start overflow-hidden rounded-2xl border">
-              <h2 className="text-ink border-line border-b px-5 py-4 text-[16px] font-semibold">{t('whereFrom')}</h2>
+              <h2 className="text-ink border-line border-b px-5 py-4 text-title font-semibold">{t('whereFrom')}</h2>
               <PayeeList txns={txns} currency={currency} />
             </section>
             <section className="border-line bg-card rounded-2xl border p-5">
-              <h2 className="text-ink mb-4 text-[16px] font-semibold">{t('transactionsLabel')}</h2>
+              <h2 className="text-ink mb-4 text-title font-semibold">{t('transactionsLabel')}</h2>
               <TransactionList txns={txns} currency={currency} />
             </section>
           </div>

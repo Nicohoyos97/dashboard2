@@ -58,7 +58,7 @@ export function JobActions({
           {t('retryJob')}
         </button>
       )}
-      {notice && <span className="text-muted-foreground text-[13px]">{notice}</span>}
+      {notice && <span className="text-muted-foreground text-small">{notice}</span>}
     </div>
   );
 }

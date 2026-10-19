@@ -45,10 +45,10 @@ export function LineDrawer({
             <>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+                  <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
                     {node.section ?? ''}
                   </p>
-                  <Dialog.Title className="text-ink mt-1 text-[20px] leading-tight font-bold">
+                  <Dialog.Title className="text-ink mt-1 text-stat leading-tight font-bold">
                     {node.accountName}
                   </Dialog.Title>
                 </div>
@@ -65,23 +65,23 @@ export function LineDrawer({
 
               <dl className="mt-6 grid grid-cols-2 gap-4">
                 <div className="bg-paper rounded-xl p-4">
-                  <dt className="text-muted-foreground text-[12px] font-medium">
+                  <dt className="text-muted-foreground text-caption font-medium">
                     {t('colCurrent')}
                   </dt>
-                  <dd className="text-ink mt-1 text-[20px] font-bold tabular-nums">
+                  <dd className="text-ink mt-1 text-stat font-bold tabular-nums">
                     {money(node.currentCents)}
                   </dd>
                 </div>
                 <div className="bg-paper rounded-xl p-4">
-                  <dt className="text-muted-foreground text-[12px] font-medium">{t('colPrior')}</dt>
-                  <dd className="text-ink mt-1 text-[20px] font-bold tabular-nums">
+                  <dt className="text-muted-foreground text-caption font-medium">{t('colPrior')}</dt>
+                  <dd className="text-ink mt-1 text-stat font-bold tabular-nums">
                     {meta.hasPrior ? money(node.priorCents) : '—'}
                   </dd>
                 </div>
               </dl>
               {meta.hasPrior ? (
                 node.deltaCents !== null && (
-                  <p className="text-muted-foreground mt-3 text-[13.5px]">
+                  <p className="text-muted-foreground mt-3 text-ui">
                     {t('colChange')}:{' '}
                     <span className="text-ink font-semibold tabular-nums">
                       {node.deltaCents > 0 ? '+' : ''}
@@ -96,11 +96,11 @@ export function LineDrawer({
                   </p>
                 )
               ) : (
-                <p className="text-muted-foreground mt-3 text-[13.5px]">{t('drawerNoPrior')}</p>
+                <p className="text-muted-foreground mt-3 text-ui">{t('drawerNoPrior')}</p>
               )}
 
               <Dialog.Description asChild>
-                <div className="mt-6 text-[13.5px]">
+                <div className="mt-6 text-ui">
                   <h3 className="text-ink font-semibold">{t('drawerExplain')}</h3>
                   <p className="text-muted-foreground mt-1 leading-[1.5]">
                     {node.isTotal
@@ -118,7 +118,7 @@ export function LineDrawer({
                 </div>
               </Dialog.Description>
 
-              <div className="border-line mt-6 border-t pt-4 text-[13px]">
+              <div className="border-line mt-6 border-t pt-4 text-small">
                 <p className="text-muted-foreground">
                   {t('drawerSource')}:{' '}
                   <span className="text-ink font-medium">
@@ -133,7 +133,7 @@ export function LineDrawer({
                 {meta.versionId && (
                   <a
                     href={`/api/documents/${meta.versionId}/download`}
-                    className="text-blue mt-2 inline-block font-semibold hover:underline"
+                    className="text-link mt-2 inline-block font-semibold hover:underline"
                   >
                     {t('downloadPdf')}
                   </a>
@@ -147,7 +147,7 @@ export function LineDrawer({
                     nick.open({ id: node.id, name: node.accountName });
                     onClose();
                   }}
-                  className="bg-blue-pale text-blue hover:bg-blue focus-visible:ring-blue/40 mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-[14px] font-semibold transition outline-none hover:text-white focus-visible:ring-3"
+                  className="bg-blue-pale text-link hover:bg-blue focus-visible:ring-brand/40 mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-ui font-semibold transition outline-none hover:text-white focus-visible:ring-3"
                 >
                   <Sparkles className="size-4" aria-hidden="true" />
                   {tNick('askAboutLine')}

@@ -31,11 +31,11 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
         <button
           type="button"
           aria-label={unread.length > 0 ? t('openWithCount', { count: unread.length }) : t('open')}
-          className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 relative inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
+          className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 relative inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
         >
           <Bell className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
           {unread.length > 0 && (
-            <span className="bg-danger ring-card absolute top-1.5 right-1.5 min-w-[16px] rounded-full px-1 text-[10px] leading-4 font-bold text-white ring-2">
+            <span className="bg-danger ring-card absolute top-1.5 right-1.5 min-w-[16px] rounded-full px-1 text-micro leading-4 font-bold text-white ring-2">
               {unread.length > 9 ? '9+' : unread.length}
             </span>
           )}
@@ -52,11 +52,11 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
           align="end"
           sideOffset={8}
           collisionPadding={0}
-          className="border-line bg-card z-50 w-screen rounded-t-none rounded-b-2xl border border-x-0 border-t-0 p-2 shadow-[0_12px_32px_rgba(15,23,42,0.16)] outline-none sm:w-[min(360px,calc(100vw-2rem))] sm:rounded-2xl sm:border-x sm:border-t"
+          className="border-line bg-card z-50 w-screen rounded-t-none rounded-b-2xl border border-x-0 border-t-0 p-2 shadow-menu outline-none sm:w-[min(360px,calc(100vw-2rem))] sm:rounded-2xl sm:border-x sm:border-t"
         >
-          <p className="text-ink px-3 py-2 text-[13px] font-semibold">{t('title')}</p>
+          <p className="text-ink px-3 py-2 text-small font-semibold">{t('title')}</p>
           {notifications.length === 0 ? (
-            <p className="text-muted-foreground px-3 pt-1 pb-3 text-[13px]">{t('empty')}</p>
+            <p className="text-muted-foreground px-3 pt-1 pb-3 text-small">{t('empty')}</p>
           ) : (
             <ul className="max-h-[min(60vh,420px)] overflow-y-auto">
               {notifications.map((notification) => {
@@ -65,13 +65,13 @@ export function NotificationBell({ notifications }: { notifications: PortalNotif
                   <>
                     <span className="flex items-start gap-2">
                       {notification.readAt === null && <span className="bg-blue mt-1.5 size-1.5 shrink-0 rounded-full" aria-hidden="true" />}
-                      <span className={`text-ink text-[13.5px] font-semibold ${notification.readAt === null ? '' : 'ml-3.5'}`}>{worded.title}</span>
+                      <span className={`text-ink text-ui font-semibold ${notification.readAt === null ? '' : 'ml-3.5'}`}>{worded.title}</span>
                     </span>
-                    {worded.body && <span className="text-muted-foreground mt-0.5 ml-3.5 block text-[12.5px] leading-[1.45]">{worded.body}</span>}
+                    {worded.body && <span className="text-muted-foreground mt-0.5 ml-3.5 block text-small leading-[1.45]">{worded.body}</span>}
                     {/* An absolute timestamp, not a relative one: "2 hours ago"
                         needs a reference time the server and the browser agree
                         on, and getting that wrong shifts every row on hydration. */}
-                    <span className="text-muted-foreground mt-1 ml-3.5 block text-[11.5px]">
+                    <span className="text-muted-foreground mt-1 ml-3.5 block text-caption">
                       {format.dateTime(new Date(notification.createdAt), { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </>

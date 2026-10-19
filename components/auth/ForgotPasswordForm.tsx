@@ -39,12 +39,12 @@ export function ForgotPasswordForm() {
     return (
       <div className="border-line bg-paper rounded-[16px] border p-6 text-center">
         <h2 className="text-ink text-lg font-bold">{t('checkEmailTitle')}</h2>
-        <p className="text-muted-foreground mt-2 text-[14.5px] leading-relaxed">
+        <p className="text-muted-foreground mt-2 text-body leading-relaxed">
           {t('forgotSentBody')}
         </p>
         <Link
           href="/signin"
-          className="text-foreground hover:text-blue mt-4 inline-block text-[14px] font-semibold"
+          className="text-foreground hover:text-link mt-4 inline-block text-ui font-semibold"
         >
           {t('backToSignIn')}
         </Link>
@@ -70,7 +70,7 @@ export function ForgotPasswordForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="bg-blue hover:bg-blue-soft mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        className="bg-blue hover:bg-blue-hover mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-body font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
           <>

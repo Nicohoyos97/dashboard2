@@ -65,7 +65,7 @@ export function SalesTaxFields({
 
       <fieldset>
         <legend className={labelClass}>{t('salesTaxCityQuestion')}</legend>
-        <div className="mt-1.5 flex items-center gap-5 text-[14px]">
+        <div className="mt-1.5 flex items-center gap-5 text-ui">
           {[false, true].map((answer) => (
             <label key={String(answer)} className="flex items-center gap-2">
               <input
@@ -75,7 +75,7 @@ export function SalesTaxFields({
                 // Answering "no" drops the cities: a city typed and then
                 // retracted must not reach the client's portal.
                 onChange={() => onChange({ ...values, hasCityTax: answer, cities: answer ? values.cities : [] })}
-                className="accent-blue size-4"
+                className="accent-brand size-4"
               />
               {answer ? t('yes') : t('no')}
             </label>
@@ -108,14 +108,14 @@ export function SalesTaxFields({
               {t('salesTaxAddCity')}
             </button>
           </div>
-          <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('salesTaxCitiesHelp')}</p>
+          <p className="text-muted-foreground mt-1.5 text-small">{t('salesTaxCitiesHelp')}</p>
 
           {values.cities.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
               {values.cities.map((city) => (
                 <li
                   key={city}
-                  className="bg-secondary text-ink inline-flex items-center gap-1 rounded-full py-1 pr-1.5 pl-3 text-[13px] font-medium"
+                  className="bg-secondary text-ink inline-flex items-center gap-1 rounded-full py-1 pr-1.5 pl-3 text-small font-medium"
                 >
                   {city}
                   <button

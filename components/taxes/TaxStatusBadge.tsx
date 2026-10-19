@@ -15,12 +15,12 @@ const TONE: Record<TaxStatus, string> = {
 
 export async function TaxStatusBadge({ status }: { status: TaxStatus }) {
   const t = await getTranslations('Taxes');
-  return <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[12px] font-semibold ${TONE[status]}`}>{t(`status_${status}`)}</span>;
+  return <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-caption font-semibold ${TONE[status]}`}>{t(`status_${status}`)}</span>;
 }
 
 export async function FilingBadge({ status }: { status: FilingStatus | null }) {
   const t = await getTranslations('Taxes');
-  if (status === null) return <span className="text-muted-foreground text-[12.5px]">{t('filing_unknown')}</span>;
+  if (status === null) return <span className="text-muted-foreground text-small">{t('filing_unknown')}</span>;
   const tone = status === 'filed' || status === 'amended' ? 'text-success' : status === 'extended' ? 'text-warning' : 'text-muted-foreground';
-  return <span className={`text-[12.5px] font-medium ${tone}`}>{t(`filing_${status}`)}</span>;
+  return <span className={`text-small font-medium ${tone}`}>{t(`filing_${status}`)}</span>;
 }

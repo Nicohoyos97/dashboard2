@@ -85,20 +85,20 @@ export function MfaGate({
                 height={176}
                 className="mx-auto size-44 rounded-lg bg-white p-2"
               />
-              <p className="text-muted-foreground mt-3 text-center text-[12.5px]">
+              <p className="text-muted-foreground mt-3 text-center text-small">
                 {t('secretHint')}
               </p>
-              <code className="text-ink mt-1 block text-center text-[12.5px] break-all select-all">
+              <code className="text-ink mt-1 block text-center text-small break-all select-all">
                 {enrollment.secret}
               </code>
             </>
           ) : (
-            <p className="text-muted-foreground text-center text-[13.5px]">{t('preparing')}</p>
+            <p className="text-muted-foreground text-center text-ui">{t('preparing')}</p>
           )}
         </div>
       )}
 
-      <label htmlFor="totp" className="text-ink mt-5 block text-[14px] font-semibold">
+      <label htmlFor="totp" className="text-ink mt-5 block text-ui font-semibold">
         {t('codeLabel')}
       </label>
       <input
@@ -110,12 +110,12 @@ export function MfaGate({
         maxLength={6}
         value={code}
         onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        className="border-line bg-card text-ink focus:border-blue mt-1.5 h-12 w-full rounded-xl border px-4 text-center text-[20px] tracking-[0.4em] outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+        className="border-line bg-card text-ink focus:border-brand mt-1.5 h-12 w-full rounded-xl border px-4 text-center text-stat tracking-[0.4em] outline-none focus:shadow-focus"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? 'totp-error' : undefined}
       />
       {error && (
-        <p id="totp-error" role="alert" className="text-danger mt-2 text-[13px]">
+        <p id="totp-error" role="alert" className="text-danger mt-2 text-small">
           {error}
         </p>
       )}
@@ -123,7 +123,7 @@ export function MfaGate({
       <button
         type="submit"
         disabled={isPending || (mode === 'enroll' && !enrollment)}
-        className="bg-blue hover:bg-blue-soft mt-5 h-11 w-full rounded-xl text-[14.5px] font-semibold text-white transition disabled:opacity-60"
+        className="bg-blue hover:bg-blue-hover mt-5 h-11 w-full rounded-xl text-body font-semibold text-white transition disabled:opacity-60"
       >
         {isPending ? t('verifying') : mode === 'enroll' ? t('enrollCta') : t('verifyCta')}
       </button>

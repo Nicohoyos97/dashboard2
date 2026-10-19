@@ -45,7 +45,7 @@ export function NetSalesChart({
   // the register breakdown, which is the taller of the two.
   return (
     <figure className="flex h-full flex-col">
-      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-[12.5px]">
+      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-small">
         {legend.map(([label, color]) => (
           <li key={label} className="flex items-center gap-2">
             <span className="size-2.5 rounded-full" style={{ background: color }} aria-hidden="true" />
@@ -56,7 +56,7 @@ export function NetSalesChart({
       <div className="min-h-[260px] w-full flex-1">
         <NetSalesPlot points={points} currency={currency} labels={labels} />
       </div>
-      <figcaption className="text-muted-foreground mt-2 text-[12.5px]">
+      <figcaption className="text-muted-foreground mt-2 text-small">
         {summary}
         <span className="sr-only">
           {' '}

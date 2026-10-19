@@ -12,6 +12,10 @@
 // those controls instead: `mobileBell` keeps its desktop place at the theme
 // toggle's left, and `mobilePrimaryAction` is the page's own primary action,
 // last and hard against the right edge.
+//
+// The client portal also passes `tabBar`, the phone's bottom navigation. Its
+// height is published as `--tabbar-offset` (0 from `md` up) and the content
+// column pads by it, so nothing scrolls out of reach under the bar.
 import { Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Dialog } from 'radix-ui';
@@ -29,6 +33,7 @@ export function AppShell({
   brandBadge,
   mobileBell,
   mobilePrimaryAction,
+  tabBar,
   children,
 }: {
   sidebar: React.ReactNode;
@@ -39,6 +44,9 @@ export function AppShell({
   mobileBell?: React.ReactNode;
   /** Below `md` only: the right-aligned primary action. */
   mobilePrimaryAction?: React.ReactNode;
+  /** Below `md` only: the bottom tab bar. Its height is published as
+      `--tabbar-offset` so fixed and full-height content can clear it. */
+  tabBar?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useTranslations('Shell');
@@ -52,7 +60,9 @@ export function AppShell({
   const brandProps = brandBadge ? { href: brandHref, badge: brandBadge } : { href: brandHref };
 
   return (
-    <div className="bg-paper min-h-screen md:flex">
+    <div
+      className={`bg-paper min-h-screen md:flex ${tabBar ? '[--tabbar-offset:calc(3.75rem+env(safe-area-inset-bottom))] md:[--tabbar-offset:0px]' : ''}`}
+    >
       <aside
         aria-label={t('navigation')}
         className="border-line/80 bg-card sidebar-glow sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r px-4 pt-6 pb-5 md:flex"
@@ -69,7 +79,7 @@ export function AppShell({
             <button
               type="button"
               aria-label={t('openMenu')}
-              className="text-ink hover:bg-secondary focus-visible:ring-blue/40 inline-flex size-10 items-center justify-center rounded-xl outline-none focus-visible:ring-3"
+              className="text-ink hover:bg-secondary focus-visible:ring-brand/40 inline-flex size-10 items-center justify-center rounded-xl outline-none focus-visible:ring-3"
             >
               <Menu className="size-5" strokeWidth={1.75} aria-hidden="true" />
             </button>
@@ -102,10 +112,11 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${tabBar ? 'pb-[var(--tabbar-offset)]' : ''}`}>
         {topBar}
         {children}
       </div>
+      {tabBar}
     </div>
   );
 }

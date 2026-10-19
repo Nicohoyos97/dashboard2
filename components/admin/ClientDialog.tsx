@@ -136,7 +136,7 @@ export function ClientDialog({
 
         {warning ? (
           <div className="flex flex-col gap-4">
-            <p role="alert" className={`${card} text-ink text-[14px]`}>
+            <p role="alert" className={`${card} text-ink text-ui`}>
               {t('onboardingCreatedButNotInvited')} {warning.text}
             </p>
             <div className="flex justify-end">
@@ -167,7 +167,7 @@ export function ClientDialog({
             )}
 
             {error && (
-              <p role="alert" className="text-danger text-[13.5px]">
+              <p role="alert" className="text-danger text-ui">
                 {error}
               </p>
             )}

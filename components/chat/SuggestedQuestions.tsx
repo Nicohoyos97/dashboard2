@@ -15,7 +15,7 @@ export function SuggestedQuestions({
   if (keys.length === 0) return null;
   return (
     <div>
-      <p className="text-muted-foreground text-[11.5px] font-semibold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground text-caption font-semibold tracking-[0.1em] uppercase">
         {t('suggestionsTitle')}
       </p>
       <ul className="mt-2 flex flex-wrap gap-2">
@@ -27,7 +27,7 @@ export function SuggestedQuestions({
                 type="button"
                 disabled={disabled}
                 onClick={() => onPick(text)}
-                className="border-line bg-card text-ink hover:border-blue/50 hover:bg-blue-pale hover:text-blue focus-visible:ring-blue/40 rounded-full border px-3 py-1.5 text-[13px] font-medium transition outline-none focus-visible:ring-3 disabled:opacity-50"
+                className="border-line bg-card text-ink hover:border-brand/50 hover:bg-blue-pale hover:text-link focus-visible:ring-brand/40 rounded-full border px-3 py-1.5 text-small font-medium transition outline-none focus-visible:ring-3 disabled:opacity-50"
               >
                 {text}
               </button>

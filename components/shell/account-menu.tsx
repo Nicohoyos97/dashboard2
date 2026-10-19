@@ -12,13 +12,9 @@ import { Link } from '@/i18n/navigation';
 import { signOut } from '@/lib/auth/actions';
 
 export const menuItemClass =
-  'text-ink data-[highlighted]:bg-secondary flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none';
+  'text-ink data-[highlighted]:bg-secondary flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ui outline-none';
 
-export function initials(nameOrEmail: string): string {
-  const parts = nameOrEmail.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '·';
-  return (parts[0]![0]! + (parts[1]?.[0] ?? '')).toUpperCase();
-}
+export { initials } from '@/lib/utils/initials';
 
 /**
  * The sign-out form has to live outside the menu: selecting an item unmounts

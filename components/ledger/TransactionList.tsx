@@ -40,12 +40,12 @@ export function TransactionRow({ tx, currency }: { tx: LedgerTxn; currency: stri
   const negative = tx.amountCents < 0;
   return (
     <li className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
-      <span className="text-muted-foreground text-[13px] tabular-nums">{formatIsoDate(tx.date, locale, DAY)}</span>
+      <span className="text-muted-foreground text-small tabular-nums">{formatIsoDate(tx.date, locale, DAY)}</span>
       <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-ink truncate text-[14px] font-semibold">{heading}</span>
-        <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px]">
+        <span className="text-ink truncate text-ui font-semibold">{heading}</span>
+        <span className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-small">
           {typeLabel && (
-            <span className={`rounded-full px-2 py-px text-[11.5px] font-semibold ${adjustment ? 'bg-warning/10 text-warning' : 'bg-secondary text-ink/80'}`}>
+            <span className={`rounded-full px-2 py-px text-caption font-semibold ${adjustment ? 'bg-warning/10 text-warning' : 'bg-secondary text-ink/80'}`}>
               {typeLabel}
             </span>
           )}
@@ -53,7 +53,7 @@ export function TransactionRow({ tx, currency }: { tx: LedgerTxn; currency: stri
           {tx.split && <span>· {tx.split}</span>}
         </span>
       </span>
-      <span className={`text-right text-[14px] tabular-nums ${negative ? 'text-danger' : 'text-ink'}`}>
+      <span className={`text-right text-ui tabular-nums ${negative ? 'text-danger' : 'text-ink'}`}>
         {negative ? '−' : ''}
         {formatCents(Math.abs(tx.amountCents), currency)}
       </span>
@@ -89,7 +89,7 @@ export function TransactionList({ txns, currency, searchable = true }: { txns: r
   const shown = filtered.slice(0, limit);
 
   const chip = (active: boolean) =>
-    `h-9 rounded-full border px-3.5 text-[13px] font-semibold transition ${active ? 'border-blue bg-blue text-white' : 'border-line bg-card text-ink hover:bg-secondary'}`;
+    `h-9 rounded-full border px-3.5 text-small font-semibold transition ${active ? 'border-brand bg-blue text-white' : 'border-line bg-card text-ink hover:bg-secondary'}`;
 
   return (
     <div className="flex flex-col gap-3">
@@ -126,7 +126,7 @@ export function TransactionList({ txns, currency, searchable = true }: { txns: r
 
       <div className="border-line bg-card overflow-hidden rounded-xl border">
         {shown.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-5 text-[13.5px]">{t('noMatches')}</p>
+          <p className="text-muted-foreground px-4 py-5 text-ui">{t('noMatches')}</p>
         ) : (
           <ul className="divide-line divide-y">
             {shown.map((tx) => (
@@ -136,12 +136,12 @@ export function TransactionList({ txns, currency, searchable = true }: { txns: r
         )}
         {filtered.length > PAGE && (
           <div className="bg-paper border-line flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5">
-            <span className="text-muted-foreground text-[13px]">{t('showing', { shown: shown.length, total: filtered.length })}</span>
+            <span className="text-muted-foreground text-small">{t('showing', { shown: shown.length, total: filtered.length })}</span>
             {shown.length < filtered.length && (
               <button
                 type="button"
                 onClick={() => setLimit((n) => n + PAGE)}
-                className="border-line bg-card text-ink hover:bg-secondary h-9 rounded-lg border px-3.5 text-[13px] font-semibold"
+                className="border-line bg-card text-ink hover:bg-secondary h-9 rounded-lg border px-3.5 text-small font-semibold"
               >
                 {t('showMore', { count: Math.min(PAGE, filtered.length - shown.length) })}
               </button>

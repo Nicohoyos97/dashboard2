@@ -100,7 +100,7 @@ export function ProfileForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-card"
     >
       {/* Avatar */}
       <div className="flex items-center gap-5">
@@ -109,7 +109,7 @@ export function ProfileForm({
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded, arbitrary host
             <img src={shown} alt="" className="size-full object-cover" />
           ) : (
-            <span className="text-muted-foreground flex size-full items-center justify-center text-[22px] font-bold">
+            <span className="text-muted-foreground flex size-full items-center justify-center text-stat font-bold">
               {initials(name)}
             </span>
           )}
@@ -118,11 +118,11 @@ export function ProfileForm({
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            className="border-line text-ink hover:bg-secondary rounded-lg border px-3.5 py-2 text-[14px] font-semibold transition"
+            className="border-line text-ink hover:bg-secondary rounded-lg border px-3.5 py-2 text-ui font-semibold transition"
           >
             {t('avatarChange')}
           </button>
-          <p className="text-muted-foreground mt-2 text-[12.5px]">{t('avatarHint')}</p>
+          <p className="text-muted-foreground mt-2 text-small">{t('avatarHint')}</p>
           <input
             ref={fileInput}
             type="file"
@@ -135,7 +135,7 @@ export function ProfileForm({
 
       {/* Name */}
       <div className="mt-6">
-        <label htmlFor="fullName" className="text-ink mb-1.5 block text-[14px] font-semibold">
+        <label htmlFor="fullName" className="text-ink mb-1.5 block text-ui font-semibold">
           {t('fullNameLabel')}
         </label>
         <input
@@ -146,13 +146,13 @@ export function ProfileForm({
             setSaved(false);
           }}
           autoComplete="name"
-          className="border-line bg-card text-foreground placeholder:text-muted-foreground/60 focus:border-blue h-11 w-full rounded-lg border px-4 text-[15px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+          className="border-line bg-card text-foreground placeholder:text-muted-foreground/60 focus:border-brand h-11 w-full rounded-lg border px-4 text-body transition outline-none focus:shadow-focus"
         />
       </div>
 
       {/* Language */}
       <div className="mt-6">
-        <label htmlFor="locale" className="text-ink mb-1.5 block text-[14px] font-semibold">
+        <label htmlFor="locale" className="text-ink mb-1.5 block text-ui font-semibold">
           {t('languageLabel')}
         </label>
         <select
@@ -162,7 +162,7 @@ export function ProfileForm({
             setLocale(e.target.value as Locale);
             setSaved(false);
           }}
-          className="border-line bg-card text-foreground focus:border-blue h-11 w-full rounded-lg border px-4 text-[15px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+          className="border-line bg-card text-foreground focus:border-brand h-11 w-full rounded-lg border px-4 text-body transition outline-none focus:shadow-focus"
         >
           {routing.locales.map((option) => (
             <option key={option} value={option}>
@@ -170,21 +170,21 @@ export function ProfileForm({
             </option>
           ))}
         </select>
-        <p className="text-muted-foreground mt-2 text-[12.5px]">{t('languageHelp')}</p>
+        <p className="text-muted-foreground mt-2 text-small">{t('languageHelp')}</p>
       </div>
 
       {error && (
-        <p role="alert" className="text-danger mt-4 text-[13.5px]">
+        <p role="alert" className="text-danger mt-4 text-ui">
           {error}
         </p>
       )}
 
       <div className="mt-6 flex items-center justify-end gap-4">
-        {saved && <span className="text-success text-[13.5px] font-medium">{t('saved')}</span>}
+        {saved && <span className="text-success text-ui font-medium">{t('saved')}</span>}
         <button
           type="submit"
           disabled={isPending || name.trim().length === 0}
-          className="bg-blue hover:bg-blue-soft inline-flex h-11 items-center justify-center rounded-lg px-5 text-[14px] font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="bg-blue hover:bg-blue-hover inline-flex h-11 items-center justify-center rounded-lg px-5 text-ui font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending ? t('saving') : t('save')}
         </button>

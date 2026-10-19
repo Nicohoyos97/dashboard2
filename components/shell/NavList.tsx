@@ -50,10 +50,13 @@ const ICONS: Record<string, LucideIcon> = {
 
 const ICON_STROKE = 1.75;
 
+// The current page is a soft pill rather than a solid one: where you are should
+// be findable at a glance, not the loudest thing on the screen. Blue text on
+// the pale tint measures 4.7:1 in light and 5.4:1 in dark.
 const itemBase =
-  'flex h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-normal transition-colors outline-none focus-visible:ring-3 focus-visible:ring-blue/40';
-const activeItem = `${itemBase} bg-blue text-white shadow-[0_1px_2px_rgba(37,99,235,0.35)]`;
-const idleItem = `${itemBase} text-foreground hover:bg-secondary`;
+  'flex h-10 items-center gap-3 rounded-[10px] px-3 text-ui transition-colors outline-none focus-visible:ring-3 focus-visible:ring-brand/40';
+const activeItem = `${itemBase} bg-blue-pale text-link font-semibold`;
+const idleItem = `${itemBase} text-foreground/85 hover:bg-secondary hover:text-ink font-normal`;
 
 export function NavList({
   items,
@@ -71,7 +74,7 @@ export function NavList({
   return (
     <nav
       className={
-        variant === 'main' ? 'mt-7 flex flex-1 flex-col gap-1' : 'mt-2 flex flex-col gap-1'
+        variant === 'main' ? 'mt-5 flex flex-1 flex-col gap-0.5' : 'flex flex-col gap-0.5'
       }
     >
       {items.map((item) => {
@@ -162,7 +165,7 @@ function NavGroup({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className={`${itemBase} hover:bg-secondary w-full text-left ${active ? 'text-blue' : 'text-foreground'}`}
+        className={`${itemBase} hover:bg-secondary w-full text-left ${active ? 'text-link font-semibold' : 'text-foreground/85 hover:text-ink font-normal'}`}
       >
         {icon}
         <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -189,7 +192,7 @@ function CountTag({ count, active }: { count: number; active: boolean }) {
   const t = useTranslations('Shell');
   return (
     <span
-      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-blue-pale text-blue'}`}
+      className={`shrink-0 rounded-full px-1.5 py-0.5 text-micro font-semibold tabular-nums ${active ? 'bg-card text-link' : 'bg-blue-pale text-link'}`}
     >
       {count}
       <span className="sr-only"> {t('waiting')}</span>
@@ -199,7 +202,7 @@ function CountTag({ count, active }: { count: number; active: boolean }) {
 
 function SoonTag({ label }: { label: string }) {
   return (
-    <span className="bg-secondary text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10.5px] font-medium tracking-[0.02em] whitespace-nowrap">
+    <span className="bg-secondary text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-micro font-medium tracking-[0.02em] whitespace-nowrap">
       {label}
     </span>
   );
@@ -217,7 +220,7 @@ function NavSubItem({
   soon: string;
 }) {
   const subBase =
-    'flex h-9 items-center gap-2 rounded-[8px] px-3 text-[13.5px] font-normal outline-none focus-visible:ring-3 focus-visible:ring-blue/40';
+    'flex h-9 items-center gap-2 rounded-[8px] px-3 text-ui outline-none focus-visible:ring-3 focus-visible:ring-brand/40';
 
   if (child.disabled) {
     return (
@@ -235,8 +238,8 @@ function NavSubItem({
       aria-current={active ? 'page' : undefined}
       className={
         active
-          ? `${subBase} bg-blue text-white`
-          : `${subBase} text-foreground hover:bg-secondary transition-colors`
+          ? `${subBase} bg-blue-pale text-link font-semibold`
+          : `${subBase} text-foreground/85 hover:bg-secondary hover:text-ink font-normal transition-colors`
       }
     >
       {label}

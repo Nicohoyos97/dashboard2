@@ -18,7 +18,6 @@ import { periodPickerProps } from '@/lib/portal/period-picker';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
 import { logAccess } from '@/lib/audit/logAccess';
-import { formatCents } from '@/lib/money';
 import { todayIn } from '@/lib/utils/timezone';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
@@ -283,53 +282,51 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     // "May 1, 2026 – May 31, 2026" would crowd every other label off it.
     return [{ label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale), incomeCents: income, expenseCents: expense }];
   });
-  const netForPeriod = revenue.cents !== null && operatingExpenses.cents !== null ? revenue.cents - operatingExpenses.cents : null;
-
-  const money = (cents: number) => formatCents(cents, currency);
 
   await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id });
 
+  // The Overview reads top to bottom as the owner's questions do: how the
+  // period went (the four figures), what moved (trend and where the money
+  // went), what needs doing (reminders, beside the documents), and what is
+  // worth a closer look (insights, beside the income tax).
+  const owes = modules.income_taxes;
   return (
     <OverviewShell
       greeting={greeting}
       subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
       logoUrl={settings.logoUrl}
-      actions={
-        <>
-          {modules.bookkeeping && (
-            <>
-              <GranularityTabs choices={granularityChoices(periods, selected)} />
-              <PeriodPicker {...periodPickerProps({ periods, selected, today, locale, presetLabel: (preset) => t(`preset_${preset}`) })} />
-            </>
-          )}
-          <DownloadReportsMenu items={downloadItems} />
-        </>
+      filters={
+        modules.bookkeeping ? (
+          <>
+            <GranularityTabs choices={granularityChoices(periods, selected)} />
+            <PeriodPicker {...periodPickerProps({ periods, selected, today, locale, presetLabel: (preset) => t(`preset_${preset}`) })} />
+          </>
+        ) : undefined
       }
+      actions={<DownloadReportsMenu items={downloadItems} />}
     >
       {/* Everything below the greeting is module-scoped. The Overview is the
           home of every package, so it shows what the client bought and nothing
-          else — a sales-tax-only client has no Profit & Loss for these to read. */}
+          else — a sales-tax-only client has no Profit & Loss for these to read.
+          The four figures follow the statement's own order, top to bottom. */}
       {modules.bookkeeping && (
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={periodLabelFor(revenue)} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={periodLabelFor(grossProfit)} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
+        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
         <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={periodLabelFor(netIncome)} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
       </div>
       )}
 
       {modules.bookkeeping && (
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section id="income-expense" className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-muted-foreground text-[13px] font-medium">{t('incomeExpenseTitle')}</h2>
-              <p className="text-ink mt-1 text-[26px] leading-none font-bold tracking-[-0.02em] tabular-nums">
-                {netForPeriod === null ? t('notPrintedOnPnl') : money(netForPeriod)}
-              </p>
-              <p className="text-muted-foreground mt-1.5 text-[12px]">{t('incomeExpenseNet', { period: selected.label })}</p>
-            </div>
-            <ul className="flex items-center gap-4 text-[12.5px]">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 xl:grid-cols-5">
+        {/* No headline figure: revenue less operating expenses is a number no
+            statement prints, and beside Net Income it read as a second, larger
+            profit. The chart says what moved; the cards above say how much. */}
+        <section id="income-expense" className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card xl:col-span-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+            <h2 className="text-ink text-title font-semibold">{t('incomeExpenseTitle')}</h2>
+            <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-small">
               <Swatch color="var(--chart-teal)" label={t('seriesIncome')} />
               <Swatch color="var(--chart-amber)" label={t('seriesExpense')} />
             </ul>
@@ -338,27 +335,44 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
             {incomeExpense.length >= 2 ? (
               <IncomeExpenseChart points={incomeExpense} currency={currency} summary={t('incomeExpenseSummary', { count: incomeExpense.length })} />
             ) : (
-              <p className="text-muted-foreground text-[14px]">{t('incomeExpenseUnavailable')}</p>
+              <p className="text-muted-foreground text-ui">{t('incomeExpenseUnavailable')}</p>
             )}
           </div>
         </section>
-        <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('expensesTitle')}</h2>
-          <p className="text-muted-foreground mt-1 text-[13px]">{t('expensesLede')}</p>
-          <div className="mt-4 flex-1">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('expensesEmpty')}</p>}</div>
+        <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card xl:col-span-2">
+          <h2 className="text-ink text-title font-semibold">{t('expensesTitle')}</h2>
+          <p className="text-muted-foreground mt-1 text-small">{t('expensesLede')}</p>
+          <div className="mt-5 flex-1">{expenses.length > 0 ? <CompositionBars items={expenses} currency={currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-ui">{t('expensesEmpty')}</p>}</div>
         </section>
       </div>
       )}
 
-      {(modules.bookkeeping || modules.income_taxes) && (
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {modules.bookkeeping && <InsightsCard insights={insights} currency={currency} />}
-        {modules.income_taxes && <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />}
+      {/* What needs doing and the paper behind it, then the reading: the
+          rows pair cards of like height, so neither half of a row is mostly
+          empty space beside the other. */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 xl:grid-cols-5">
+        <div id="reminders" className="flex flex-col *:flex-1 xl:col-span-3">
+          <RemindersCard reminders={reminders} currency={currency} today={today} />
+        </div>
+        <div className="flex flex-col *:flex-1 xl:col-span-2">
+          <ReportTiles documents={documents.slice(0, 5)} showLibraryLink={documents.length > 0} />
+        </div>
       </div>
-      )}
 
-      <div id="reminders" className="mt-6"><RemindersCard reminders={reminders} currency={currency} today={today} /></div>
-      <div className="mt-6"><ReportTiles documents={documents.slice(0, 6)} showLibraryLink={documents.length > 0} /></div>
+      {(modules.bookkeeping || owes) && (
+        <div className={`mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 ${modules.bookkeeping && owes ? 'xl:grid-cols-5' : ''}`}>
+          {modules.bookkeeping && (
+            <div className={`flex flex-col *:flex-1 ${owes ? 'xl:col-span-3' : ''}`}>
+              <InsightsCard insights={insights} currency={currency} />
+            </div>
+          )}
+          {owes && (
+            <div className={`flex flex-col *:flex-1 ${modules.bookkeeping ? 'xl:col-span-2' : ''}`}>
+              <IncomeTaxCard obligations={incomeTaxes} currency={currency} today={today} />
+            </div>
+          )}
+        </div>
+      )}
       <NickPanel page="overview" period={periodParam(selected)} businessName={entity.name} />
     </OverviewShell>
   );
@@ -367,7 +381,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 function Swatch({ color, label }: { color: string; label: string }) {
   return (
     <li className="text-muted-foreground flex items-center gap-2">
-      <span className="size-3 rounded-[4px]" style={{ background: color }} aria-hidden="true" />
+      <span className="size-2.5 rounded-full" style={{ background: color }} aria-hidden="true" />
       {label}
     </li>
   );

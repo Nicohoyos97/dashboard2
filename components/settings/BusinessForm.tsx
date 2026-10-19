@@ -6,7 +6,7 @@ import { useState, useTransition } from 'react';
 import { type Address, updateBusinessEntity } from '@/lib/settings/actions';
 
 const inputClass =
-  'h-11 w-full rounded-lg border border-line bg-card px-4 text-[15px] text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-blue focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)] disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground';
+  'h-11 w-full rounded-lg border border-line bg-card px-4 text-body text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-brand focus:shadow-focus disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground';
 
 const ADDRESS_FIELDS: { key: keyof Address; labelKey: string; autoComplete: string }[] = [
   { key: 'line1', labelKey: 'addrLine1Label', autoComplete: 'address-line1' },
@@ -57,12 +57,12 @@ export function BusinessForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="border-line bg-card mt-6 rounded-2xl border p-6 shadow-card"
     >
       {!canEdit && (
         <p
           role="status"
-          className="border-line bg-secondary text-muted-foreground mb-6 rounded-lg border px-4 py-3 text-[13.5px]"
+          className="border-line bg-secondary text-muted-foreground mb-6 rounded-lg border px-4 py-3 text-ui"
         >
           {t('bizPermissionBanner')}
         </p>
@@ -70,7 +70,7 @@ export function BusinessForm({
 
       <div className="flex flex-col gap-5">
         <div>
-          <label htmlFor="bizName" className="text-ink mb-1.5 block text-[14px] font-semibold">
+          <label htmlFor="bizName" className="text-ink mb-1.5 block text-ui font-semibold">
             {t('bizNameLabel')}
           </label>
           <input
@@ -86,7 +86,7 @@ export function BusinessForm({
         </div>
 
         <div>
-          <label htmlFor="legalName" className="text-ink mb-1.5 block text-[14px] font-semibold">
+          <label htmlFor="legalName" className="text-ink mb-1.5 block text-ui font-semibold">
             {t('bizLegalNameLabel')}
           </label>
           <input
@@ -102,13 +102,13 @@ export function BusinessForm({
         </div>
       </div>
 
-      <p className="text-muted-foreground mt-7 mb-3 text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground mt-7 mb-3 text-micro font-semibold tracking-[0.12em] uppercase">
         {t('addrSection')}
       </p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {ADDRESS_FIELDS.map(({ key, labelKey, autoComplete }) => (
           <div key={key} className={key === 'line1' || key === 'line2' ? 'sm:col-span-2' : ''}>
-            <label htmlFor={key} className="text-ink mb-1.5 block text-[14px] font-semibold">
+            <label htmlFor={key} className="text-ink mb-1.5 block text-ui font-semibold">
               {t(labelKey)}
             </label>
             <input
@@ -124,18 +124,18 @@ export function BusinessForm({
       </div>
 
       {error && (
-        <p role="alert" className="mt-4 text-[13.5px] text-danger">
+        <p role="alert" className="mt-4 text-ui text-danger">
           {error}
         </p>
       )}
 
       {canEdit && (
         <div className="mt-6 flex items-center justify-end gap-4">
-          {saved && <span className="text-success text-[13.5px] font-medium">{t('saved')}</span>}
+          {saved && <span className="text-success text-ui font-medium">{t('saved')}</span>}
           <button
             type="submit"
             disabled={isPending || name.trim().length === 0}
-            className="bg-blue hover:bg-blue-soft inline-flex h-11 items-center justify-center rounded-lg px-5 text-[14px] font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-blue hover:bg-blue-hover inline-flex h-11 items-center justify-center rounded-lg px-5 text-ui font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? t('saving') : t('save')}
           </button>

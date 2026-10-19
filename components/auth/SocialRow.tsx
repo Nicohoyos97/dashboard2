@@ -43,7 +43,7 @@ export function SocialRow({
               }
             })
           }
-          className="border-line bg-card text-foreground hover:bg-secondary focus-visible:ring-blue/35 inline-flex h-12 items-center justify-center gap-3 rounded-xl border px-3 text-[14px] font-semibold shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
+          className="border-line bg-card text-foreground hover:bg-secondary focus-visible:ring-brand/35 inline-flex h-12 items-center justify-center gap-3 rounded-xl border px-3 text-ui font-semibold shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Icon className="size-5 shrink-0" />
           <span>{isPending ? t('connecting') : t(labelKey)}</span>

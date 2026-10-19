@@ -25,8 +25,8 @@ export function DownloadReportsMenu({ items, variant = 'page' }: { items: Downlo
           type="button"
           className={
             compact
-              ? 'bg-blue hover:bg-blue-soft inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[13px] font-semibold text-white transition md:hidden'
-              : 'bg-blue hover:bg-blue-soft hidden h-11 items-center gap-2 rounded-xl px-4 text-[14px] font-semibold text-white transition md:inline-flex'
+              ? 'bg-blue hover:bg-blue-hover inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-small font-semibold text-white transition md:hidden'
+              : 'bg-blue hover:bg-blue-hover hidden h-11 items-center gap-2 rounded-xl px-4 text-ui font-semibold text-white transition md:inline-flex'
           }
         >
           <Download className={compact ? 'size-[15px]' : 'size-4'} aria-hidden="true" />
@@ -35,14 +35,14 @@ export function DownloadReportsMenu({ items, variant = 'page' }: { items: Downlo
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content align="end" sideOffset={6} collisionPadding={8} className="border-line bg-card z-50 w-[min(320px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+        <DropdownMenu.Content align="end" sideOffset={6} collisionPadding={8} className="border-line bg-card z-50 w-[min(320px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-menu">
           {items.map((d) => (
             <DropdownMenu.Item key={d.versionId} asChild>
-              <a href={`/api/documents/${d.versionId}/download`} className="text-ink data-[highlighted]:bg-blue-pale flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] outline-none">
-                <FileText className="text-blue mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <a href={`/api/documents/${d.versionId}/download`} className="text-ink data-[highlighted]:bg-blue-pale flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-ui outline-none">
+                <FileText className="text-link mt-0.5 size-4 shrink-0" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{d.title}</span>
-                  <span className="text-muted-foreground block text-[12px]">{d.subtitle}</span>
+                  <span className="text-muted-foreground block text-caption">{d.subtitle}</span>
                 </span>
               </a>
             </DropdownMenu.Item>

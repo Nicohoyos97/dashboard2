@@ -46,7 +46,7 @@ export async function BankReview({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3 text-[13.5px]">
+      <div className="flex flex-wrap items-center gap-3 text-ui">
         <span className={`rounded-full px-2.5 py-1 font-semibold ${rec?.passed ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
           {rec?.passed ? t('reconciliationPassed') : t('reconciliationFailed')}
         </span>
@@ -58,7 +58,7 @@ export async function BankReview({
         </span>
       </div>
       {rec && rec.checks.length > 0 && (
-        <ul className="border-line divide-line divide-y rounded-xl border text-[13.5px]">
+        <ul className="border-line divide-line divide-y rounded-xl border text-ui">
           {rec.checks.map((c) => (
             <li key={c.key} className="flex items-center gap-3 px-4 py-2.5">
               <span className={`size-2.5 shrink-0 rounded-full ${c.ok ? 'bg-success' : 'bg-danger'}`} aria-hidden="true" />
@@ -71,8 +71,8 @@ export async function BankReview({
         </ul>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[13.5px]">
-          <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+        <table className="w-full text-left text-ui">
+          <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
             <tr>
               <th className="px-3 py-2">{t('colDate')}</th>
               <th className="px-3 py-2">{t('colDescription')}</th>
@@ -96,7 +96,7 @@ export async function BankReview({
           </tbody>
         </table>
         {transactions.length > PREVIEW && (
-          <p className="text-muted-foreground px-3 py-2 text-[13px]">{t('moreRows', { count: transactions.length - PREVIEW })}</p>
+          <p className="text-muted-foreground px-3 py-2 text-small">{t('moreRows', { count: transactions.length - PREVIEW })}</p>
         )}
       </div>
     </div>

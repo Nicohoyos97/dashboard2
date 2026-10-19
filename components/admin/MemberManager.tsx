@@ -85,20 +85,20 @@ export function MemberManager({
   return (
     <div className="flex flex-col gap-5">
       {members.length === 0 ? (
-        <p className="text-muted-foreground text-[14px]">{t('noMembers')}</p>
+        <p className="text-muted-foreground text-ui">{t('noMembers')}</p>
       ) : (
         <ul className="divide-line border-line divide-y overflow-hidden rounded-xl border">
           {members.map((m) => (
             <li key={m.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <span className="bg-secondary text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold">
+              <span className="bg-secondary text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-caption font-bold">
                 {initials(m.name || m.email)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="text-ink block truncate text-[14px] font-semibold">
+                <span className="text-ink block truncate text-ui font-semibold">
                   {m.name || m.email}
                 </span>
                 {m.name && (
-                  <span className="text-muted-foreground block truncate text-[12.5px]">{m.email}</span>
+                  <span className="text-muted-foreground block truncate text-small">{m.email}</span>
                 )}
               </span>
               {canEdit ? (
@@ -110,7 +110,7 @@ export function MemberManager({
                     onChange={(e) =>
                       changeRole(m.userId, e.target.value === 'client_owner' ? 'client_owner' : 'client_viewer')
                     }
-                    className={`${selectClass} h-9 w-auto min-w-[130px] text-[13.5px]`}
+                    className={`${selectClass} h-9 w-auto min-w-[130px] text-ui`}
                   >
                     <option value="client_owner">{t('roleOwner')}</option>
                     <option value="client_viewer">{t('roleViewer')}</option>
@@ -125,7 +125,7 @@ export function MemberManager({
                   </button>
                 </>
               ) : (
-                <span className="bg-blue-pale text-blue rounded-full px-2.5 py-1 text-[12.5px] font-semibold">
+                <span className="bg-blue-pale text-link rounded-full px-2.5 py-1 text-small font-semibold">
                   {m.role === 'client_owner' ? t('roleOwner') : t('roleViewer')}
                 </span>
               )}
@@ -198,7 +198,7 @@ export function MemberManager({
           {notice && (
             <p
               role={notice.kind === 'error' ? 'alert' : 'status'}
-              className={`sm:col-span-3 text-[13.5px] ${notice.kind === 'error' ? 'text-danger' : 'text-success'}`}
+              className={`sm:col-span-3 text-ui ${notice.kind === 'error' ? 'text-danger' : 'text-success'}`}
             >
               {notice.text}
             </p>

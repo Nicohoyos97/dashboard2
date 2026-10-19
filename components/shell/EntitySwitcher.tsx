@@ -41,16 +41,16 @@ export function EntitySwitcher({
           type="button"
           aria-label={t('switchBusiness')}
           disabled={isPending}
-          className="border-line bg-card hover:bg-secondary focus-visible:ring-blue/40 flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left outline-none focus-visible:ring-3 disabled:opacity-60"
+          className="border-line bg-card hover:bg-secondary focus-visible:ring-brand/40 flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left outline-none focus-visible:ring-3 disabled:opacity-60"
         >
-          <span className="bg-blue-pale text-blue flex size-8 shrink-0 items-center justify-center rounded-lg">
+          <span className="bg-blue-pale text-link flex size-8 shrink-0 items-center justify-center rounded-lg">
             <Building2 className="size-4" aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="text-muted-foreground block text-[11px] font-medium">
+            <span className="text-muted-foreground block text-micro font-medium">
               {t('currentBusiness')}
             </span>
-            <span className="text-ink block truncate text-[13.5px] font-semibold">
+            <span className="text-ink block truncate text-ui font-semibold">
               {current?.name}
             </span>
           </span>
@@ -59,19 +59,19 @@ export function EntitySwitcher({
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          side="top"
+          side="bottom"
           align="start"
           sideOffset={6}
-          className="border-line bg-card z-50 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[220px] rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+          className="border-line bg-card z-50 w-[var(--radix-dropdown-menu-trigger-width)] min-w-[220px] rounded-xl border p-1.5 shadow-menu"
         >
-          <DropdownMenu.Label className="text-muted-foreground px-2 py-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
+          <DropdownMenu.Label className="text-muted-foreground px-2 py-1.5 text-micro font-semibold tracking-[0.08em] uppercase">
             {t('switchBusiness')}
           </DropdownMenu.Label>
           {entities.map((e) => (
             <DropdownMenu.Item
               key={e.id}
               onSelect={() => choose(e.id)}
-              className="text-ink data-[highlighted]:bg-blue-pale data-[highlighted]:text-blue flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-[13.5px] outline-none"
+              className="text-ink data-[highlighted]:bg-blue-pale data-[highlighted]:text-link flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-ui outline-none"
             >
               <span className="flex-1 truncate">{e.name}</span>
               {e.id === currentId && <Check className="size-4" aria-hidden="true" />}

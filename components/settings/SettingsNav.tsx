@@ -18,7 +18,7 @@ export function SettingsNav() {
   const pathname = usePathname(); // locale-stripped by next-intl
 
   return (
-    <nav className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col md:overflow-visible">
+    <nav className="-mx-4 flex shrink-0 gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 md:w-52 md:flex-col md:overflow-visible">
       {ITEMS.map(({ href, key }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
@@ -26,10 +26,10 @@ export function SettingsNav() {
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
-            className={`rounded-lg px-3 py-2 text-[14px] font-medium transition ${
+            className={`focus-visible:ring-brand/40 shrink-0 rounded-lg px-3 py-2 text-ui whitespace-nowrap transition outline-none focus-visible:ring-3 ${
               active
-                ? 'bg-blue-pale text-blue'
-                : 'text-muted-foreground hover:bg-secondary hover:text-ink'
+                ? 'bg-blue-pale text-link font-semibold'
+                : 'text-muted-foreground hover:bg-secondary hover:text-ink font-medium'
             }`}
           >
             {t(key)}

@@ -18,7 +18,7 @@ export default async function ResetPasswordPage() {
         <div className="border-line bg-paper rounded-[16px] border p-6 text-center">
           <Link
             href="/forgot-password"
-            className="text-foreground hover:text-blue text-[14px] font-semibold"
+            className="text-foreground hover:text-link text-ui font-semibold"
           >
             {t('requestNewLink')}
           </Link>

@@ -13,7 +13,7 @@ describe('design tokens', () => {
   // light values are still the §6 palette.
   it('defines the §6 palette (light theme) behind theme-aware utilities', () => {
     expect(css).toContain('--color-blue: var(--brand-primary)');
-    expect(css).toContain('--color-blue-soft: var(--brand-primary-hover)');
+    expect(css).toContain('--color-blue-hover: var(--brand-primary-hover)');
     expect(css).toContain('--color-blue-pale: var(--brand-primary-soft)');
     expect(css).toContain('--color-paper: var(--page)');
     expect(css).toContain('--color-ink: var(--heading)');
@@ -37,6 +37,21 @@ describe('design tokens', () => {
     expect(light).toContain('--heading: #0f172a');
     expect(light).toContain('--border: #e6ecf4');
     expect(light).toContain('--primary: #2563eb');
+  });
+
+  // The blue is split by role (../brand/DESIGN-TOKENS.md): the identity blue
+  // for what is not text, the solid action fill for what carries a white
+  // label, and a text blue that lightens on navy, where #2563eb measures
+  // 3.34:1 on a dark card.
+  it('splits the blue by role, and the text blue clears AA in both themes', () => {
+    expect(css).toContain('--color-brand: var(--brand-identity)');
+    expect(css).toContain('--color-link: var(--brand-text)');
+    const light = css.slice(0, css.indexOf('\n.dark {'));
+    const dark = css.slice(css.indexOf('\n.dark {'));
+    expect(light).toContain('--brand-identity: #2d6cff');
+    expect(light).toContain('--brand-text: #2563eb');
+    expect(dark).toContain('--brand-text: #60a5fa');
+    expect(dark).toContain('--brand-primary: #2563eb');
   });
 
   it('keeps a light status palette for dark surfaces', () => {

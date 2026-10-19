@@ -26,7 +26,7 @@ export function AmountBars({ items, currency }: { items: readonly AmountBarItem[
   return (
     <ul className="flex flex-col gap-3">
       {rows.map((row, index) => (
-        <li key={row.label} className="text-[13.5px]">
+        <li key={row.label} className="text-ui">
           <div className="flex items-center justify-between gap-3">
             <span className="text-ink flex min-w-0 items-center gap-2 font-medium">
               <span

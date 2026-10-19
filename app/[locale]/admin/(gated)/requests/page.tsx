@@ -47,17 +47,17 @@ export default async function AccountRequestsPage({ searchParams }: { searchPara
     <main className="mx-auto w-full max-w-[1000px] px-6 py-10 md:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{t('requestsTitle')}</h1>
-          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-[15px]">{t('requestsLede')}</p>
+          <h1 className="text-ink text-display font-bold tracking-[-0.01em]">{t('requestsTitle')}</h1>
+          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-body">{t('requestsLede')}</p>
         </div>
-        <nav aria-label={t('statusLabel')} className="border-line bg-secondary inline-flex rounded-xl border p-0.5 text-[13px] font-medium">
+        <nav aria-label={t('statusLabel')} className="border-line bg-secondary inline-flex rounded-xl border p-0.5 text-small font-medium">
           <FilterLink href="/admin/requests" label={t('requestsFilterOpen')} active={!showAll} />
           <FilterLink href="/admin/requests?status=all" label={t('requestsFilterAll')} active={showAll} />
         </nav>
       </div>
 
       {(requests ?? []).length === 0 ? (
-        <p className="text-muted-foreground mt-8 text-[14.5px]">{showAll ? t('requestsEmptyAll') : t('requestsEmptyOpen')}</p>
+        <p className="text-muted-foreground mt-8 text-body">{showAll ? t('requestsEmptyAll') : t('requestsEmptyOpen')}</p>
       ) : (
         <ul className="mt-6 flex flex-col gap-4">
           {(requests ?? []).map((request) => {
@@ -68,12 +68,12 @@ export default async function AccountRequestsPage({ searchParams }: { searchPara
               <li key={request.id} className={card}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-ink flex flex-wrap items-center gap-2.5 text-[16px] font-semibold">
+                    <h2 className="text-ink flex flex-wrap items-center gap-2.5 text-title font-semibold">
                       {t(`requestKind_${request.kind}`)}
                       <span className={statusPill(request.status === 'completed' ? 'published' : request.status)}>{t(`requestStatus_${request.status}`)}</span>
                     </h2>
-                    <p className="text-muted-foreground mt-1 text-[13.5px]">
-                      <Link href={`/admin/entities/${request.business_entity_id}`} className="hover:text-blue font-medium">
+                    <p className="text-muted-foreground mt-1 text-ui">
+                      <Link href={`/admin/entities/${request.business_entity_id}`} className="hover:text-link font-medium">
                         {request.business_entities?.name ?? '—'}
                       </Link>
                       {' · '}
@@ -83,20 +83,20 @@ export default async function AccountRequestsPage({ searchParams }: { searchPara
                     </p>
                   </div>
                   {open && (
-                    <span className={`shrink-0 text-[12.5px] font-semibold ${days >= SLA_DAYS ? 'text-danger' : 'text-muted-foreground'}`}>
+                    <span className={`shrink-0 text-small font-semibold ${days >= SLA_DAYS ? 'text-danger' : 'text-muted-foreground'}`}>
                       {t('requestAge', { days })}
                     </span>
                   )}
                 </div>
 
                 {request.message && (
-                  <p className="border-line text-foreground mt-3 border-l-2 pl-3 text-[14px] leading-[1.5] whitespace-pre-wrap">{request.message}</p>
+                  <p className="border-line text-foreground mt-3 border-l-2 pl-3 text-ui leading-[1.5] whitespace-pre-wrap">{request.message}</p>
                 )}
 
                 {open ? (
                   <RequestActions id={request.id} status={request.status} firmNote={request.firm_note} canEdit={canEdit} />
                 ) : (
-                  <p className="text-muted-foreground mt-3 text-[13.5px]">
+                  <p className="text-muted-foreground mt-3 text-ui">
                     {request.firm_note ? `${t('requestNoteLabel')}: ${request.firm_note}` : t('requestNoNote')}
                     {request.resolved_at ? ` · ${fmt.format(new Date(request.resolved_at))}` : ''}
                   </p>
@@ -115,7 +115,7 @@ function FilterLink({ href, label, active }: { href: string; label: string; acti
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`rounded-[10px] px-3 py-1.5 ${active ? 'bg-card text-ink shadow-[0_1px_2px_rgba(15,23,42,0.06)]' : 'text-muted-foreground hover:text-ink'}`}
+      className={`rounded-[10px] px-3 py-1.5 ${active ? 'bg-card text-ink shadow-card' : 'text-muted-foreground hover:text-ink'}`}
     >
       {label}
     </Link>

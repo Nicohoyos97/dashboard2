@@ -110,7 +110,7 @@ export async function SalesTaxOverview({
                 summary={taxes('netSalesSummary', { count: netTrend.length })}
               />
             ) : (
-              <p className="text-muted-foreground text-[14px]">{t('netSalesUnavailable')}</p>
+              <p className="text-muted-foreground text-ui">{t('netSalesUnavailable')}</p>
             )}
           </OverviewCard>
           <OverviewCard title={t('salesTaxPaidTitle')} lede={t('salesTaxPaidLede')}>
@@ -122,7 +122,7 @@ export async function SalesTaxOverview({
                 summary={t('salesTaxPaidSummary', { count: paidTrend.length })}
               />
             ) : (
-              <p className="text-muted-foreground text-[14px]">{t('salesTaxPaidEmpty')}</p>
+              <p className="text-muted-foreground text-ui">{t('salesTaxPaidEmpty')}</p>
             )}
           </OverviewCard>
         </div>

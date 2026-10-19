@@ -31,8 +31,8 @@ export default async function ClientsPage({
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{t('clientsTitle')}</h1>
-          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-[15px]">{t('clientsLede')}</p>
+          <h1 className="text-ink text-display font-bold tracking-[-0.01em]">{t('clientsTitle')}</h1>
+          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-body">{t('clientsLede')}</p>
         </div>
         {firm.role === 'master_admin' && <ClientDialog mode="create" />}
       </div>
@@ -40,7 +40,7 @@ export default async function ClientsPage({
       <div className="mt-6 flex items-center justify-end">
         <Link
           href={showArchived ? '/admin/clients' : '/admin/clients?archived=1'}
-          className="text-muted-foreground hover:text-ink text-[13.5px] font-medium"
+          className="text-muted-foreground hover:text-ink text-ui font-medium"
         >
           {showArchived ? t('active') : t('showArchived')}
         </Link>
@@ -48,10 +48,10 @@ export default async function ClientsPage({
 
       <section className={`${card} mt-3 overflow-x-auto p-0`}>
         {clients.length === 0 ? (
-          <p className="text-muted-foreground p-6 text-[14.5px]">{t('noClients')}</p>
+          <p className="text-muted-foreground p-6 text-body">{t('noClients')}</p>
         ) : (
-          <table className="w-full text-left text-[14px]">
-            <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+          <table className="w-full text-left text-ui">
+            <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
               <tr>
                 <th className="px-5 py-3">{t('name')}</th>
                 <th className="px-5 py-3">{t('contact')}</th>
@@ -63,7 +63,7 @@ export default async function ClientsPage({
               {clients.map((c) => (
                 <tr key={c.id} className="hover:bg-paper">
                   <td className="px-5 py-3.5">
-                    <Link href={`/admin/clients/${c.id}`} className="text-ink hover:text-blue font-semibold">
+                    <Link href={`/admin/clients/${c.id}`} className="text-ink hover:text-link font-semibold">
                       {c.name}
                     </Link>
                   </td>

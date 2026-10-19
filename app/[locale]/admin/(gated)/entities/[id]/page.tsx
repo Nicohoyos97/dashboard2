@@ -181,7 +181,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
       <Link
         href={`/admin/clients/${entity.client_id}`}
-        className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-[13.5px] font-medium"
+        className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-ui font-medium"
       >
         <ChevronLeft className="size-4" aria-hidden="true" />
         {t('backToClient')}
@@ -189,17 +189,17 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-ink flex items-center gap-3 text-[28px] font-bold tracking-[-0.01em]">
+          <h1 className="text-ink flex items-center gap-3 text-display font-bold tracking-[-0.01em]">
             {entity.name}
             <span className={statusPill(status)}>{t(status)}</span>
           </h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">
+          <p className="text-muted-foreground mt-1.5 text-body">
             {t('client')}: {entity.clients?.name ?? '—'}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <form action={previewEntity.bind(null, { entityId: entity.id })}>
-            <button type="submit" className="border-line bg-card text-ink hover:bg-secondary inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-[14px] font-semibold transition">
+            <button type="submit" className="border-line bg-card text-ink hover:bg-secondary inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-ui font-semibold transition">
               {t('previewAsClient')}
             </button>
           </form>
@@ -232,8 +232,8 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
         <section className={card}>
-          <h2 className="text-ink text-[17px] font-semibold">{t('configTitle')}</h2>
-          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-[14px]">
+          <h2 className="text-ink text-heading font-semibold">{t('configTitle')}</h2>
+          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-ui">
             {config.map(([k, v]) => (
               <div key={k} className="contents">
                 <dt className="text-muted-foreground">{k}</dt>
@@ -244,38 +244,38 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
         </section>
 
         <section className={card}>
-          <h2 className="text-ink text-[17px] font-semibold">{t('notesTitle')}</h2>
-          <p className="text-muted-foreground mt-1 mb-4 text-[13.5px]">{t('notesLede')}</p>
+          <h2 className="text-ink text-heading font-semibold">{t('notesTitle')}</h2>
+          <p className="text-muted-foreground mt-1 mb-4 text-ui">{t('notesLede')}</p>
           <NotesForm entityId={entity.id} initialNotes={notes?.notes ?? ''} canEdit={canEdit} />
         </section>
       </div>
 
       <section className={`${card} mt-6`}>
-        <h2 className="text-ink text-[17px] font-semibold">{t('membersTitle')}</h2>
-        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('membersLede')}</p>
+        <h2 className="text-ink text-heading font-semibold">{t('membersTitle')}</h2>
+        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-ui">{t('membersLede')}</p>
         <MemberManager entityId={entity.id} members={members} canEdit={canEdit && status === 'active'} />
       </section>
 
       <section className={`${card} mt-6`}>
-        <h2 className="text-ink text-[17px] font-semibold">{t('remindersTitle')}</h2>
-        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('remindersLede')}</p>
+        <h2 className="text-ink text-heading font-semibold">{t('remindersTitle')}</h2>
+        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-ui">{t('remindersLede')}</p>
         <RemindersManager entityId={entity.id} items={reminderItems} canEdit={canEdit && status === 'active'} />
       </section>
 
       <section className={`${card} mt-6`}>
-        <h2 className="text-ink text-[17px] font-semibold">{t('obligationsTitle')}</h2>
-        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-[13.5px]">{t('obligationsLede')}</p>
+        <h2 className="text-ink text-heading font-semibold">{t('obligationsTitle')}</h2>
+        <p className="text-muted-foreground mt-1 mb-4 max-w-[720px] text-ui">{t('obligationsLede')}</p>
         <TaxObligations items={obligationItems} canEdit={canEdit && status === 'active'} />
       </section>
 
       <section className={`${card} mt-6`}>
-        <h2 className="text-ink text-[17px] font-semibold">{t('documentsTitle')}</h2>
+        <h2 className="text-ink text-heading font-semibold">{t('documentsTitle')}</h2>
         {(documents ?? []).length === 0 ? (
-          <p className="text-muted-foreground mt-2 text-[14px]">{t('noDocuments')}</p>
+          <p className="text-muted-foreground mt-2 text-ui">{t('noDocuments')}</p>
         ) : (
           <ul className="divide-line mt-4 divide-y">
             {(documents ?? []).map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center gap-3 py-3 text-[14px]">
+              <li key={d.id} className="flex flex-wrap items-center gap-3 py-3 text-ui">
                 <span className="text-ink min-w-0 flex-1 truncate font-semibold">{d.title}</span>
                 <span className="text-muted-foreground">{formatPeriod(d.period_start, d.period_end, locale)}</span>
                 <span className={statusPill(d.status)}>{d.status.replace('_', ' ')}</span>

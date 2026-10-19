@@ -26,7 +26,7 @@ export function ThemeToggle({
         aria-label={label}
         title={label}
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
-        className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
+        className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
       >
         {isDark ? (
           <Sun className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
@@ -84,7 +84,7 @@ function ThemeOption({
       title={label}
       onClick={onClick}
       className={cn(
-        'focus-visible:ring-blue/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold transition outline-none focus-visible:ring-3',
+        'focus-visible:ring-brand/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-caption font-semibold transition outline-none focus-visible:ring-3',
         active ? 'bg-card text-ink shadow-sm' : 'text-muted-foreground hover:text-foreground',
       )}
     >

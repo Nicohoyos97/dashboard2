@@ -15,7 +15,7 @@ export default async function NotificationsPage() {
     return (
       <section className="max-w-[560px]">
         <Heading eyebrow={t('notifyEyebrow')} title={t('navNotifications')} lede={t('notifyLede')} />
-        <p className="text-muted-foreground mt-6 text-[14px]">{t('notifyNoBusiness')}</p>
+        <p className="text-muted-foreground mt-6 text-ui">{t('notifyNoBusiness')}</p>
       </section>
     );
   }
@@ -48,9 +48,9 @@ export default async function NotificationsPage() {
 function Heading({ eyebrow, title, lede }: { eyebrow: string; title: string; lede: string }) {
   return (
     <>
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">{eyebrow}</p>
-      <h1 className="text-ink mt-1 text-[22px] font-bold tracking-[-0.01em]">{title}</h1>
-      <p className="text-muted-foreground mt-1.5 text-[14px]">{lede}</p>
+      <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">{eyebrow}</p>
+      <h1 className="text-ink mt-1 text-stat font-bold tracking-[-0.01em]">{title}</h1>
+      <p className="text-muted-foreground mt-1.5 text-ui">{lede}</p>
     </>
   );
 }

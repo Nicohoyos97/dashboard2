@@ -19,13 +19,13 @@ export default async function ProfilePage() {
 
   return (
     <section className="max-w-[560px]">
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
         {t('profileEyebrow')}
       </p>
-      <h2 className="text-ink mt-2 text-[22px] font-bold tracking-[-0.01em]">
+      <h2 className="text-ink mt-2 text-stat font-bold tracking-[-0.01em]">
         {t('profileTitle')}
       </h2>
-      <p className="text-muted-foreground mt-1.5 text-[15px]">{t('profileLede')}</p>
+      <p className="text-muted-foreground mt-1.5 text-body">{t('profileLede')}</p>
 
       <ProfileForm
         userId={user!.id}

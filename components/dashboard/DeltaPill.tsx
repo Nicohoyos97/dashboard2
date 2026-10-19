@@ -47,7 +47,7 @@ const TONE = {
 
 function Pill({ tone, arrow, text, label }: { tone: keyof typeof TONE; arrow: string; text: string; label: string }) {
   return (
-    <span className={`relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[12.5px] font-semibold ${TONE[tone]}`}>
+    <span className={`relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-small font-semibold ${TONE[tone]}`}>
       <span aria-hidden="true" className="text-[9px] leading-none">{arrow}</span>
       <span aria-hidden="true" className="tabular-nums">{text}</span>
       <span className="sr-only">{label}</span>

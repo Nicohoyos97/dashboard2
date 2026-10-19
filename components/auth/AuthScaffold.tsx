@@ -22,27 +22,27 @@ export function AuthScaffold({
     <AuthSplit>
       <Link
         href="/signin"
-        className="text-muted-foreground hover:text-blue mb-8 inline-flex items-center gap-1.5 text-[14px] font-semibold transition-colors"
+        className="text-muted-foreground hover:text-link mb-8 inline-flex items-center gap-1.5 text-ui font-semibold transition-colors"
       >
         <BackArrow />
         {t('backToSignIn')}
       </Link>
 
-      <h1 className="text-ink text-[32px] leading-tight font-bold tracking-[-0.01em]">{title}</h1>
-      <p className="text-muted-foreground mt-1.5 mb-6 text-[16px] leading-[1.5]">{lede}</p>
+      <h1 className="text-ink text-hero leading-tight font-bold tracking-[-0.01em]">{title}</h1>
+      <p className="text-muted-foreground mt-1.5 mb-6 text-title leading-[1.5]">{lede}</p>
 
       {children}
 
-      {footer && <p className="text-muted-foreground mt-5 text-[14px]">{footer}</p>}
+      {footer && <p className="text-muted-foreground mt-5 text-ui">{footer}</p>}
 
-      <footer className="border-line text-muted-foreground mt-10 flex flex-wrap justify-center gap-6 border-t pt-8 text-[12px] font-medium">
-        <Link href="/privacy" className="hover:text-blue transition-colors">
+      <footer className="border-line text-muted-foreground mt-10 flex flex-wrap justify-center gap-6 border-t pt-8 text-caption font-medium">
+        <Link href="/privacy" className="hover:text-link transition-colors">
           {t('footerPrivacy')}
         </Link>
-        <Link href="/terms" className="hover:text-blue transition-colors">
+        <Link href="/terms" className="hover:text-link transition-colors">
           {t('footerTerms')}
         </Link>
-        <Link href="/security" className="hover:text-blue transition-colors">
+        <Link href="/security" className="hover:text-link transition-colors">
           {t('footerSecurity')}
         </Link>
       </footer>

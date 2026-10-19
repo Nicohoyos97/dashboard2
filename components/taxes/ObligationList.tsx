@@ -23,7 +23,7 @@ export async function ObligationList({
   const [t, locale] = await Promise.all([getTranslations('Taxes'), getLocale()]);
   const money = (cents: number) => formatCents(cents, currency);
 
-  if (obligations.length === 0) return <p className="text-muted-foreground text-[14px]">{t('noObligations')}</p>;
+  if (obligations.length === 0) return <p className="text-muted-foreground text-ui">{t('noObligations')}</p>;
 
   return (
     <ul className="flex flex-col gap-3">
@@ -53,11 +53,11 @@ export async function ObligationList({
               : null;
 
         return (
-          <li key={obligation.id} className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <li key={obligation.id} className="border-line bg-card rounded-2xl border p-5 shadow-card">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-ink text-[15px] font-semibold">{[scope, when].filter(Boolean).join(' · ')}</h3>
-                <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px]">
+                <h3 className="text-ink text-body font-semibold">{[scope, when].filter(Boolean).join(' · ')}</h3>
+                <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-small">
                   {obligation.dueDate && <span>{t('dueOn', { date: formatIsoDate(obligation.dueDate, locale) })}</span>}
                   {obligation.dueDate && <span aria-hidden="true">·</span>}
                   <FilingBadge status={obligation.filingStatus} />
@@ -78,18 +78,18 @@ export async function ObligationList({
               <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {printed.map((amount) => (
                   <div key={amount.label}>
-                    <dt className="text-muted-foreground text-[12px] font-medium">{amount.label}</dt>
-                    <dd className="text-ink mt-1 text-[17px] font-bold tracking-[-0.01em] tabular-nums">{money(amount.cents ?? 0)}</dd>
+                    <dt className="text-muted-foreground text-caption font-medium">{amount.label}</dt>
+                    <dd className="text-ink mt-1 text-heading font-bold tracking-[-0.01em] tabular-nums">{money(amount.cents ?? 0)}</dd>
                   </div>
                 ))}
               </dl>
             )}
-            {printed.length === 0 && <p className="text-muted-foreground mt-3 text-[13px]">{t('noAmountsPrinted')}</p>}
+            {printed.length === 0 && <p className="text-muted-foreground mt-3 text-small">{t('noAmountsPrinted')}</p>}
 
             {obligation.payments.length > 0 && (
               <div className="border-line-soft mt-4 border-t pt-3">
-                <p className="text-muted-foreground text-[12px] font-medium">{t('paymentsTitle')}</p>
-                <ul className="mt-2 flex flex-col gap-1.5 text-[13px]">
+                <p className="text-muted-foreground text-caption font-medium">{t('paymentsTitle')}</p>
+                <ul className="mt-2 flex flex-col gap-1.5 text-small">
                   {obligation.payments.map((payment) => (
                     <li key={payment.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-ink font-semibold tabular-nums">{money(payment.amountCents)}</span>
@@ -102,7 +102,7 @@ export async function ObligationList({
                           : t('noConfirmationNumber')}
                       </span>
                       {payment.documentVersionId && (
-                        <a href={`/api/documents/${payment.documentVersionId}/download`} className="text-blue inline-flex items-center gap-1 font-semibold hover:underline">
+                        <a href={`/api/documents/${payment.documentVersionId}/download`} className="text-link inline-flex items-center gap-1 font-semibold hover:underline">
                           <Download className="size-3.5" aria-hidden="true" />
                           {t('openDocument')}
                         </a>
@@ -115,18 +115,18 @@ export async function ObligationList({
 
             {obligation.notes && (
               <div className="border-line-soft mt-4 border-t pt-3">
-                <p className="text-muted-foreground text-[12px] font-medium">{t('firmNote')}</p>
-                <p className="text-ink mt-1 text-[13.5px] leading-[1.5]">{obligation.notes}</p>
+                <p className="text-muted-foreground text-caption font-medium">{t('firmNote')}</p>
+                <p className="text-ink mt-1 text-ui leading-[1.5]">{obligation.notes}</p>
               </div>
             )}
 
             {(obligation.confirmationNumber || obligation.documentVersionId) && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-[12.5px]">
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-small">
                 {obligation.confirmationNumber && (
                   <span className="text-muted-foreground">{t('confirmationNumber', { number: obligation.confirmationNumber })}</span>
                 )}
                 {obligation.documentVersionId && (
-                  <a href={`/api/documents/${obligation.documentVersionId}/download`} className="text-blue inline-flex items-center gap-1 font-semibold hover:underline">
+                  <a href={`/api/documents/${obligation.documentVersionId}/download`} className="text-link inline-flex items-center gap-1 font-semibold hover:underline">
                     <Download className="size-3.5" aria-hidden="true" />
                     {t('openDocument')}
                     {obligation.pageNumber && <span className="text-muted-foreground font-normal">{t('pageRef', { page: obligation.pageNumber })}</span>}

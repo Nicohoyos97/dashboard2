@@ -53,3 +53,10 @@ export function moneyAxisWidth(values: readonly (number | null)[], currency: str
   );
   return Math.min(120, Math.max(64, Math.ceil(longest * AXIS_CHAR_PX) + AXIS_TICK_MARGIN_PX));
 }
+
+/**
+ * What a ResponsiveContainer assumes before it has measured its box. Recharts'
+ * own default is -1 × -1, which it then warns about on every mount; one pixel
+ * draws nothing visible and is replaced on the first measurement.
+ */
+export const CHART_INITIAL = { width: 1, height: 1 } as const;

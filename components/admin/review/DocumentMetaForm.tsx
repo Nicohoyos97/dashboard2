@@ -58,7 +58,7 @@ export function DocumentMetaForm({
       {canEdit && (
         <div className="flex items-center justify-end gap-4 sm:col-span-2">
           {notice && (
-            <span role={notice.ok ? 'status' : 'alert'} className={`text-[13.5px] ${notice.ok ? 'text-success' : 'text-danger'}`}>
+            <span role={notice.ok ? 'status' : 'alert'} className={`text-ui ${notice.ok ? 'text-success' : 'text-danger'}`}>
               {notice.text}
             </span>
           )}

@@ -53,12 +53,12 @@ export function DeleteDocumentBar({
 
   return (
     <section className="border-danger/30 bg-card mt-6 rounded-2xl border p-5">
-      <h2 className="text-ink text-[15px] font-semibold">{t('deleteTitle')}</h2>
-      <p className="text-muted-foreground mt-1.5 text-[13.5px]">
+      <h2 className="text-ink text-body font-semibold">{t('deleteTitle')}</h2>
+      <p className="text-muted-foreground mt-1.5 text-ui">
         {blocked ? t(blockers[0]!, { count: derivedCount }) : t('deleteLede')}
       </p>
       {error && (
-        <p role="alert" className="text-danger mt-2 text-[13.5px]">
+        <p role="alert" className="text-danger mt-2 text-ui">
           {error}
         </p>
       )}
@@ -68,7 +68,7 @@ export function DeleteDocumentBar({
           {confirm ? t('deleteConfirm') : t('deleteDocument')}
         </button>
         {confirm && (
-          <button type="button" onClick={() => setConfirm(false)} className="text-muted-foreground hover:text-ink text-[13.5px]">
+          <button type="button" onClick={() => setConfirm(false)} className="text-muted-foreground hover:text-ink text-ui">
             {t('cancel')}
           </button>
         )}

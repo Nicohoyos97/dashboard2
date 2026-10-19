@@ -36,7 +36,7 @@ export function MonthlySpendChart({
       <div className="h-[240px] w-full">
         <MonthlySpendPlot months={months} currency={currency} seriesLabel={seriesLabel} />
       </div>
-      <figcaption className="text-muted-foreground mt-2 text-[12.5px]">
+      <figcaption className="text-muted-foreground mt-2 text-small">
         {summary}
         <span className="sr-only">
           {' '}

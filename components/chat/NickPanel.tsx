@@ -50,12 +50,14 @@ export function NickPanel({
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Trigger asChild>
+        {/* On a phone the trigger is the orb alone, riding above the tab bar:
+            the pill with its label covered the last row of every page there. */}
         <button
           type="button"
-          className="border-line bg-card text-ink hover:border-blue/50 focus-visible:ring-blue/40 fixed right-5 bottom-5 z-30 inline-flex h-14 items-center gap-2.5 rounded-full border py-1 pr-5 pl-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.14)] transition outline-none hover:shadow-[0_12px_28px_rgba(15,23,42,0.18)] focus-visible:ring-3 print:hidden"
+          className="border-line bg-card text-ink hover:border-brand/50 focus-visible:ring-brand/40 fixed right-4 bottom-[calc(var(--tabbar-offset,0px)+1rem)] z-30 inline-flex size-14 items-center justify-center gap-2.5 rounded-full border p-1.5 shadow-float transition outline-none hover:shadow-float-hover focus-visible:ring-3 sm:right-5 sm:w-auto sm:justify-start sm:pr-5 print:hidden"
         >
           <NickOrb size={44} active={chat.streaming} />
-          <span className="text-[14px] font-semibold">{t('openPanel')}</span>
+          <span className="text-ui font-semibold max-sm:sr-only">{t('openPanel')}</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -65,10 +67,10 @@ export function NickPanel({
             <div className="flex min-w-0 items-center gap-2">
               <NickOrb size={38} active={chat.streaming} />
               <div className="min-w-0">
-                <Dialog.Title className="text-ink text-[16px] font-bold">
+                <Dialog.Title className="text-ink text-title font-bold">
                   {t('panelTitle')}
                 </Dialog.Title>
-                <Dialog.Description className="text-muted-foreground truncate text-[12.5px]">
+                <Dialog.Description className="text-muted-foreground truncate text-small">
                   {line ? t('lineContext', { account: line.name }) : businessName}
                 </Dialog.Description>
               </div>
@@ -78,7 +80,7 @@ export function NickPanel({
                 <button
                   type="button"
                   onClick={() => selection?.setLine(null)}
-                  className="text-muted-foreground hover:text-ink rounded-lg px-2 py-1 text-[12.5px] font-semibold"
+                  className="text-muted-foreground hover:text-ink rounded-lg px-2 py-1 text-small font-semibold"
                 >
                   {t('clearLine')}
                 </button>

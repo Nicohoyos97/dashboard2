@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 
 import { NickWorkspace } from '@/components/chat/NickWorkspace';
+import { PortalPage } from '@/components/portal/PortalPage';
 import { NICK_LIMITS } from '@/lib/ai/nick/config';
 import { listSessions, loadSession, loadThread } from '@/lib/ai/nick/persist';
 import { logAccess } from '@/lib/audit/logAccess';
@@ -28,16 +29,16 @@ export default async function ChatPage({
 
   if (!entity || !user) {
     return (
-      <Page title={t('title')} lede={t('ledeGeneric')}>
+      <PortalPage title={t('title')} lede={t('ledeGeneric')}>
         <Notice title={t('pendingTitle')} body={t('pendingBody')} />
-      </Page>
+      </PortalPage>
     );
   }
   if (entity.role === 'firm_preview') {
     return (
-      <Page title={t('title')} lede={t('lede', { business: entity.name })}>
+      <PortalPage title={t('title')} lede={t('lede', { business: entity.name })}>
         <Notice title={t('previewTitle')} body={t('previewNotice')} />
-      </Page>
+      </PortalPage>
     );
   }
 
@@ -71,9 +72,10 @@ export default async function ChatPage({
     // and the composer stays put. With only `min-h` the flex chain had no size
     // to distribute, so `overflow-y-auto` never engaged, the document grew with
     // the conversation and the composer was pushed off the bottom of the
-    // screen. The offset is the sticky chrome above: the mobile header (3.5rem)
-    // or, from `md` up, the top bar (4rem).
-    <main className="mx-auto flex h-[calc(100svh-3.5rem)] w-full max-w-[1200px] flex-col overflow-hidden px-4 py-4 md:h-[calc(100svh-4rem)] md:px-8 md:py-6">
+    // screen. The offset is the chrome around it: the mobile header (3.5rem)
+    // and the tab bar under it (`--tabbar-offset`, set by AppShell), or, from
+    // `md` up, the top bar (4rem).
+    <main className="mx-auto flex h-[calc(100svh-3.5rem-var(--tabbar-offset,0px))] w-full max-w-[1200px] flex-col overflow-hidden px-4 py-4 md:h-[calc(100svh-4rem)] md:px-8 md:py-6">
       <h1 className="sr-only">{t('title')}</h1>
       <NickWorkspace
         key={active?.id ?? 'new'}
@@ -88,36 +90,11 @@ export default async function ChatPage({
   );
 }
 
-function Page({
-  title,
-  lede,
-  controls,
-  children,
-}: {
-  title: string;
-  lede: string;
-  controls?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <main className="mx-auto flex w-full max-w-[1200px] flex-col px-6 py-10 md:px-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
-        </div>
-        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
-      </div>
-      {children}
-    </main>
-  );
-}
-
 function Notice({ title, body }: { title: string; body: string }) {
   return (
-    <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink text-[18px] font-semibold">{title}</h2>
-      <p className="text-muted-foreground mt-2 max-w-[560px] text-[15px] leading-[1.55]">{body}</p>
+    <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-card">
+      <h2 className="text-ink text-heading font-semibold">{title}</h2>
+      <p className="text-muted-foreground mt-2 max-w-[560px] text-body leading-[1.55]">{body}</p>
     </section>
   );
 }

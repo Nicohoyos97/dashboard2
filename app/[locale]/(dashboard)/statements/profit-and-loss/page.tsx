@@ -15,6 +15,7 @@ import { todayIn } from '@/lib/utils/timezone';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
 import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
+import { PortalPage } from '@/components/portal/PortalPage';
 import { StatementTable } from '@/components/statements/StatementTable';
 import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
@@ -31,14 +32,14 @@ import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
 import { comparableSeries } from '@/lib/reports/series';
-import { formatPeriod } from '@/lib/utils/dates';
+import { formatPeriod, formatPeriodCompact } from '@/lib/utils/dates';
 
 const TREND_LIMIT = 8;
 
 export default async function ProfitAndLossPage({ searchParams }: { searchParams: Promise<{ period?: string; compare?: string }> }) {
   const [entity, t, tOverview, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getTranslations('Overview'), getLocale(), searchParams]);
   const typeLabel = t('pnlTitle');
-  if (!entity) return <Page title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></Page>;
+  if (!entity) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></PortalPage>;
 
   const supabase = await createClient();
   const settings = await loadPortalEntitySettings(supabase, entity.id);
@@ -47,7 +48,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   if (!settings.modules.bookkeeping) notFound();
   const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'profit_and_loss');
   const report = selectReport(reports, params.period);
-  if (!report) return <Page title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></Page>;
+  if (!report) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
 
   const rows = await loadReportLines(supabase, entity.id, report.id);
   const roots = buildTree(rows);
@@ -86,7 +87,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   const trend = trendLines
     ? trendReports.map((r, index) => {
         const m = trendMetrics[index];
-        return { label: formatPeriod(r.periodStart, r.periodEnd, locale), a: m?.revenue.current?.cents ?? null, b: m?.operatingExpenses.current?.cents ?? null };
+        return { label: formatPeriodCompact(r.periodStart, r.periodEnd, locale), a: m?.revenue.current?.cents ?? null, b: m?.operatingExpenses.current?.cents ?? null };
       })
     : null;
   // The cards' sparklines, by the Overview's rule: the published periods when
@@ -105,21 +106,26 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
 
   const periodLabel = formatPeriod(report.periodStart, report.periodEnd, locale);
   // Same rule as the PDF: a statement that prints no method is read on the one set at onboarding.
-  const basis = ` · ${t('basis')}: ${(report.basis ?? settings.accountingBasis) === 'accrual' ? t('basisAccrual') : t('basisCash')}`;
+  const basis = t('basisLabel', { basis: (report.basis ?? settings.accountingBasis) === 'accrual' ? t('basisAccrual') : t('basisCash') });
   const comparative = comparison.note
-    ? ` · ${comparison.note}`
+    ? comparison.note
     : report.comparativeStart && report.comparativeEnd
-      ? ` · ${t('comparative')} ${formatPeriod(report.comparativeStart, report.comparativeEnd, locale)}`
-      : '';
+      ? `${t('comparative')} ${formatPeriod(report.comparativeStart, report.comparativeEnd, locale)}`
+      : null;
+  // Where the figures came from, once, under them: the basis, the comparison,
+  // the source and the promise that nothing on the page is an estimate.
+  const provenance = [basis, comparative, t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })]
+    .filter(Boolean)
+    .join(' · ');
 
   await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id });
 
   return (
     <NickProvider>
-    <Page
+    <PortalPage
       title={typeLabel}
-      lede={`${entity.name} · ${periodLabel}${basis}${comparative}`}
-      controls={
+      lede={`${entity.name} · ${periodLabel}`}
+      filters={
         <>
           <GranularityTabs choices={granularityChoices(availablePeriods(reports, [], { locale }), { start: report.periodStart, end: report.periodEnd })} />
           <PeriodPicker
@@ -131,49 +137,52 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
               presetLabel: (preset) => tOverview(`preset_${preset}`),
             })}
           />
-          <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />
         </>
       }
+      actions={<StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />}
     >
       <div className="mt-6">
         <MetricCards
           currency={report.currency}
           items={[
             { kind: 'money', label: t('revenue'), metric: metrics.revenue, upIsGood: true, trend: moneySpark('revenue') },
-            { kind: 'money', label: t('cogs'), metric: metrics.cogs, upIsGood: false, trend: moneySpark('cogs') },
             { kind: 'money', label: t('grossProfit'), metric: metrics.grossProfit, upIsGood: true, trend: moneySpark('grossProfit') },
             { kind: 'money', label: t('operatingExpenses'), metric: metrics.operatingExpenses, upIsGood: false, trend: moneySpark('operatingExpenses') },
             { kind: 'money', label: t('netIncome'), metric: metrics.netIncome, upIsGood: true, trend: moneySpark('netIncome') },
-            { kind: 'ratio', label: t('grossMargin'), ratio: { key: 'grossMargin', current: metrics.grossMarginPct, prior: metrics.priorGrossMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct', trend: sparkOf((m) => m.grossMarginPct, metrics.grossMarginPct, metrics.priorGrossMarginPct) },
-            { kind: 'ratio', label: t('netMargin'), ratio: { key: 'netMargin', current: metrics.netMarginPct, prior: metrics.priorNetMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct', trend: sparkOf((m) => m.netMarginPct, metrics.netMarginPct, metrics.priorNetMarginPct) },
           ]}
+          secondary={[
+            { kind: 'money', label: t('cogs'), metric: metrics.cogs, upIsGood: false },
+            { kind: 'ratio', label: t('grossMargin'), ratio: { key: 'grossMargin', current: metrics.grossMarginPct, prior: metrics.priorGrossMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
+            { kind: 'ratio', label: t('netMargin'), ratio: { key: 'netMargin', current: metrics.netMarginPct, prior: metrics.priorNetMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
+          ]}
+          secondaryLabel={t('ratiosLabel')}
         />
       </div>
 
-      <p className="text-muted-foreground mt-3 text-[12.5px]">
-        {t('granularityNote', { period: periodLabel })} · {t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })}
+      <p className="text-muted-foreground mt-3 text-small">
+        {provenance}. {t('nothingEstimated')}
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('compositionExpenses')}</h2>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
+          <h2 className="text-ink text-title font-semibold">{t('compositionExpenses')}</h2>
           <div className="mt-4">
-            {expenses.length > 0 ? <CompositionBars items={expenses} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('notPrinted')}</p>}
+            {expenses.length > 0 ? <CompositionBars items={expenses} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-ui">{t('notPrinted')}</p>}
           </div>
         </section>
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('trendRevenueExpenses')}</h2>
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
+          <h2 className="text-ink text-title font-semibold">{t('trendRevenueExpenses')}</h2>
           <div className="mt-4">
             {trend ? (
               <TrendBars points={trend} currency={report.currency} seriesA={t('revenue')} seriesB={t('operatingExpenses')} summary={t('trendSummary', { count: trend.length, latest: trend[trend.length - 1]?.label ?? '' })} />
             ) : (
-              <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
+              <p className="text-muted-foreground text-ui">{t('trendUnavailable')}</p>
             )}
           </div>
         </section>
       </div>
 
-      <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:border-0 print:shadow-none">
+      <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-card print:border-0 print:shadow-none">
         <StatementTable
           roots={comparison.roots}
           meta={{ reportType: 'profit_and_loss', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
@@ -187,23 +196,8 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
           }}
         />
       </section>
-    </Page>
+    </PortalPage>
     <NickPanel page="profit_and_loss" period={periodParam({ start: report.periodStart, end: report.periodEnd })} businessName={entity.name} />
     </NickProvider>
-  );
-}
-
-function Page({ title, lede, controls, children }: { title: string; lede: string; controls?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
-        </div>
-        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
-      </div>
-      {children}
-    </main>
   );
 }

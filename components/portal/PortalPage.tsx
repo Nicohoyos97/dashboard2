@@ -1,31 +1,58 @@
 import { getTranslations } from 'next-intl/server';
 
-// Page frame shared by the Phase 5 client-portal pages (Expenses, Income
-// Taxes, Sales Taxes), matching the header the Overview and statement pages
-// already use: title, one line of context, and the page's own controls on the
-// right. Kept here so a new module does not restate the layout.
+// The one page frame every client-portal page uses: the title, one line of
+// context, and — when the page has any — a toolbar under them, with what
+// filters the page (granularity, period, tax year) on the left and what you
+// can take away from it (export, download) on the right.
+//
+// The toolbar always sits under the title rather than beside it. Beside it,
+// the controls landed wherever the title's width left room — right of it on
+// one page, wrapped under it on the next — so the same picker moved around as
+// the owner went from page to page.
 export function PortalPage({
   title,
   lede,
+  leading,
+  filters,
   controls,
+  actions,
   children,
 }: {
   title: string;
-  lede: string;
+  lede?: string;
+  /** Left of the title: the client's logo on the Overview. */
+  leading?: React.ReactNode;
+  filters?: React.ReactNode;
+  /** @deprecated Same slot as `filters`; kept for the pages that predate it. */
   controls?: React.ReactNode;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const left = filters ?? controls;
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
+    <main className="mx-auto w-full max-w-[1200px] px-4 pt-6 pb-12 sm:px-6 md:px-10 md:pt-9">
+      <PageHeading title={title} lede={lede} leading={leading} />
+      {(left || actions) && (
+        <div className="mt-5 flex flex-wrap items-center gap-2.5 print:hidden">
+          {left && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2.5">{left}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2.5 sm:ml-auto">{actions}</div>}
         </div>
-        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
-      </div>
+      )}
       {children}
     </main>
+  );
+}
+
+/** The title block alone, for a page whose frame is otherwise its own (Ask Nick). */
+export function PageHeading({ title, lede, leading }: { title: string; lede?: string | undefined; leading?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-4">
+      {leading}
+      <div className="min-w-0">
+        <h1 className="text-ink text-display leading-tight font-bold tracking-[-0.02em] text-balance">{title}</h1>
+        {lede && <p className="text-muted-foreground mt-1 text-body text-pretty">{lede}</p>}
+      </div>
+    </div>
   );
 }
 
@@ -44,9 +71,9 @@ export async function PortalEmpty({
 }) {
   const t = await getTranslations('Overview');
   return (
-    <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink text-[18px] font-semibold">{kind === 'pending' ? t('pendingTitle') : (title ?? t('emptyTitle'))}</h2>
-      <p className="text-muted-foreground mt-2 max-w-[560px] text-[15px] leading-[1.55]">{kind === 'pending' ? t('pendingBody') : (body ?? '')}</p>
+    <section className="border-line bg-card mt-8 rounded-2xl border p-8 shadow-card">
+      <h2 className="text-ink text-heading font-semibold">{kind === 'pending' ? t('pendingTitle') : (title ?? t('emptyTitle'))}</h2>
+      <p className="text-muted-foreground mt-2 max-w-[560px] text-body leading-[1.55]">{kind === 'pending' ? t('pendingBody') : (body ?? '')}</p>
     </section>
   );
 }

@@ -7,7 +7,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import { SERIES } from '@/lib/charts/palette';
 
-import { compactMoney, fullMoney, moneyAxisWidth } from '../format';
+import { CHART_INITIAL, compactMoney, fullMoney, moneyAxisWidth } from '../format';
 
 export type IncomeExpensePoint = { label: string; incomeCents: number | null; expenseCents: number | null };
 
@@ -20,7 +20,7 @@ export function IncomeExpensePlot({ points, currency }: { points: IncomeExpenseP
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL}>
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} accessibilityLayer>
         <defs>
           <linearGradient id="incomeExpense-income" x1="0" y1="0" x2="0" y2="1">
@@ -50,16 +50,16 @@ export function IncomeExpensePlot({ points, currency }: { points: IncomeExpenseP
             const rows = (payload ?? []).filter((entry) => typeof entry.value === 'number');
             if (!active || rows.length === 0) return null;
             return (
-              <div className="rounded-xl bg-[var(--chart-tooltip-bg)] px-3.5 py-2.5 text-white shadow-[0_10px_28px_rgba(15,23,42,0.24)]">
+              <div className="rounded-xl bg-[var(--chart-tooltip-bg)] px-3.5 py-2.5 text-white shadow-float">
                 {rows.map((entry) => (
                   <p key={String(entry.name)} className="not-first:mt-2">
-                    <span className="block text-[11.5px] text-white/70">{String(entry.name)}</span>
-                    <span className="block text-[18px] leading-tight font-bold tabular-nums">
+                    <span className="block text-caption text-white/70">{String(entry.name)}</span>
+                    <span className="block text-heading leading-tight font-bold tabular-nums">
                       {fullMoney(Number(entry.value), currency)}
                     </span>
                   </p>
                 ))}
-                {typeof label === 'string' && <p className="mt-1.5 text-[11.5px] text-white/70">{label}</p>}
+                {typeof label === 'string' && <p className="mt-1.5 text-caption text-white/70">{label}</p>}
               </div>
             );
           }}

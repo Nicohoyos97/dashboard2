@@ -46,12 +46,12 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
     });
 
   const tab = (active: boolean) =>
-    `h-9 rounded-lg px-3 text-[13px] font-semibold transition ${active ? 'bg-card text-ink shadow-[0_1px_2px_rgba(15,23,42,0.12)]' : 'text-muted-foreground hover:text-ink'}`;
+    `h-9 rounded-lg px-3 text-small font-semibold transition ${active ? 'bg-card text-ink shadow-card' : 'text-muted-foreground hover:text-ink'}`;
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-[13.5px]">
-        <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+      <table className="w-full text-left text-ui">
+        <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
           <tr>
             <th scope="col" className="px-3 py-2">{tStatements('colAccount')}</th>
             <th scope="col" className="hidden px-3 py-2 sm:table-cell">{tExpenses('pnlColType')}</th>
@@ -66,8 +66,8 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
             const name = (
               <>
                 <span className="text-ink font-medium">{row.label}</span>
-                {row.group && <span className="text-muted-foreground block text-[12px]">{row.group}</span>}
-                <span className="text-muted-foreground block text-[12px] sm:hidden">{row.kindLabel}</span>
+                {row.group && <span className="text-muted-foreground block text-caption">{row.group}</span>}
+                <span className="text-muted-foreground block text-caption sm:hidden">{row.kindLabel}</span>
               </>
             );
             const main = (
@@ -84,7 +84,7 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
                       <ChevronRight className={`text-muted-foreground mt-0.5 size-4 shrink-0 transition ${isOpen ? 'rotate-90' : ''}`} aria-hidden="true" />
                       <span>
                         {name}
-                        <span className="text-blue block text-[12px] font-semibold">{t('transactions', { count: row.txns.length })}</span>
+                        <span className="text-link block text-caption font-semibold">{t('transactions', { count: row.txns.length })}</span>
                       </span>
                     </button>
                   ) : (
@@ -105,7 +105,7 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
                 <td colSpan={4} className="px-3 pb-4 sm:pl-9">
                   <div className="border-line bg-card overflow-hidden rounded-xl border">
                     <div className="border-line flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
-                      <span className="text-ink text-[13.5px] font-semibold">{row.label}</span>
+                      <span className="text-ink text-ui font-semibold">{row.label}</span>
                       <div role="group" aria-label={t('viewBy')} className="bg-secondary inline-flex rounded-xl p-1">
                         <button type="button" aria-pressed={mode === 'payee'} onClick={() => setView((v) => ({ ...v, [row.id]: 'payee' }))} className={tab(mode === 'payee')}>
                           {t('byPayee')}
@@ -122,12 +122,12 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
                         <TransactionList txns={row.txns} currency={currency} searchable={row.txns.length > 8} />
                       </div>
                     )}
-                    <div className="bg-paper border-line flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 text-[13px]">
+                    <div className="bg-paper border-line flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 text-small">
                       <p className="text-muted-foreground flex items-center gap-2">
                         <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
                         {t('addsUp', { count: row.txns.length, total: formatCents(row.cents, currency) })}
                       </p>
-                      <a href={`/api/ledger/lines/${row.id}/csv`} download className="text-blue inline-flex items-center gap-1.5 font-semibold hover:underline">
+                      <a href={`/api/ledger/lines/${row.id}/csv`} download className="text-link inline-flex items-center gap-1.5 font-semibold hover:underline">
                         <Download className="size-4" aria-hidden="true" />
                         {t('downloadCsv')}
                       </a>

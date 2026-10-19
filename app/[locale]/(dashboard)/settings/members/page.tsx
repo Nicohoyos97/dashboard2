@@ -50,15 +50,15 @@ export default async function MembersPage() {
 
   return (
     <section className="max-w-[640px]">
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
         {t('membersEyebrow')}
       </p>
-      <h2 className="text-ink mt-2 text-[22px] font-bold tracking-[-0.01em]">
+      <h2 className="text-ink mt-2 text-stat font-bold tracking-[-0.01em]">
         {t('membersTitle')}
       </h2>
-      <p className="text-muted-foreground mt-1.5 text-[15px]">{t('membersLede')}</p>
+      <p className="text-muted-foreground mt-1.5 text-body">{t('membersLede')}</p>
 
-      <ul className="divide-line border-line bg-card mt-6 divide-y overflow-hidden rounded-2xl border shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <ul className="divide-line border-line bg-card mt-6 divide-y overflow-hidden rounded-2xl border shadow-card">
         {rows.map((m) => {
           const name = m.profile?.full_name?.trim() || m.profile?.email || '—';
           const isSelf = m.user_id === user?.id;
@@ -69,27 +69,27 @@ export default async function MembersPage() {
                   // eslint-disable-next-line @next/next/no-img-element -- user-uploaded, arbitrary host
                   <img src={m.profile.avatar_url} alt="" className="size-full object-cover" />
                 ) : (
-                  <span className="text-muted-foreground flex size-full items-center justify-center text-[13px] font-bold">
+                  <span className="text-muted-foreground flex size-full items-center justify-center text-small font-bold">
                     {initials(name)}
                   </span>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-ink flex items-center gap-2 truncate text-[15px] font-semibold">
+                <p className="text-ink flex items-center gap-2 truncate text-body font-semibold">
                   {name}
                   {isSelf && (
-                    <span className="bg-secondary text-muted-foreground rounded px-1.5 py-0.5 text-[11px] font-medium">
+                    <span className="bg-secondary text-muted-foreground rounded px-1.5 py-0.5 text-micro font-medium">
                       {t('youTag')}
                     </span>
                   )}
                 </p>
                 {m.profile?.email && (
-                  <p className="text-muted-foreground truncate text-[13.5px]">{m.profile.email}</p>
+                  <p className="text-muted-foreground truncate text-ui">{m.profile.email}</p>
                 )}
               </div>
 
-              <span className="bg-blue-pale text-blue shrink-0 rounded-full px-2.5 py-1 text-[12.5px] font-semibold">
+              <span className="bg-blue-pale text-link shrink-0 rounded-full px-2.5 py-1 text-small font-semibold">
                 {t(ROLE_KEY[m.role] ?? 'roleViewer')}
               </span>
             </li>

@@ -38,7 +38,7 @@ function inline(
     }
     if (DOWNLOAD.test(part)) {
       nodes.push(
-        <a key={key} href={part} className="text-blue font-semibold underline underline-offset-4">
+        <a key={key} href={part} className="text-link font-semibold underline underline-offset-4">
           {downloadLabel}
         </a>,
       );
@@ -89,7 +89,7 @@ export function AssistantText({
   const downloadLabel = t('downloadLink');
   const byKey = new Map(citations.map((c) => [c.key, c] as const));
   return (
-    <div className="text-ink flex flex-col gap-2.5 text-[14.5px] leading-[1.6]">
+    <div className="text-ink flex flex-col gap-2.5 text-body leading-[1.6]">
       {blocksOf(text).map((block, index) =>
         block.kind === 'p' ? (
           <p key={index}>{inline(block.text, byKey, `p${index}`, downloadLabel)}</p>
@@ -123,8 +123,8 @@ export function MessageBubble({
       <div
         className={
           isUser
-            ? `max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 text-[14.5px] leading-[1.55] ${failed ? 'bg-danger/10 text-ink' : 'bg-blue text-white'}`
-            : 'border-line bg-card max-w-[92%] rounded-2xl rounded-bl-md border px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+            ? `max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 text-body leading-[1.55] ${failed ? 'bg-danger/10 text-ink' : 'bg-blue text-white'}`
+            : 'border-line bg-card max-w-[92%] rounded-2xl rounded-bl-md border px-4 py-3 shadow-card'
         }
       >
         <span className="sr-only">{isUser ? t('you') : t('nick')}: </span>
@@ -139,7 +139,7 @@ export function SourcesRow({ citations }: { citations: readonly CitationRecord[]
   if (citations.length === 0) return null;
   return (
     <div className="border-line mt-3 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
-      <span className="text-muted-foreground mr-1 text-[11.5px] font-medium tracking-[0.08em] uppercase">
+      <span className="text-muted-foreground mr-1 text-caption font-medium tracking-[0.08em] uppercase">
         {t('sources')}
       </span>
       {citations.map((c) => (

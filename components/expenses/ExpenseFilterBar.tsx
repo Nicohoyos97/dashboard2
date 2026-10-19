@@ -66,18 +66,18 @@ export function ExpenseFilterBar({
         event.preventDefault();
         submit();
       }}
-      className="border-line bg-card rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="border-line bg-card rounded-2xl border p-4 shadow-card"
     >
       {period && <input type="hidden" name="period" value={period} />}
       {sort && <input type="hidden" name="sort" value={sort} />}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterSearch')}</span>
-          <input name="q" type="search" defaultValue={values.q} placeholder={t('filterSearchPlaceholder')} className={`${inputClass} h-10 text-[13.5px]`} />
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterSearch')}</span>
+          <input name="q" type="search" defaultValue={values.q} placeholder={t('filterSearchPlaceholder')} className={`${inputClass} h-10 text-ui`} />
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterCategory')}</span>
-          <select name="category" defaultValue={values.category} onChange={submit} className={`${selectClass} h-10 text-[13.5px]`}>
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterCategory')}</span>
+          <select name="category" defaultValue={values.category} onChange={submit} className={`${selectClass} h-10 text-ui`}>
             <option value="">{t('filterAll')}</option>
             {categories.map((option) => (
               <option key={option.value} value={option.value}>
@@ -87,8 +87,8 @@ export function ExpenseFilterBar({
           </select>
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterVendor')}</span>
-          <select name="vendor" defaultValue={values.vendor} onChange={submit} className={`${selectClass} h-10 text-[13.5px]`}>
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterVendor')}</span>
+          <select name="vendor" defaultValue={values.vendor} onChange={submit} className={`${selectClass} h-10 text-ui`}>
             <option value="">{t('filterAll')}</option>
             {vendors.map((option) => (
               <option key={option.value} value={option.value}>
@@ -98,8 +98,8 @@ export function ExpenseFilterBar({
           </select>
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterAccount')}</span>
-          <select name="account" defaultValue={values.account} onChange={submit} className={`${selectClass} h-10 text-[13.5px]`}>
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterAccount')}</span>
+          <select name="account" defaultValue={values.account} onChange={submit} className={`${selectClass} h-10 text-ui`}>
             <option value="">{t('filterAll')}</option>
             {accounts.map((option) => (
               <option key={option.value} value={option.value}>
@@ -109,20 +109,20 @@ export function ExpenseFilterBar({
           </select>
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterRecurring')}</span>
-          <select name="recurring" defaultValue={values.recurring} onChange={submit} className={`${selectClass} h-10 text-[13.5px]`}>
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterRecurring')}</span>
+          <select name="recurring" defaultValue={values.recurring} onChange={submit} className={`${selectClass} h-10 text-ui`}>
             <option value="">{t('filterAll')}</option>
             <option value="yes">{t('recurringYes')}</option>
             <option value="no">{t('recurringNo')}</option>
           </select>
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterMin')}</span>
-          <input name="min" inputMode="decimal" defaultValue={values.min} placeholder="0.00" className={`${inputClass} h-10 text-[13.5px]`} />
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterMin')}</span>
+          <input name="min" inputMode="decimal" defaultValue={values.min} placeholder="0.00" className={`${inputClass} h-10 text-ui`} />
         </label>
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-[12.5px] font-medium">{t('filterMax')}</span>
-          <input name="max" inputMode="decimal" defaultValue={values.max} placeholder="0.00" className={`${inputClass} h-10 text-[13.5px]`} />
+          <span className="text-muted-foreground mb-1.5 block text-small font-medium">{t('filterMax')}</span>
+          <input name="max" inputMode="decimal" defaultValue={values.max} placeholder="0.00" className={`${inputClass} h-10 text-ui`} />
         </label>
         <div className="flex items-end gap-2">
           <button type="submit" className={`${secondaryButton} h-10 flex-1`}>
@@ -135,7 +135,7 @@ export function ExpenseFilterBar({
           )}
         </div>
       </div>
-      {activeCount > 0 && <p className="text-muted-foreground mt-3 text-[12.5px]">{t('filtersActive', { count: activeCount })}</p>}
+      {activeCount > 0 && <p className="text-muted-foreground mt-3 text-small">{t('filtersActive', { count: activeCount })}</p>}
     </form>
   );
 }

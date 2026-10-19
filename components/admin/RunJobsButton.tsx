@@ -33,7 +33,7 @@ export function RunJobsButton() {
         <Play className="size-4" aria-hidden="true" />
         {isPending ? t('runJobsRunning') : t('runJobs')}
       </button>
-      {notice && <span className="text-muted-foreground text-[13px]">{notice}</span>}
+      {notice && <span className="text-muted-foreground text-small">{notice}</span>}
     </span>
   );
 }

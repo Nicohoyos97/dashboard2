@@ -39,7 +39,7 @@ export function IncomeExpenseChart({
       <div className="h-[260px] w-full">
         <IncomeExpensePlot points={points} currency={currency} />
       </div>
-      <figcaption className="text-muted-foreground mt-2 text-[12.5px]">
+      <figcaption className="text-muted-foreground mt-2 text-small">
         {summary}
         <span className="sr-only">
           {' '}

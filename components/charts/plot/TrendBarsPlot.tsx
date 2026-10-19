@@ -10,7 +10,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { CHART_CHROME, SERIES } from '@/lib/charts/palette';
 
 import { ChartTooltip } from '../ChartTooltip';
-import { compactMoney, moneyAxisWidth } from '../format';
+import { CHART_INITIAL, compactMoney, moneyAxisWidth } from '../format';
 
 export type TrendPoint = { label: string; a: number | null; b: number | null };
 
@@ -30,7 +30,7 @@ export function TrendBarsPlot({
   // simply draws no bar for it.
   const data = points.map((p) => ({ label: p.label, a: p.a, b: p.b }));
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} accessibilityLayer>
         <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} strokeWidth={1} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: CHART_CHROME.axis, fontSize: 12 }} />

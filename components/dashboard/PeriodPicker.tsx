@@ -87,7 +87,7 @@ export function PeriodPicker({
   const rangeInvalid = from === '' || to === '' || from > to;
 
   return (
-    <label className="flex max-w-full min-w-0 items-center gap-2 text-[13.5px]">
+    <label className="flex max-w-full min-w-0 items-center gap-2 text-ui">
       <span className="text-muted-foreground font-medium whitespace-nowrap">
         {label ?? t('periodLabel')}
       </span>
@@ -123,7 +123,7 @@ export function PeriodPicker({
           <Popover.Content
             align="end"
             sideOffset={6}
-            className="border-line bg-card z-50 max-h-[min(70vh,520px)] w-[300px] overflow-y-auto rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+            className="border-line bg-card z-50 max-h-[min(70vh,520px)] w-[300px] overflow-y-auto rounded-xl border p-1.5 shadow-menu"
           >
             {[...leading, ...presets].map((choice) => (
               <Row
@@ -142,7 +142,7 @@ export function PeriodPicker({
                   type="button"
                   onClick={() => setShowCustom((v) => !v)}
                   aria-expanded={showCustom}
-                  className="text-ink hover:bg-secondary flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none"
+                  className="text-ink hover:bg-secondary flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-ui outline-none"
                 >
                   {t('periodCustom')}
                   <ChevronDown
@@ -155,7 +155,7 @@ export function PeriodPicker({
                   <div className="border-line-soft mt-1 space-y-2 rounded-lg border p-2.5">
                     <div className="grid grid-cols-2 gap-2">
                       <span>
-                        <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
+                        <span className="text-muted-foreground mb-1 block text-caption font-medium">
                           {t('periodFrom')}
                         </span>
                         <input
@@ -164,11 +164,11 @@ export function PeriodPicker({
                           max={to || undefined}
                           onChange={(e) => setFrom(e.target.value)}
                           aria-label={t('periodFrom')}
-                          className={`${inputClass} h-9 text-[13px]`}
+                          className={`${inputClass} h-9 text-small`}
                         />
                       </span>
                       <span>
-                        <span className="text-muted-foreground mb-1 block text-[12px] font-medium">
+                        <span className="text-muted-foreground mb-1 block text-caption font-medium">
                           {t('periodTo')}
                         </span>
                         <input
@@ -177,7 +177,7 @@ export function PeriodPicker({
                           min={from || undefined}
                           onChange={(e) => setTo(e.target.value)}
                           aria-label={t('periodTo')}
-                          className={`${inputClass} h-9 text-[13px]`}
+                          className={`${inputClass} h-9 text-small`}
                         />
                       </span>
                     </div>
@@ -196,7 +196,7 @@ export function PeriodPicker({
 
             {published.length > 0 && (
               <>
-                <p className="text-muted-foreground px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
+                <p className="text-muted-foreground px-2.5 pt-3 pb-1 text-micro font-semibold tracking-[0.08em] uppercase">
                   {t('periodPublished')}
                 </p>
                 {published.map((choice) => (
@@ -236,18 +236,18 @@ function Row({
       disabled={disabled}
       onClick={() => onSelect(choice.value)}
       aria-current={selected ? 'true' : undefined}
-      className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-[13.5px] outline-none ${
+      className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-ui outline-none ${
         disabled ? 'text-muted-foreground cursor-not-allowed' : 'text-ink hover:bg-secondary'
       }`}
     >
       <Check
-        className={`mt-0.5 size-4 shrink-0 ${selected ? 'text-blue' : 'opacity-0'}`}
+        className={`mt-0.5 size-4 shrink-0 ${selected ? 'text-link' : 'opacity-0'}`}
         aria-hidden="true"
       />
       <span className="min-w-0">
         <span className={`block truncate ${selected ? 'font-semibold' : ''}`}>{choice.label}</span>
         {!choice.published && (
-          <span className="text-muted-foreground block text-[12px] leading-[1.4]">
+          <span className="text-muted-foreground block text-caption leading-[1.4]">
             {unavailableNote}
           </span>
         )}

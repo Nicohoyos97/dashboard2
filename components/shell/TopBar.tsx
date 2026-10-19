@@ -18,7 +18,7 @@ import { SearchBar, type SearchTarget } from './SearchBar';
 import { TopAccountMenu } from './TopAccountMenu';
 
 const iconButton =
-  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-blue/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3';
+  'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3';
 
 export function TopBar({
   items,
@@ -57,7 +57,7 @@ export function TopBar({
       className="border-line/80 bg-card/80 sticky top-0 z-20 hidden h-16 items-center gap-3 border-b px-6 backdrop-blur-sm md:flex"
     >
       <nav aria-label={tShell('breadcrumb')} className="min-w-0">
-        <ol className="flex min-w-0 items-center gap-1.5 text-[15px]">
+        <ol className="flex min-w-0 items-center gap-1.5 text-body">
           {crumbs.map((crumb, index) => {
             const last = index === crumbs.length - 1;
             return (

@@ -117,7 +117,7 @@ export function InviteFields({
           onChange={(e) => set('email', e.target.value)}
           className={inputClass}
         />
-        <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('inviteEmailHelp')}</p>
+        <p className="text-muted-foreground mt-1.5 text-small">{t('inviteEmailHelp')}</p>
       </div>
       <div>
         <label htmlFor="inviteName" className={labelClass}>
@@ -160,7 +160,7 @@ export function InviteFields({
             </option>
           ))}
         </select>
-        <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('clientLanguageHelp')}</p>
+        <p className="text-muted-foreground mt-1.5 text-small">{t('clientLanguageHelp')}</p>
       </div>
     </div>
   );

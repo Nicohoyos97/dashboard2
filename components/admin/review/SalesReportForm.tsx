@@ -67,10 +67,10 @@ export function SalesReportForm({
 
   return (
     <form onSubmit={onSubmit} className="border-line mt-5 rounded-xl border p-4">
-      <h3 className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <h3 className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
         {t('correctionTitle')}
       </h3>
-      <p className="text-muted-foreground mt-1.5 text-[12.5px]">{t('correctionLede')}</p>
+      <p className="text-muted-foreground mt-1.5 text-small">{t('correctionLede')}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {fields.map(([key, label]) => (
@@ -93,12 +93,12 @@ export function SalesReportForm({
       </div>
 
       {error && (
-        <p role="alert" className="text-danger mt-3 text-[13.5px]">
+        <p role="alert" className="text-danger mt-3 text-ui">
           {error}
         </p>
       )}
       <div className="mt-4 flex items-center justify-end gap-4">
-        {saved && <span className="text-success text-[13.5px] font-medium">{t('correctionSaved')}</span>}
+        {saved && <span className="text-success text-ui font-medium">{t('correctionSaved')}</span>}
         <button type="submit" disabled={isPending} className={primaryButton}>
           {isPending ? t('saving') : t('correctionSave')}
         </button>

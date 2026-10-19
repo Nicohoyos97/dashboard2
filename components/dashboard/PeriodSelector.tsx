@@ -16,13 +16,13 @@ export function PeriodSelector({ options, current }: { options: PeriodOption[]; 
   if (options.length === 0) return null;
 
   return (
-    <label className="flex items-center gap-2 text-[13.5px]">
+    <label className="flex items-center gap-2 text-ui">
       <span className="text-muted-foreground font-medium">{t('periodLabel')}</span>
       <select
         aria-label={t('periodLabel')}
         value={current}
         onChange={(e) => router.push(`${pathname}?period=${e.target.value}`)}
-        className={`${selectClass} h-10 w-auto min-w-[200px] text-[13.5px]`}
+        className={`${selectClass} h-10 w-auto min-w-[200px] text-ui`}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

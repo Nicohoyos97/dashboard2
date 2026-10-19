@@ -88,8 +88,8 @@ export function TestimonialPanel() {
                   “{t(`testimonial${index + 1}Quote`)}”
                 </blockquote>
                 <div className="mt-5">
-                  <p className="text-[15px] font-semibold">{t(`testimonial${index + 1}Name`)}</p>
-                  <p className="mt-0.5 text-[13px] text-white/75">
+                  <p className="text-body font-semibold">{t(`testimonial${index + 1}Name`)}</p>
+                  <p className="mt-0.5 text-small text-white/75">
                     {t(`testimonial${index + 1}Role`)}
                   </p>
                 </div>
@@ -109,7 +109,7 @@ export function TestimonialPanel() {
                 aria-label={t('testimonialGoTo', { number: index + 1 })}
                 aria-pressed={active === index}
                 onClick={() => setActive(index)}
-                className={`focus-visible:ring-blue/70 h-2.5 rounded-full transition-all outline-none focus-visible:ring-3 motion-reduce:transition-none ${active === index ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/75'}`}
+                className={`focus-visible:ring-brand/70 h-2.5 rounded-full transition-all outline-none focus-visible:ring-3 motion-reduce:transition-none ${active === index ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/75'}`}
               />
             ))}
           </div>

@@ -42,8 +42,8 @@ export default async function DocumentsQueuePage({
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{t('documentsQueueTitle')}</h1>
-          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-[15px]">{t('documentsQueueLede')}</p>
+          <h1 className="text-ink text-display font-bold tracking-[-0.01em]">{t('documentsQueueTitle')}</h1>
+          <p className="text-muted-foreground mt-1.5 max-w-[640px] text-body">{t('documentsQueueLede')}</p>
         </div>
         {process.env.NODE_ENV !== 'production' && firm.role === 'master_admin' && <RunJobsButton />}
       </div>
@@ -58,8 +58,8 @@ export default async function DocumentsQueuePage({
               aria-current={active ? 'page' : undefined}
               className={
                 active
-                  ? 'bg-blue-pale text-blue rounded-full px-3 py-1.5 text-[13px] font-semibold'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-ink rounded-full px-3 py-1.5 text-[13px] font-medium'
+                  ? 'bg-blue-pale text-link rounded-full px-3 py-1.5 text-small font-semibold'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-ink rounded-full px-3 py-1.5 text-small font-medium'
               }
             >
               {tab.label}
@@ -70,10 +70,10 @@ export default async function DocumentsQueuePage({
 
       <section className={`${card} mt-4 overflow-x-auto p-0`}>
         {(docs ?? []).length === 0 ? (
-          <p className="text-muted-foreground p-6 text-[14.5px]">{t('noDocumentsQueue')}</p>
+          <p className="text-muted-foreground p-6 text-body">{t('noDocumentsQueue')}</p>
         ) : (
-          <table className="w-full text-left text-[14px]">
-            <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+          <table className="w-full text-left text-ui">
+            <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
               <tr>
                 <th className="px-5 py-3">{t('colDocument')}</th>
                 <th className="px-5 py-3">{t('colBusiness')}</th>
@@ -87,7 +87,7 @@ export default async function DocumentsQueuePage({
               {(docs ?? []).map((d) => (
                 <tr key={d.id} className="hover:bg-paper">
                   <td className="px-5 py-3.5">
-                    <Link href={`/admin/documents/${d.id}`} className="text-ink hover:text-blue font-semibold">
+                    <Link href={`/admin/documents/${d.id}`} className="text-ink hover:text-link font-semibold">
                       {d.title}
                     </Link>
                   </td>

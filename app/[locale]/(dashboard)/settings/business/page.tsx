@@ -37,11 +37,11 @@ export default async function BusinessPage() {
 
   return (
     <section className="max-w-[560px]">
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
         {t('bizEyebrow')}
       </p>
-      <h2 className="text-ink mt-2 text-[22px] font-bold tracking-[-0.01em]">{t('bizTitle')}</h2>
-      <p className="text-muted-foreground mt-1.5 text-[15px]">{t('bizLede')}</p>
+      <h2 className="text-ink mt-2 text-stat font-bold tracking-[-0.01em]">{t('bizTitle')}</h2>
+      <p className="text-muted-foreground mt-1.5 text-body">{t('bizLede')}</p>
 
       <BusinessForm
         canEdit={canEdit}

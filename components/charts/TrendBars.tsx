@@ -29,7 +29,7 @@ export function TrendBars({ points, currency, seriesA, seriesB, summary }: { poi
       {/* Our own legend rather than Recharts': its order follows whichever
           series first has a value, which can put the first swatch out of step
           with the first column. */}
-      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-[12.5px]">
+      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-small">
         <li className="flex items-center gap-2">
           <span className="size-2.5 rounded-full" style={{ background: SERIES.primary }} aria-hidden="true" />
           {seriesA}
@@ -44,7 +44,7 @@ export function TrendBars({ points, currency, seriesA, seriesB, summary }: { poi
       <div className="h-[240px] w-full">
         <TrendBarsPlot points={points} currency={currency} seriesA={seriesA} {...(seriesB ? { seriesB } : {})} />
       </div>
-      <figcaption className="text-muted-foreground mt-2 text-[12.5px]">{summary}</figcaption>
+      <figcaption className="text-muted-foreground mt-2 text-small">{summary}</figcaption>
     </figure>
   );
 }

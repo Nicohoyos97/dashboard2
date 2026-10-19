@@ -88,23 +88,23 @@ export function RemindersManager({ entityId, items, canEdit }: { entityId: strin
   return (
     <div className="flex flex-col gap-4">
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-[14px]">{t('noReminders')}</p>
+        <p className="text-muted-foreground text-ui">{t('noReminders')}</p>
       ) : (
         <ul className="divide-line border-line divide-y overflow-hidden rounded-xl border">
           {items.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-[14px]">
+            <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-ui">
               <span className="min-w-0 flex-1">
                 <span className="text-ink block truncate font-semibold">{r.title}</span>
-                <span className="text-muted-foreground block text-[12.5px]">
+                <span className="text-muted-foreground block text-small">
                   {t(`reminderType_${r.reminderType}`)} · {r.dueDate}
                   {r.amount ? ` · ${r.amount}` : ''} · {r.responsible === 'firm' ? t('responsibleFirm') : t('responsibleClient')}
                 </span>
               </span>
               <span className={statusPill(r.status === 'paid' || r.status === 'completed' ? 'published' : r.status)}>{t(`reminderStatus_${r.status}`)}</span>
-              {!r.published && <span className="bg-secondary text-muted-foreground rounded-full px-2.5 py-1 text-[12px] font-semibold">{t('draft')}</span>}
+              {!r.published && <span className="bg-secondary text-muted-foreground rounded-full px-2.5 py-1 text-caption font-semibold">{t('draft')}</span>}
               {canEdit && (
                 <>
-                  <button type="button" onClick={() => open(r)} className="text-blue text-[13px] font-semibold hover:underline">
+                  <button type="button" onClick={() => open(r)} className="text-link text-small font-semibold hover:underline">
                     {t('editReminder')}
                   </button>
                   <button type="button" disabled={isPending} onClick={() => remove(r.id)} className={dangerButton}>
@@ -160,8 +160,8 @@ export function RemindersManager({ entityId, items, canEdit }: { entityId: strin
             </select>
           </div>
           <div className="flex items-end">
-            <label className="flex items-center gap-2.5 text-[14px]">
-              <input type="checkbox" checked={form.published} onChange={(e) => set('published', e.target.checked)} className="accent-blue size-4" />
+            <label className="flex items-center gap-2.5 text-ui">
+              <input type="checkbox" checked={form.published} onChange={(e) => set('published', e.target.checked)} className="accent-brand size-4" />
               {t('reminderPublished')}
             </label>
           </div>
@@ -169,7 +169,7 @@ export function RemindersManager({ entityId, items, canEdit }: { entityId: strin
             <label htmlFor="remAction" className={labelClass}>{t('reminderAction')}</label>
             <textarea id="remAction" rows={2} value={form.actionRequired} onChange={(e) => set('actionRequired', e.target.value)} className={textareaClass} />
           </div>
-          {error && <p role="alert" className="text-danger text-[13.5px] sm:col-span-2">{error}</p>}
+          {error && <p role="alert" className="text-danger text-ui sm:col-span-2">{error}</p>}
           <div className="flex justify-end gap-3 sm:col-span-2">
             <button type="button" onClick={() => setEditing(null)} className={secondaryButton}>{t('cancel')}</button>
             <button type="submit" disabled={isPending || form.title.trim().length === 0 || !form.dueDate} className={primaryButton}>

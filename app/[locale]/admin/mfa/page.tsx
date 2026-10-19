@@ -25,14 +25,14 @@ export default async function AdminMfaPage() {
 
   return (
     <main className="bg-paper flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="border-line bg-card w-full max-w-[440px] rounded-2xl border p-8 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <div className="border-line bg-card w-full max-w-[440px] rounded-2xl border p-8 shadow-card">
+        <p className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
           {t('eyebrow')}
         </p>
-        <h1 className="text-ink mt-2 text-[24px] font-bold tracking-[-0.01em]">
+        <h1 className="text-ink mt-2 text-display font-bold tracking-[-0.01em]">
           {mode === 'enroll' ? t('enrollTitle') : t('verifyTitle')}
         </h1>
-        <p className="text-muted-foreground mt-1.5 text-[14.5px] leading-[1.5]">
+        <p className="text-muted-foreground mt-1.5 text-body leading-[1.5]">
           {mode === 'enroll' ? t('enrollLede') : t('verifyLede')}
         </p>
         <MfaGate mode={mode} factorId={verified?.id ?? null} nextPath={`${prefix}/admin`} />

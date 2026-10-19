@@ -43,24 +43,24 @@ export function PublishBar({
   if (!canEdit) return null;
 
   return (
-    <div className="border-line bg-card flex flex-wrap items-center gap-4 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="border-line bg-card flex flex-wrap items-center gap-4 rounded-2xl border p-5 shadow-card">
       <div className="min-w-0 flex-1">
         {published ? (
-          <p className="text-success flex items-center gap-2 text-[14px] font-medium">
+          <p className="text-success flex items-center gap-2 text-ui font-medium">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             {t('publishedNote')}
           </p>
         ) : blockers.length > 0 ? (
-          <ul className="text-muted-foreground flex flex-col gap-1 text-[13.5px]">
+          <ul className="text-muted-foreground flex flex-col gap-1 text-ui">
             {blockers.map((b) => (
               <li key={b}>{t(b)}</li>
             ))}
           </ul>
         ) : (
-          <p className="text-ink text-[14px] font-medium">{t('status_ready_to_publish')}</p>
+          <p className="text-ink text-ui font-medium">{t('status_ready_to_publish')}</p>
         )}
         {error && (
-          <p role="alert" className="text-danger mt-2 text-[13.5px]">
+          <p role="alert" className="text-danger mt-2 text-ui">
             {error}
           </p>
         )}

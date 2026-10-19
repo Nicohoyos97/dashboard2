@@ -8,7 +8,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { REGISTER_SERIES } from '@/lib/charts/palette';
 
 import { ChartTooltip } from '../ChartTooltip';
-import { compactMoney, moneyAxisWidth } from '../format';
+import { CHART_INITIAL, compactMoney, moneyAxisWidth } from '../format';
 
 export type NetSalesPoint = {
   label: string;
@@ -41,7 +41,7 @@ export function NetSalesPlot({
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={2} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />

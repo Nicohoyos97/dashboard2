@@ -62,8 +62,8 @@ export function NickThread({
             <div className="flex items-start gap-3">
               <NickOrb size={44} />
               <div>
-                <h2 className="text-ink text-[18px] font-bold">{t('emptyTitle')}</h2>
-                <p className="text-muted-foreground mt-1 text-[14px] leading-[1.55]">
+                <h2 className="text-ink text-heading font-bold">{t('emptyTitle')}</h2>
+                <p className="text-muted-foreground mt-1 text-ui leading-[1.55]">
                   {t('emptyBody', { business: businessName })}
                 </p>
               </div>
@@ -99,7 +99,7 @@ export function NickThread({
                   {chat.streamText ? (
                     <AssistantText text={chat.streamText} citations={[]} />
                   ) : (
-                    <p className="text-muted-foreground text-[13.5px]">
+                    <p className="text-muted-foreground text-ui">
                       {chat.status ? toolLabel(chat.status) : t('thinking')}
                     </p>
                   )}
@@ -111,14 +111,14 @@ export function NickThread({
           {chat.error && (
             <div
               role="alert"
-              className="border-danger/30 bg-danger/5 text-ink flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[13.5px]"
+              className="border-danger/30 bg-danger/5 text-ink flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-ui"
             >
               <span>{t(`error_${chat.error}`)}</span>
               {chat.error !== 'budget_exhausted' && chat.error !== 'preview_not_supported' && (
                 <button
                   type="button"
                   onClick={() => void chat.retry()}
-                  className="text-blue font-semibold hover:underline"
+                  className="text-link font-semibold hover:underline"
                 >
                   {t('retry')}
                 </button>
@@ -132,7 +132,7 @@ export function NickThread({
       {!heroMode && (
         <div className="shrink-0 pt-2">
           <Composer onSend={send} disabled={chat.streaming} autoFocus={autoFocus} />
-          <p className="text-muted-foreground mt-2 px-1 text-[11.5px] leading-[1.5]">
+          <p className="text-muted-foreground mt-2 px-1 text-caption leading-[1.5]">
             {t('disclaimer')}
           </p>
         </div>

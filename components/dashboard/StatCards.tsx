@@ -35,10 +35,12 @@ const BADGE: Record<StatTone, string> = {
  */
 export async function StatCards({ items, columns = 4 }: { items: readonly StatCardItem[]; columns?: 3 | 4 }) {
   const t = await getTranslations('Overview');
-  const grid = columns === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-4';
+  const grid = columns === 3 ? 'lg:grid-cols-3' : 'xl:grid-cols-4';
 
+  // Two to a row on a phone as on the Overview; an odd last card takes the
+  // full row rather than leaving a hole beside it.
   return (
-    <div className={`grid grid-cols-1 gap-3 ${grid}`}>
+    <div className={`grid grid-cols-2 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1 ${grid}`}>
       {items.map((item) => {
         const delta = item.deltaPct ?? null;
         const upIsGood = item.upIsGood ?? true;
@@ -47,36 +49,38 @@ export async function StatCards({ items, columns = 4 }: { items: readonly StatCa
         // A trend is drawn only on a card that is a series; a due date or a
         // jurisdiction gets no dashed "no history yet" rule it never needed.
         const hasTrend = item.trend !== undefined;
+        const pill =
+          item.value !== null && change !== null && delta !== null ? (
+            <DeltaPill change={change} magnitude={`${Math.abs(delta).toFixed(1)}%`} upIsGood={upIsGood} />
+          ) : null;
 
         return (
-          <article key={item.label} className="border-line bg-card flex flex-col overflow-hidden rounded-2xl border p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <article key={item.label} className="border-line bg-card flex flex-col overflow-hidden rounded-2xl border p-4 shadow-card sm:p-5">
             <div className="flex items-start justify-between gap-2">
-              <p className="text-muted-foreground text-[12.5px] font-medium">{item.label}</p>
-              {/* A card with no figure has nothing to qualify: a delta next to
-                  "not available" would read as if the value existed. */}
-              {item.value !== null && change !== null && delta !== null && (
-                <DeltaPill change={change} magnitude={`${Math.abs(delta).toFixed(1)}%`} upIsGood={upIsGood} />
-              )}
+              <p className="text-muted-foreground min-w-0 text-small leading-snug font-medium">{item.label}</p>
             </div>
             {item.value === null ? (
-              <p className="text-muted-foreground mt-1.5 text-[13px] leading-snug">{item.unavailable ?? t('noDataPeriod')}</p>
+              <p className="text-muted-foreground mt-1.5 text-small leading-snug">{item.unavailable ?? t('noDataPeriod')}</p>
             ) : (
-              <p className="text-ink mt-1 text-[22px] leading-tight font-bold tracking-[-0.02em] tabular-nums">{item.value}</p>
+              <p className="text-ink mt-1 text-stat leading-tight font-bold tracking-[-0.02em] tabular-nums">{item.value}</p>
             )}
-            {item.detail && <p className="text-muted-foreground mt-1.5 truncate text-[12.5px]">{item.detail}</p>}
+            {/* A card with no figure has nothing to qualify: a delta next to
+                "not available" would read as if the value existed. */}
+            {pill && <span className="mt-1.5 flex">{pill}</span>}
+            {item.detail && <p className="text-muted-foreground mt-1.5 truncate text-small">{item.detail}</p>}
             {item.value !== null && (item.badge || (delta !== null && item.deltaLabel) || hasTrend) && (
               <div className="mt-auto flex items-end justify-between gap-2 pt-2">
                 <div className="min-w-0 pb-0.5">
                   {item.badge && (
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ${BADGE[item.badge.tone]}`}>{item.badge.text}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-caption font-semibold ${BADGE[item.badge.tone]}`}>{item.badge.text}</span>
                   )}
                   {delta !== null && item.deltaLabel && (
-                    <p className={`text-muted-foreground truncate text-[11.5px] ${item.badge ? 'mt-1.5' : ''}`}>{item.deltaLabel}</p>
+                    <p className={`text-muted-foreground truncate text-caption ${item.badge ? 'mt-1.5' : ''}`}>{item.deltaLabel}</p>
                   )}
                 </div>
                 {hasTrend && (
                   // Bleeds into the card's corner; the card's overflow-hidden clips it.
-                  <div className="-mr-4 -mb-4 shrink-0">
+                  <div className="-mr-5 -mb-5 shrink-0 max-sm:hidden">
                     <Sparkline values={item.trend ?? []} tone={deltaTone(change, upIsGood)} width={80} height={30} />
                   </div>
                 )}

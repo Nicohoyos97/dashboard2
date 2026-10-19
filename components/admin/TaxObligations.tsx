@@ -43,14 +43,14 @@ export function TaxObligations({
   const [open, setOpen] = useState<string | null>(null);
 
   if (items.length === 0) {
-    return <p className="text-muted-foreground mt-2 text-[14px]">{t('noObligations')}</p>;
+    return <p className="text-muted-foreground mt-2 text-ui">{t('noObligations')}</p>;
   }
 
   return (
     <ul className="divide-line mt-4 divide-y">
       {items.map((item) => (
         <li key={item.id} className="py-3.5">
-          <div className="flex flex-wrap items-center gap-3 text-[14px]">
+          <div className="flex flex-wrap items-center gap-3 text-ui">
             <span className="text-ink min-w-0 flex-1 font-semibold">
               {t(`taxType_${item.taxType}`)} · {formatPeriod(item.periodStart, item.periodEnd, locale)}
             </span>
@@ -77,7 +77,7 @@ export function TaxObligations({
           </div>
 
           {item.status === 'paid' && item.payment && (
-            <p className="text-muted-foreground mt-1.5 text-[12.5px]">
+            <p className="text-muted-foreground mt-1.5 text-small">
               {t('paidOn', {
                 date: formatIsoDate(item.payment.paidOn, locale),
                 amount: formatCents(item.payment.amountCents, item.currency),
@@ -177,14 +177,14 @@ function PaymentForm({ item, onDone }: { item: ObligationItem; onDone: () => voi
       </div>
 
       {error && (
-        <p role="alert" className="text-danger text-[13.5px] sm:col-span-4">
+        <p role="alert" className="text-danger text-ui sm:col-span-4">
           {error}
         </p>
       )}
       {/* The client sees a payment only once it is published, so one on a
           published obligation is published with it — a status that says
           settled with nothing behind it explains nothing. */}
-      <p className="text-muted-foreground text-[12.5px] sm:col-span-3">
+      <p className="text-muted-foreground text-small sm:col-span-3">
         {item.published ? t('paymentVisibleNow') : t('paymentVisibleOnPublish')}
       </p>
       <button

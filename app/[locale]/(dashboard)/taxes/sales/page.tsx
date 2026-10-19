@@ -8,7 +8,8 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { NetSalesChart } from '@/components/charts/NetSalesChart';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { QuerySelector } from '@/components/dashboard/QuerySelector';
-import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
+import { type StatCardItem } from '@/components/dashboard/StatCards';
+import { SummaryPanel } from '@/components/dashboard/SummaryPanel';
 import { PortalEmpty, PortalPage } from '@/components/portal/PortalPage';
 import { JurisdictionPills } from '@/components/taxes/JurisdictionPills';
 import { ObligationList } from '@/components/taxes/ObligationList';
@@ -90,17 +91,16 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
   // Collected / paid / taxable sales are historical totals across the filings on
   // screen; payable is what is still owed, so a settled quarter counts as zero.
   const figures = salesTaxCardFigures(obligations);
-  const cards: StatCardItem[] = [
+  const payable: StatCardItem = {
+    label: t('cardPayable'),
+    value: figures.payableCents === null ? null : format(figures.payableCents.cents),
+    unavailable: t('notPrinted'),
+    ...(figures.payableCents ? { detail: t(`basis_${figures.payableCents.basis}`) } : {}),
+  };
+  const filingFigures: StatCardItem[] = [
     { label: t('cardCollected'), value: format(figures.collectedCents), unavailable: t('notPrinted') },
     { label: t('cardPaid'), value: format(figures.paidCents), unavailable: t('nothingRecordedPaid') },
-    {
-      label: t('cardPayable'),
-      value: figures.payableCents === null ? null : format(figures.payableCents.cents),
-      unavailable: t('notPrinted'),
-      ...(figures.payableCents ? { detail: t(`basis_${figures.payableCents.basis}`) } : {}),
-    },
     { label: t('cardTaxableSales'), value: format(figures.taxableSalesCents), unavailable: t('notPrinted') },
-    { label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') },
   ];
 
   // The register's own periods, oldest first: the month pills read left to
@@ -146,15 +146,14 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
         }
       >
         <JurisdictionPills jurisdictions={registeredIn} />
-        <p className="text-muted-foreground mt-3 text-[12.5px]">{t('salesSourceNote')}</p>
         {pendingReview > 0 && (
-          <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-[13px]">{t('pendingReviewWarning', { count: pendingReview })}</p>
+          <p className="border-warning/30 bg-warning/10 text-ink mt-4 rounded-xl border px-4 py-3 text-small">{t('pendingReviewWarning', { count: pendingReview })}</p>
         )}
 
         {/* Sales first, then what was owed on them: the two describe the same
             month and are routinely confused for each other. */}
         {latestSales && (
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
             <RegisterTenders periods={tenderPeriods} currency={currency} />
             <Section title={t('netSalesTitle')}>
               {netTrend ? (
@@ -165,7 +164,7 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
                   summary={t('netSalesSummary', { count: netTrend.length })}
                 />
               ) : (
-                <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
+                <p className="text-muted-foreground text-ui">{t('trendUnavailable')}</p>
               )}
             </Section>
           </div>
@@ -173,17 +172,23 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
 
         {hasFilings && (
           <div className="mt-6">
-            <StatCards items={cards} columns={3} />
+            <SummaryPanel
+              focal={payable}
+              due={{ label: t('cardNextFiling'), value: due === null ? null : formatIsoDate(due, locale), unavailable: t('noUpcomingDue') }}
+              items={filingFigures}
+            />
           </div>
         )}
         {!hasFilings && (
-          <p className="text-muted-foreground mt-6 text-[14px]">{t('salesNoFilingsYet')}</p>
+          <p className="text-muted-foreground mt-6 text-ui">{t('salesNoFilingsYet')}</p>
         )}
+
+        <p className="text-muted-foreground mt-3 text-small">{t('salesSourceNote')}</p>
 
         <TaxAlerts alerts={taxAlerts(obligations, today)} />
 
         <section aria-labelledby="sales-obligations" className="mt-6">
-          <h2 id="sales-obligations" className="text-ink text-[16px] font-semibold">
+          <h2 id="sales-obligations" className="text-ink text-title font-semibold">
             {t('filingsTitle')}
           </h2>
           <div className="mt-3">
@@ -198,8 +203,8 @@ export default async function SalesTaxesPage({ searchParams }: { searchParams: P
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-line bg-card flex flex-col rounded-2xl border p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink text-[18px] font-bold tracking-[-0.01em]">{title}</h2>
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card">
+      <h2 className="text-ink text-title font-semibold">{title}</h2>
       <div className="mt-4 flex-1">{children}</div>
     </section>
   );

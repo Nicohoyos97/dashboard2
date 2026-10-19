@@ -49,28 +49,36 @@ export async function KpiCard({
   const magnitude =
     deltaPct !== null ? `${Math.abs(deltaPct).toFixed(1)}%` : deltaCents !== null ? money(Math.abs(deltaCents)) : null;
 
+  const pill =
+    cents !== null && change !== null && magnitude !== null ? (
+      <DeltaPill change={change} magnitude={magnitude} upIsGood={upIsGood} />
+    ) : null;
+
+  // Label on top, everything else anchored to the foot: the cards of a row
+  // share a height, so their figures line up even when one label wraps — as
+  // "Operating expenses" does two to a row on a phone. The change sits under
+  // the figure with the period it was measured against, and the trend bleeds
+  // into the corner from `sm` up.
   return (
-    <article className="group border-line bg-card focus-within:border-blue/40 hover:border-blue/30 relative flex flex-col overflow-hidden rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[border-color,box-shadow] hover:shadow-[0_8px_24px_rgba(15,23,42,0.07)]">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-muted-foreground relative z-10 flex items-center gap-1 text-[13px] font-medium">
-          {label}
-          <InfoTip text={how} label={t('howCalculated')} />
-        </p>
-        {cents !== null && change !== null && magnitude !== null && (
-          <DeltaPill change={change} magnitude={magnitude} upIsGood={upIsGood} />
-        )}
-      </div>
+    <article className="group border-line bg-card focus-within:border-brand/40 hover:border-brand/30 relative flex flex-col overflow-hidden rounded-2xl border p-4 shadow-card transition-[border-color,box-shadow] hover:shadow-card-hover sm:p-5">
+      <p className="text-muted-foreground relative z-10 flex items-start gap-0.5 text-small leading-snug font-medium sm:gap-1">
+        <span className="min-w-0 pt-0.5">{label}</span>
+        <InfoTip text={how} label={t('howCalculated')} />
+      </p>
       {cents === null ? (
-        <p className="text-muted-foreground mt-3 text-[13.5px] leading-snug">{unavailableReason ?? t('noDataPeriod')}</p>
+        <p className="text-muted-foreground mt-3 text-small leading-snug">{unavailableReason ?? t('noDataPeriod')}</p>
       ) : (
-        <>
-          <p className="text-ink mt-1 text-[28px] leading-tight font-bold tracking-[-0.02em] tabular-nums">{money(cents)}</p>
+        <div className="mt-auto pt-1">
+          <p className="text-ink text-stat leading-tight font-bold tracking-[-0.02em] tabular-nums sm:text-display">{money(cents)}</p>
           <div className="mt-2 flex items-end justify-between gap-2">
-            <p className="text-muted-foreground min-w-0 truncate pb-0.5 text-[12px]">
-              {deltaCents === null ? t('noPrior') : t('vsPrior', { period: periodLabel })}
-            </p>
+            <div className="min-w-0">
+              {pill && <span className="mb-1.5 flex">{pill}</span>}
+              <p className="text-muted-foreground min-w-0 truncate text-caption">
+                {deltaCents === null ? t('noPrior') : t('vsPrior', { period: periodLabel })}
+              </p>
+            </div>
             {/* Bleeds into the card's corner; the card's overflow-hidden clips it. */}
-            <div className="-mr-5 -mb-5 shrink-0">
+            <div className="-mr-5 -mb-5 shrink-0 max-sm:hidden">
               <Sparkline values={trend} tone={deltaTone(change, upIsGood)} />
             </div>
             {/* The sparkline is aria-hidden; this is its text equivalent (§1: every chart ships one). */}
@@ -80,9 +88,9 @@ export async function KpiCard({
               </span>
             )}
           </div>
-        </>
+        </div>
       )}
-      <Link href={href} className="focus-visible:ring-blue/40 absolute inset-0 rounded-2xl outline-none focus-visible:ring-3">
+      <Link href={href} className="focus-visible:ring-brand/40 absolute inset-0 rounded-2xl outline-none focus-visible:ring-3">
         <span className="sr-only">{t('viewDetail')}</span>
       </Link>
     </article>

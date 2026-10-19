@@ -23,7 +23,7 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
       .select('id, business_entity_id, period_start, period_end, basis, company_name, status, reconciliation, ledger_accounts ( transaction_count )')
       .eq('document_version_id', versionId),
   ]);
-  if (!ledgers || ledgers.length === 0) return <p className="text-muted-foreground mt-6 text-[14px]">{t('noExtraction')}</p>;
+  if (!ledgers || ledgers.length === 0) return <p className="text-muted-foreground mt-6 text-ui">{t('noExtraction')}</p>;
   const money = (cents: number) => formatCents(cents, currency);
 
   return (
@@ -72,8 +72,8 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
 
           return (
             <section key={ledger.id} className={`${card} mt-6`}>
-              <h2 className="text-ink text-[17px] font-semibold">{t('ledgerTitle')}</h2>
-              <p className="text-muted-foreground mt-1 text-[13.5px]">
+              <h2 className="text-ink text-heading font-semibold">{t('ledgerTitle')}</h2>
+              <p className="text-muted-foreground mt-1 text-ui">
                 {formatPeriod(ledger.period_start, ledger.period_end, locale)} · {basis} ·{' '}
                 {t('ledgerSize', { accounts: ledger.ledger_accounts.length, transactions })}
                 {ledger.company_name ? ` · ${ledger.company_name}` : ''}
@@ -91,15 +91,15 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
                       <CircleAlert className="text-danger mt-0.5 size-5 shrink-0" aria-hidden="true" />
                     )}
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-ink text-[14px] font-semibold">{check.title}</span>
-                      <span className="text-muted-foreground text-[13px]">{check.body}</span>
+                      <span className="text-ink text-ui font-semibold">{check.title}</span>
+                      <span className="text-muted-foreground text-small">{check.body}</span>
                     </span>
                   </li>
                 ))}
               </ul>
 
               {failingAccounts.length > 0 && (
-                <ul className="text-danger mt-4 flex flex-col gap-1 text-[13px]">
+                <ul className="text-danger mt-4 flex flex-col gap-1 text-small">
                   {failingAccounts.map((c) => (
                     <li key={c.key}>
                       {t('ledgerAccountOff', { account: c.label, printed: money(c.expectedCents), summed: money(c.actualCents) })}
@@ -110,8 +110,8 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
 
               {lines.length > 0 && (
                 <div className="mt-5 overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-left text-[13.5px]">
-                    <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+                  <table className="w-full min-w-[640px] text-left text-ui">
+                    <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
                       <tr>
                         <th scope="col" className="px-3 py-2">{t('ledgerColLine')}</th>
                         <th scope="col" className="px-3 py-2 text-right">{t('ledgerColStatement')}</th>
@@ -125,7 +125,7 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
                           <th scope="row" className="text-ink px-3 py-2 font-medium">
                             {line.lineName}
                             {line.accountName && line.accountName !== line.lineName && (
-                              <span className="text-muted-foreground block text-[12px] font-normal">{line.accountName}</span>
+                              <span className="text-muted-foreground block text-caption font-normal">{line.accountName}</span>
                             )}
                           </th>
                           <td className="px-3 py-2 text-right tabular-nums">{money(line.statementCents)}</td>
@@ -148,8 +148,8 @@ export async function LedgerReview({ versionId, currency }: { versionId: string;
 
               {(review.match?.unmatched.length ?? 0) > 0 && (
                 <div className="border-line mt-5 rounded-xl border p-4">
-                  <h3 className="text-ink text-[14px] font-semibold">{t('ledgerUnmatchedTitle')}</h3>
-                  <p className="text-muted-foreground mt-1 text-[13px] leading-[1.55]">
+                  <h3 className="text-ink text-ui font-semibold">{t('ledgerUnmatchedTitle')}</h3>
+                  <p className="text-muted-foreground mt-1 text-small leading-[1.55]">
                     {t('ledgerUnmatchedBody', { count: review.match?.unmatched.length ?? 0 })}{' '}
                     {(review.match?.unmatched ?? []).map((a) => a.name).join(' · ')}
                   </p>

@@ -15,14 +15,14 @@ export async function JurisdictionPills({
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2">
-      <span id="registered-in" className="text-muted-foreground text-[12.5px]">
+      <span id="registered-in" className="text-muted-foreground text-small">
         {t('registeredIn')}
       </span>
       <ul aria-labelledby="registered-in" className="flex flex-wrap gap-2">
         {jurisdictions.map((jurisdiction) => (
           <li
             key={`${jurisdiction.level}:${jurisdiction.name}`}
-            className="bg-blue-pale text-blue rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+            className="bg-blue-pale text-link rounded-full px-2.5 py-1 text-small font-semibold"
           >
             {jurisdiction.name}
           </li>

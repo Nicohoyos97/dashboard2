@@ -68,18 +68,18 @@ export function AuthForm({
         registration={register('password')}
       />
 
-      <div className="mb-4 flex items-center justify-between gap-4 text-[13px]">
+      <div className="mb-4 flex items-center justify-between gap-4 text-small">
         <label className="text-muted-foreground flex min-h-11 cursor-pointer items-center gap-2.5 font-medium">
           <input
             type="checkbox"
-            className="border-input text-blue focus-visible:ring-blue/35 size-4 rounded border bg-card accent-blue outline-none focus-visible:ring-3"
+            className="border-input text-link focus-visible:ring-brand/35 size-4 rounded border bg-card accent-brand outline-none focus-visible:ring-3"
             {...register('remember')}
           />
           <span>{t('keepSignedIn')}</span>
         </label>
         <Link
           href="/forgot-password"
-          className="text-blue focus-visible:ring-blue/35 rounded-sm font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-3"
+          className="text-link focus-visible:ring-brand/35 rounded-sm font-semibold whitespace-nowrap outline-none hover:underline focus-visible:ring-3"
         >
           {t('forgotPassword')}
         </Link>
@@ -88,7 +88,7 @@ export function AuthForm({
       <button
         type="submit"
         disabled={isPending}
-        className="bg-blue hover:bg-blue-soft focus-visible:ring-blue/35 mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-6 text-[15px] font-semibold text-white shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
+        className="bg-blue hover:bg-blue-hover focus-visible:ring-brand/35 mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl px-6 text-body font-semibold text-white shadow-sm outline-none transition active:scale-[0.99] focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
           <>

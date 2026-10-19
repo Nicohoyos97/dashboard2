@@ -18,7 +18,7 @@ export function RequestActions({ id, status, firmNote, canEdit }: { id: string; 
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  if (!canEdit) return <p className="text-muted-foreground text-[13px]">{t('requestsStaffReadOnly')}</p>;
+  if (!canEdit) return <p className="text-muted-foreground text-small">{t('requestsStaffReadOnly')}</p>;
 
   const answer = (next: 'in_progress' | 'completed' | 'declined') =>
     startTransition(async () => {
@@ -30,7 +30,7 @@ export function RequestActions({ id, status, firmNote, canEdit }: { id: string; 
 
   return (
     <div className="mt-3">
-      <label className="text-muted-foreground mb-1.5 block text-[12.5px] font-semibold" htmlFor={`note-${id}`}>
+      <label className="text-muted-foreground mb-1.5 block text-small font-semibold" htmlFor={`note-${id}`}>
         {t('requestNoteLabel')}
       </label>
       <textarea
@@ -40,10 +40,10 @@ export function RequestActions({ id, status, firmNote, canEdit }: { id: string; 
         maxLength={2000}
         placeholder={t('requestNotePlaceholder')}
         onChange={(event) => setNote(event.target.value)}
-        className={`${textareaClass} text-[14px]`}
+        className={`${textareaClass} text-ui`}
       />
       {error && (
-        <p role="alert" className="text-danger mt-2 text-[13.5px]">
+        <p role="alert" className="text-danger mt-2 text-ui">
           {error}
         </p>
       )}

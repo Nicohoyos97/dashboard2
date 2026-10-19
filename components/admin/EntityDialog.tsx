@@ -78,7 +78,7 @@ export function EntityDialog({
           <BusinessFields values={values} onChange={setValues} onError={setError} />
 
           {error && (
-            <p role="alert" className="text-danger text-[13.5px]">
+            <p role="alert" className="text-danger text-ui">
               {error}
             </p>
           )}

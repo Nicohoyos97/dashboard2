@@ -21,7 +21,7 @@ export async function TaxAlerts({ alerts }: { alerts: readonly TaxAlert[] }) {
 
   return (
     <section aria-labelledby="tax-alerts" className="mt-6">
-      <h2 id="tax-alerts" className="text-ink text-[16px] font-semibold">
+      <h2 id="tax-alerts" className="text-ink text-title font-semibold">
         {t('alertsTitle')}
       </h2>
       <ul className="mt-3 flex flex-col gap-2">
@@ -30,7 +30,7 @@ export async function TaxAlerts({ alerts }: { alerts: readonly TaxAlert[] }) {
           return (
             <li key={`${alert.obligationId}-${alert.kind}`} className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${tone.box}`}>
               <tone.Icon className={`mt-0.5 size-4 shrink-0 ${tone.icon}`} aria-hidden="true" />
-              <div className="min-w-0 text-[13.5px]">
+              <div className="min-w-0 text-ui">
                 <p className="text-ink font-semibold">{t(`alert_${alert.kind}`)}</p>
                 <p className="text-muted-foreground mt-0.5">
                   {[alert.scope, alert.dueDate ? t('dueOn', { date: formatIsoDate(alert.dueDate, locale) }) : null].filter(Boolean).join(' · ')}

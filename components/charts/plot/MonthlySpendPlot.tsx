@@ -8,7 +8,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { CHART_CHROME, SERIES } from '@/lib/charts/palette';
 
 import { ChartTooltip } from '../ChartTooltip';
-import { compactMoney, moneyAxisWidth, monthLabel } from '../format';
+import { CHART_INITIAL, compactMoney, moneyAxisWidth, monthLabel } from '../format';
 
 export type SpendMonth = { month: string; cents: number };
 
@@ -25,7 +25,7 @@ export function MonthlySpendPlot({
   const data = months.map((m) => ({ label: monthLabel(m.month, locale), spend: m.cents }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} strokeWidth={1} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: CHART_CHROME.axis, fontSize: 12 }} />

@@ -48,12 +48,12 @@ export default async function AuditPage({
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{t('auditTitle')}</h1>
-      <p className="text-muted-foreground mt-1.5 max-w-[640px] text-[15px]">{t('auditLede')}</p>
+      <h1 className="text-ink text-display font-bold tracking-[-0.01em]">{t('auditTitle')}</h1>
+      <p className="text-muted-foreground mt-1.5 max-w-[640px] text-body">{t('auditLede')}</p>
 
       <form method="get" className="mt-6 flex flex-wrap items-end gap-3">
         <div className="min-w-[220px]">
-          <label htmlFor="entity" className="text-ink mb-1.5 block text-[13px] font-semibold">
+          <label htmlFor="entity" className="text-ink mb-1.5 block text-small font-semibold">
             {t('filterEntity')}
           </label>
           <select id="entity" name="entity" defaultValue={params.entity ?? ''} className={selectClass}>
@@ -66,7 +66,7 @@ export default async function AuditPage({
           </select>
         </div>
         <div className="min-w-[220px]">
-          <label htmlFor="action" className="text-ink mb-1.5 block text-[13px] font-semibold">
+          <label htmlFor="action" className="text-ink mb-1.5 block text-small font-semibold">
             {t('filterAction')}
           </label>
           <input id="action" name="action" defaultValue={params.action ?? ''} className={inputClass} />
@@ -78,10 +78,10 @@ export default async function AuditPage({
 
       <section className={`${card} mt-4 overflow-x-auto p-0`}>
         {(rows ?? []).length === 0 ? (
-          <p className="text-muted-foreground p-6 text-[14.5px]">{t('noAudit')}</p>
+          <p className="text-muted-foreground p-6 text-body">{t('noAudit')}</p>
         ) : (
-          <table className="w-full text-left text-[13.5px]">
-            <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+          <table className="w-full text-left text-ui">
+            <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
               <tr>
                 <th className="px-4 py-3">{t('colWhen')}</th>
                 <th className="px-4 py-3">{t('colActor')}</th>
@@ -104,12 +104,12 @@ export default async function AuditPage({
                     {r.business_entity_id ? (entityById.get(r.business_entity_id) ?? '—') : '—'}
                   </td>
                   <td className="px-4 py-2.5">
-                    <code className="bg-secondary text-ink rounded px-1.5 py-0.5 text-[12.5px]">{r.action}</code>
+                    <code className="bg-secondary text-ink rounded px-1.5 py-0.5 text-small">{r.action}</code>
                   </td>
                   <td className="text-muted-foreground px-4 py-2.5">
                     {r.resource_type ? `${r.resource_type} · ${(r.resource_id ?? '').slice(0, 8)}` : '—'}
                     {hasMetadata(r.metadata) ? (
-                      <span className="ml-2 text-[12px]">{JSON.stringify(r.metadata)}</span>
+                      <span className="ml-2 text-caption">{JSON.stringify(r.metadata)}</span>
                     ) : null}
                   </td>
                   <td className="text-muted-foreground px-4 py-2.5">{typeof r.ip === 'string' ? r.ip : '—'}</td>

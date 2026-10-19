@@ -12,7 +12,7 @@ import type { UseFormRegisterReturn } from 'react-hook-form';
 import { passwordStrength } from '@/lib/auth/schemas';
 
 export const fieldClass =
-  'h-12 w-full rounded-xl border border-line bg-card px-4 text-[14px] text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground/60 hover:border-muted-ink/60 focus:border-blue focus:ring-4 focus:ring-blue/10 disabled:cursor-not-allowed disabled:opacity-60';
+  'h-12 w-full rounded-xl border border-line bg-card px-4 text-ui text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground/60 hover:border-muted-ink/60 focus:border-brand focus:ring-4 focus:ring-brand/10 disabled:cursor-not-allowed disabled:opacity-60';
 
 export function Field({
   id,
@@ -30,14 +30,14 @@ export function Field({
   return (
     <div className="mb-4">
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-ink text-[14px] font-semibold">
+        <label htmlFor={id} className="text-ink text-ui font-semibold">
           {label}
         </label>
         {action}
       </div>
       {children}
       {error && (
-        <p role="alert" className="mt-1.5 px-1 text-[12.5px] text-danger">
+        <p role="alert" className="mt-1.5 px-1 text-small text-danger">
           {error}
         </p>
       )}
@@ -110,7 +110,7 @@ export function StrengthMeter({ value }: { value: string }) {
           />
         ))}
       </div>
-      <div className="text-muted-foreground mt-1.5 flex justify-between text-[11px] font-medium tracking-[0.08em] uppercase">
+      <div className="text-muted-foreground mt-1.5 flex justify-between text-micro font-medium tracking-[0.08em] uppercase">
         <span>{t('strengthLabel')}</span>
         <b className="text-foreground font-semibold">
           {t(STRENGTH_KEYS[strength] ?? 'strengthTooShort')}
@@ -124,7 +124,7 @@ export function ErrorBanner({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="mb-4 rounded-[12px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] px-4 py-3 text-[13.5px] text-danger"
+      className="mb-4 rounded-[12px] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] px-4 py-3 text-ui text-danger"
     >
       {message}
     </div>

@@ -111,7 +111,7 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
   return (
     <div className="flex flex-col gap-6">
       {replace && (
-        <p role="status" className="bg-blue-pale text-ink rounded-xl px-4 py-3 text-[14px]">
+        <p role="status" className="bg-blue-pale text-ink rounded-xl px-4 py-3 text-ui">
           {t('replacingDocument', { title: replace.title })}
         </p>
       )}
@@ -139,10 +139,10 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
           onDrop={(e) => { e.preventDefault(); if (entityId) addFiles(e.dataTransfer.files); }}
           className={`border-line flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center ${entityId ? 'bg-paper' : 'bg-secondary opacity-60'}`}
         >
-          <FileUp className="text-blue size-8" aria-hidden="true" />
-          <p className="text-muted-foreground text-[14px]">
+          <FileUp className="text-link size-8" aria-hidden="true" />
+          <p className="text-muted-foreground text-ui">
             {t('dropzone')}{' '}
-            <button type="button" disabled={!entityId} onClick={() => fileInput.current?.click()} className="text-blue font-semibold underline-offset-2 hover:underline disabled:cursor-not-allowed">
+            <button type="button" disabled={!entityId} onClick={() => fileInput.current?.click()} className="text-link font-semibold underline-offset-2 hover:underline disabled:cursor-not-allowed">
               {t('browse')}
             </button>
           </p>
@@ -154,25 +154,25 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
             {items.map((item) => (
               <li key={item.key} className="grid gap-3 py-4 md:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
                 <div>
-                  <label htmlFor={`title-${item.key}`} className="text-muted-foreground mb-1 block text-[12px] font-medium">{t('fileTitle')}</label>
+                  <label htmlFor={`title-${item.key}`} className="text-muted-foreground mb-1 block text-caption font-medium">{t('fileTitle')}</label>
                   <input id={`title-${item.key}`} value={item.title} disabled={item.state !== 'ready'} onChange={(e) => patch(item.key, { title: e.target.value })} className={`${inputClass} h-10`} />
-                  <p className="text-muted-foreground mt-1 truncate text-[12px]">{item.file.name} · {(item.file.size / 1024).toFixed(0)} KB</p>
+                  <p className="text-muted-foreground mt-1 truncate text-caption">{item.file.name} · {(item.file.size / 1024).toFixed(0)} KB</p>
                 </div>
                 <div>
-                  <label htmlFor={`type-${item.key}`} className="text-muted-foreground mb-1 block text-[12px] font-medium">{t('fileType')}</label>
+                  <label htmlFor={`type-${item.key}`} className="text-muted-foreground mb-1 block text-caption font-medium">{t('fileType')}</label>
                   <select id={`type-${item.key}`} value={item.documentType} disabled={item.state !== 'ready'} onChange={(e) => patch(item.key, { documentType: e.target.value as DocumentType })} className={`${selectClass} h-10`}>
                     {DOCUMENT_TYPES.map((d) => <option key={d} value={d}>{t(`type_${d}`)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor={`start-${item.key}`} className="text-muted-foreground mb-1 block text-[12px] font-medium">{t('periodStart')}</label>
+                  <label htmlFor={`start-${item.key}`} className="text-muted-foreground mb-1 block text-caption font-medium">{t('periodStart')}</label>
                   <input id={`start-${item.key}`} type="date" value={item.periodStart} disabled={item.state !== 'ready'} onChange={(e) => patch(item.key, { periodStart: e.target.value })} className={`${inputClass} h-10`} />
                 </div>
                 <div>
-                  <label htmlFor={`end-${item.key}`} className="text-muted-foreground mb-1 block text-[12px] font-medium">{t('periodEnd')}</label>
+                  <label htmlFor={`end-${item.key}`} className="text-muted-foreground mb-1 block text-caption font-medium">{t('periodEnd')}</label>
                   <input id={`end-${item.key}`} type="date" value={item.periodEnd} disabled={item.state !== 'ready'} onChange={(e) => patch(item.key, { periodEnd: e.target.value })} className={`${inputClass} h-10`} />
                 </div>
-                <div className="flex items-end justify-end gap-2 text-[13px]">
+                <div className="flex items-end justify-end gap-2 text-small">
                   {item.state === 'ready' && (
                     <button type="button" aria-label={t('removeFile')} onClick={() => setItems((prev) => prev.filter((i) => i.key !== item.key))} className="text-muted-foreground hover:text-danger inline-flex size-10 items-center justify-center rounded-lg">
                       <Trash2 className="size-4" aria-hidden="true" />
@@ -183,7 +183,7 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
                   {item.state === 'done' && (
                     <span className="text-success flex flex-col items-end gap-1 font-medium">
                       {t('uploadedOk')}
-                      {item.documentId && <Link href={`/admin/documents/${item.documentId}`} className="text-blue underline-offset-2 hover:underline">{t('review')}</Link>}
+                      {item.documentId && <Link href={`/admin/documents/${item.documentId}`} className="text-link underline-offset-2 hover:underline">{t('review')}</Link>}
                     </span>
                   )}
                   {item.state === 'error' && <span role="alert" className="text-danger max-w-[220px] text-right">{item.message}</span>}

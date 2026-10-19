@@ -4,7 +4,7 @@
 // format-named buttons. A format the page cannot produce yet is listed and
 // disabled with the reason — the repo's rule is a disabled control that says
 // why, never a button that does nothing.
-import { ChevronDown, FileSpreadsheet, FileType2, Upload } from 'lucide-react';
+import { ChevronDown, Download, FileSpreadsheet, FileType2, Printer, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from 'radix-ui';
 
@@ -22,9 +22,27 @@ const ICON = {
   pdf: FileType2,
 } as const;
 
-export function ExportMenu({ formats }: { formats: ExportFormat[] }) {
+const itemClass =
+  'text-ink data-[highlighted]:bg-blue-pale flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ui outline-none';
+
+/**
+ * Everything the owner can take away from a page, behind one button: the
+ * formats, then — on a statement — the original document the firm uploaded
+ * and the browser's print. Three buttons in a row had become two rows of them
+ * on a phone, for actions used a few times a month.
+ */
+export function ExportMenu({
+  formats,
+  originalHref,
+  print = false,
+}: {
+  formats: ExportFormat[];
+  /** The uploaded original, when the figures came from a document. */
+  originalHref?: string | null;
+  print?: boolean;
+}) {
   const t = useTranslations('Statements');
-  if (formats.length === 0) return null;
+  if (formats.length === 0 && !originalHref && !print) return null;
 
   return (
     <DropdownMenu.Root>
@@ -39,7 +57,7 @@ export function ExportMenu({ formats }: { formats: ExportFormat[] }) {
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className="border-line bg-card z-50 w-[280px] rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+          className="border-line bg-card z-50 w-[min(280px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-menu"
         >
           {formats.map((entry) => {
             const Icon = ICON[entry.format];
@@ -51,13 +69,13 @@ export function ExportMenu({ formats }: { formats: ExportFormat[] }) {
                 <DropdownMenu.Item
                   key={entry.format}
                   disabled
-                  className="text-muted-foreground flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] outline-none"
+                  className="text-muted-foreground flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-ui outline-none"
                 >
                   <Icon className="mt-0.5 size-4 shrink-0 opacity-60" aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block font-medium">{label}</span>
                     {entry.unavailable && (
-                      <span className="block text-[12px] leading-[1.4]">{entry.unavailable}</span>
+                      <span className="block text-caption leading-[1.4]">{entry.unavailable}</span>
                     )}
                   </span>
                 </DropdownMenu.Item>
@@ -66,16 +84,28 @@ export function ExportMenu({ formats }: { formats: ExportFormat[] }) {
 
             return (
               <DropdownMenu.Item key={entry.format} asChild>
-                <a
-                  href={entry.href ?? '#'}
-                  className="text-ink data-[highlighted]:bg-blue-pale flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] outline-none"
-                >
-                  <Icon className="text-blue size-4 shrink-0" aria-hidden="true" />
+                <a href={entry.href ?? '#'} className={itemClass}>
+                  <Icon className="text-link size-4 shrink-0" aria-hidden="true" />
                   <span className="font-medium">{label}</span>
                 </a>
               </DropdownMenu.Item>
             );
           })}
+          {(originalHref || print) && formats.length > 0 && <DropdownMenu.Separator className="bg-line my-1 h-px" />}
+          {originalHref && (
+            <DropdownMenu.Item asChild>
+              <a href={originalHref} className={itemClass}>
+                <Download className="text-link size-4 shrink-0" aria-hidden="true" />
+                <span className="font-medium">{t('exportOriginalOption')}</span>
+              </a>
+            </DropdownMenu.Item>
+          )}
+          {print && (
+            <DropdownMenu.Item onSelect={() => window.print()} className={itemClass}>
+              <Printer className="text-link size-4 shrink-0" aria-hidden="true" />
+              <span className="font-medium">{t('print')}</span>
+            </DropdownMenu.Item>
+          )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

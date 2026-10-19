@@ -35,10 +35,21 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Brand tokens — utilities: bg-paper, text-ink, text-blue, border-line, … */
-  --color-blue: var(--brand-primary); /* primary */
-  --color-blue-soft: var(--brand-primary-hover); /* primary hover */
+  /* Brand tokens — utilities: bg-paper, text-ink, text-link, border-line, …
+     The blue is split by role (../brand/DESIGN-TOKENS.md, ../CLAUDE.md §6):
+     - `brand` is the identity blue (#2d6cff) for everything that is not text:
+       focus rings, borders, checkboxes, icon-only buttons, progress fills.
+     - `blue` is the solid action fill that carries a white label. White on
+       #2d6cff measures 4.47:1 and AA asks 4.5 at any weight below 18.66px
+       bold, so a labelled fill keeps #2563eb (5.17:1).
+     - `link` is the blue that *is* text. It lightens on navy, where #2563eb
+       measures 3.34:1 on a dark card. */
+  --color-brand: var(--brand-identity);
+  --color-blue: var(--brand-primary); /* solid action fill with a white label */
+  --color-blue-hover: var(--brand-primary-hover);
   --color-blue-pale: var(--brand-primary-soft); /* active nav pill / soft icon squares */
+  --color-link: var(--brand-text);
+  --color-link-hover: var(--brand-text-hover);
   --color-ink: var(--heading); /* headings */
   --color-paper: var(--page); /* page background */
   --color-paper-2: var(--page-alt); /* subtle alt surface */
@@ -56,15 +67,49 @@
   --color-info: var(--info);
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  /* Type scale (DESIGN.md → Typography). Ten steps, named by role, size only:
+     each utility leaves line-height to the element, as the arbitrary sizes it
+     replaces did. 13.5px and 14.5px folded into 14 and 15 — three sizes inside
+     one pixel read as one size that wobbles. */
+  --text-micro: 11px; /* pills, overlines */
+  --text-caption: 12px; /* captions, chart axes, badges */
+  --text-small: 13px; /* secondary lines, meta */
+  --text-ui: 14px; /* controls, nav, tables, labels */
+  --text-body: 15px; /* reading text, ledes, inputs */
+  --text-title: 16px; /* card titles */
+  --text-heading: 18px; /* section headings, empty states */
+  --text-stat: 22px; /* secondary figures */
+  --text-display: 28px; /* page titles, headline figures */
+  --text-hero: 32px; /* Nick's greeting */
+
+  /* Elevation (DESIGN.md → Elevation). Navy-tinted, never black. */
+  --shadow-card: 0 1px 2px var(--shadow-ink-soft);
+  --shadow-card-hover: 0 8px 24px var(--shadow-ink-hover);
+  --shadow-menu: 0 8px 24px var(--shadow-ink-menu);
+  --shadow-float: 0 8px 24px var(--shadow-ink-float);
+  --shadow-float-hover: 0 12px 28px var(--shadow-ink-menu);
+  --shadow-focus: 0 0 0 4px var(--focus-halo);
 }
 
 /* Light theme — shadcn tokens mapped onto the §6 palette. */
 :root {
   --radius: 1rem; /* 16px — cards use 14–16px per §6 */
 
+  --brand-identity: #2d6cff;
   --brand-primary: #2563eb;
   --brand-primary-hover: #1d4ed8;
   --brand-primary-soft: #eef5ff;
+  --brand-text: #2563eb;
+  --brand-text-hover: #1d4ed8;
+  --shadow-ink-soft: rgba(15, 23, 42, 0.05);
+  --shadow-ink-hover: rgba(15, 23, 42, 0.07);
+  --shadow-ink-menu: rgba(15, 23, 42, 0.12);
+  --shadow-ink-float: rgba(15, 23, 42, 0.14);
+  --focus-halo: rgba(45, 108, 255, 0.14);
+  /* Nick's orb halo: the orange–pink of the orb artwork, never a brand colour. */
+  --nick-glow-warm: rgba(251, 146, 60, 0.55);
+  --nick-glow-rose: rgba(244, 114, 182, 0.28);
   --success: #047857;
   --warning: #92400e;
   --danger: #b91c1c;
@@ -101,14 +146,25 @@
   --destructive: #ef4444;
   --border: #e6ecf4;
   --input: #e6ecf4;
-  --ring: #2563eb;
+  --ring: #2d6cff;
 }
 
-/* Dark theme keeps brand blue stable while moving neutral surfaces to navy. */
+/* Dark theme keeps the blue's hue and moves only its lightness: the action
+   fill stays put (white on it still clears AA), the text blue lightens, and
+   neutral surfaces move to navy. Shadows barely read on navy, so dark mode
+   elevates by surface tone and keeps them faint. */
 .dark {
+  --brand-identity: #2d6cff;
   --brand-primary: #2563eb;
-  --brand-primary-hover: #3b82f6;
+  --brand-primary-hover: #1d4ed8;
   --brand-primary-soft: #142b55;
+  --brand-text: #60a5fa;
+  --brand-text-hover: #93c5fd;
+  --shadow-ink-soft: rgba(2, 6, 23, 0.3);
+  --shadow-ink-hover: rgba(2, 6, 23, 0.4);
+  --shadow-ink-menu: rgba(2, 6, 23, 0.5);
+  --shadow-ink-float: rgba(2, 6, 23, 0.55);
+  --focus-halo: rgba(96, 165, 250, 0.22);
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
@@ -173,8 +229,8 @@
   border-radius: 9999px;
   background: radial-gradient(
     circle,
-    rgba(251, 146, 60, 0.55),
-    rgba(244, 114, 182, 0.28) 55%,
+    var(--nick-glow-warm),
+    var(--nick-glow-rose) 55%,
     transparent 74%
   );
   filter: blur(10px);

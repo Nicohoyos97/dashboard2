@@ -48,22 +48,22 @@ export async function IncomeTaxCard({
   });
 
   return (
-    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card">
       {/* The badge rides with the title rather than the far edge, so a narrow
           column never orphans it onto its own line below the lede. */}
-      <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
-        <Landmark className="text-blue size-[18px] shrink-0" aria-hidden="true" />
+      <h2 className="text-ink flex items-center gap-2 text-title font-semibold">
+        <Landmark className="text-link size-[18px] shrink-0" aria-hidden="true" />
         <span className="min-w-0 truncate">{t('incomeTaxTitle')}</span>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${firmStated ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-caption font-semibold ${firmStated ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
           {firmStated ? tTax('status_firm_confirmed') : tTax('status_estimated')}
         </span>
       </h2>
-      <p className="text-muted-foreground mt-1 text-[13px] leading-[1.45]">
+      <p className="text-muted-foreground mt-1 text-small leading-[1.45]">
         {latest === null ? t('incomeTaxLede') : t('incomeTaxLedeYear', { year: latest })}
       </p>
 
       {obligations.length === 0 ? (
-        <p className="text-muted-foreground mt-4 text-[14px]">{t('incomeTaxEmpty')}</p>
+        <p className="text-muted-foreground mt-4 text-ui">{t('incomeTaxEmpty')}</p>
       ) : (
         <>
           {/* No chart when the firm's records carry no tax year — the footer still states what is owed. */}
@@ -80,17 +80,17 @@ export async function IncomeTaxCard({
           )}
           <div className="border-line-soft mt-auto flex flex-wrap items-end justify-between gap-3 border-t pt-4">
             <div className="min-w-0">
-              <p className="text-muted-foreground text-[12px] font-medium">{t('incomeTaxRemaining')}</p>
-              <p className="text-ink mt-1 text-[20px] leading-none font-bold tabular-nums">
+              <p className="text-muted-foreground text-caption font-medium">{t('incomeTaxRemaining')}</p>
+              <p className="text-ink mt-1 text-stat leading-none font-bold tabular-nums">
                 {remaining === null ? tTax('notPrinted') : money(remaining.cents)}
               </p>
-              <p className="text-muted-foreground mt-1.5 text-[11.5px]">
+              <p className="text-muted-foreground mt-1.5 text-caption">
                 {[remaining ? tTax(`basis_${remaining.basis}`) : null, due === null ? tTax('noUpcomingDue') : tTax('dueOn', { date: formatIsoDate(due, locale) })]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
             </div>
-            <Link href="/taxes/income" className="text-blue text-[12.5px] font-semibold hover:underline">
+            <Link href="/taxes/income" className="text-link text-small font-semibold hover:underline">
               {t('viewDetail')}
             </Link>
           </div>

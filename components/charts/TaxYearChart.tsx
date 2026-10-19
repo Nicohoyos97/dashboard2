@@ -39,7 +39,7 @@ export function TaxYearChart({
 
   return (
     <figure>
-      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-[12.5px]">
+      <ul className="text-muted-foreground mb-2 flex flex-wrap items-center gap-4 text-small">
         <li className="flex items-center gap-2">
           <span
             className="size-2.5 rounded-full"

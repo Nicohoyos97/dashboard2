@@ -110,10 +110,10 @@ export function SearchBar({ targets, askNick }: { targets: SearchTarget[]; askNi
             inputRef.current?.blur();
           }
         }}
-        className="border-line bg-paper text-ink placeholder:text-muted-foreground/70 focus:border-blue focus:bg-card h-10 w-full rounded-xl border pr-14 pl-9 text-[14px] transition outline-none focus:shadow-[0_0_0_4px_rgba(37,99,235,0.12)]"
+        className="border-line bg-paper text-ink placeholder:text-muted-foreground/70 focus:border-brand focus:bg-card h-10 w-full rounded-xl border pr-14 pl-9 text-ui transition outline-none focus:shadow-focus"
       />
       <kbd
-        className="border-line bg-card text-muted-foreground pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded-md border px-1.5 py-0.5 font-sans text-[11px] font-medium"
+        className="border-line bg-card text-muted-foreground pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded-md border px-1.5 py-0.5 font-sans text-micro font-medium"
         aria-hidden="true"
       >
         {t('searchHint')}
@@ -123,10 +123,10 @@ export function SearchBar({ targets, askNick }: { targets: SearchTarget[]; askNi
         <ul
           id={`${listId}-list`}
           role="listbox"
-          className="border-line bg-card absolute top-[calc(100%+6px)] right-0 z-40 w-[min(340px,80vw)] rounded-xl border p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+          className="border-line bg-card absolute top-[calc(100%+6px)] right-0 z-40 w-[min(340px,80vw)] rounded-xl border p-1.5 shadow-menu"
         >
           {options.length === 0 ? (
-            <li className="text-muted-foreground px-2.5 py-2 text-[13px]">{t('searchEmpty')}</li>
+            <li className="text-muted-foreground px-2.5 py-2 text-small">{t('searchEmpty')}</li>
           ) : (
             options.map((option, index) => (
               <li
@@ -139,12 +139,12 @@ export function SearchBar({ targets, askNick }: { targets: SearchTarget[]; askNi
                   go(index);
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
-                className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] ${index === activeIndex ? 'bg-blue-pale text-blue' : 'text-ink'}`}
+                className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-ui ${index === activeIndex ? 'bg-blue-pale text-link' : 'text-ink'}`}
               >
                 {option.kind === 'nick' ? (
                   <Sparkles className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
                 ) : (
-                  <span className="text-muted-foreground text-[11.5px] font-medium uppercase">
+                  <span className="text-muted-foreground text-caption font-medium uppercase">
                     {t('searchGoTo')}
                   </span>
                 )}

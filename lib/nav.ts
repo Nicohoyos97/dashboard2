@@ -66,6 +66,13 @@ export function clientNavItems(modules: PortalModules): NavItem[] {
   );
 }
 
+/**
+ * The reports library is reached from the Overview and the search, not the
+ * sidebar; listing it with the top bar's items gives it a breadcrumb and a
+ * search target without adding a nav row.
+ */
+export const REPORTS_NAV_ITEM: NavItem = { href: '/reports', labelKey: 'reports' };
+
 // Utility links under the user block at the bottom of the sidebar (§7:
 // Settings · Profile · Help & FAQs).
 export const BOTTOM_NAV_ITEMS: NavItem[] = [

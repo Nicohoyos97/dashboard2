@@ -14,6 +14,7 @@ import { todayIn } from '@/lib/utils/timezone';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
 import { MetricCards } from '@/components/statements/MetricCards';
 import { StatementActions } from '@/components/statements/StatementActions';
+import { PortalPage } from '@/components/portal/PortalPage';
 import { StatementTable } from '@/components/statements/StatementTable';
 import { resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
@@ -33,7 +34,7 @@ const TREND_LIMIT = 8;
 export default async function BalanceSheetPage({ searchParams }: { searchParams: Promise<{ period?: string; compare?: string }> }) {
   const [entity, t, tOverview, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getTranslations('Overview'), getLocale(), searchParams]);
   const typeLabel = t('bsTitle');
-  if (!entity) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></Page>;
+  if (!entity) return <PortalPage title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="pending" typeLabel={typeLabel} /></PortalPage>;
 
   const supabase = await createClient();
   const settings = await loadPortalEntitySettings(supabase, entity.id);
@@ -42,7 +43,7 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
   if (!settings.modules.balance_sheet) notFound();
   const reports = (await loadPublishedReports(supabase, entity.id)).filter((r) => r.reportType === 'balance_sheet');
   const report = selectReport(reports, params.period);
-  if (!report) return <Page title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></Page>;
+  if (!report) return <PortalPage title={typeLabel} lede={t('bsLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
 
   const rows = await loadReportLines(supabase, entity.id, report.id);
   const roots = buildTree(rows);
@@ -81,29 +82,32 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
     : null;
 
   const asOf = `${t('asOf')} ${formatIsoDate(report.periodEnd, locale)}`;
-  const comparative = report.comparativeEnd ? ` · ${t('comparative')} ${formatIsoDate(report.comparativeEnd, locale)}` : '';
+  const comparative = report.comparativeEnd ? `${t('comparative')} ${formatIsoDate(report.comparativeEnd, locale)}` : null;
+  // Where the figures came from, once, under them: the comparison, the source
+  // and the promise that nothing on the page is an estimate.
+  const provenance = [comparative, t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })]
+    .filter(Boolean)
+    .join(' · ');
 
   await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id });
 
   return (
     <NickProvider>
-    <Page
+    <PortalPage
       title={typeLabel}
-      lede={`${entity.name} · ${asOf}${comparative}`}
-      controls={
-        <>
-          <PeriodPicker
-            {...periodPickerProps({
-              periods: statementPeriods(reports, locale),
-              selected: { start: report.periodStart, end: report.periodEnd, label: '', kind: 'custom', sources: [] },
-              today: todayIn(settings.timezone),
-              locale,
-              presetLabel: (preset) => tOverview(`preset_${preset}`),
-            })}
-          />
-          <StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />
-        </>
+      lede={`${entity.name} · ${asOf}`}
+      filters={
+        <PeriodPicker
+          {...periodPickerProps({
+            periods: statementPeriods(reports, locale),
+            selected: { start: report.periodStart, end: report.periodEnd, label: '', kind: 'custom', sources: [] },
+            today: todayIn(settings.timezone),
+            locale,
+            presetLabel: (preset) => tOverview(`preset_${preset}`),
+          })}
+        />
       }
+      actions={<StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />}
     >
       <div className="mt-6">
         <MetricCards
@@ -113,38 +117,41 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
             { kind: 'money', label: t('totalLiabilities'), metric: m.totalLiabilities, upIsGood: false },
             { kind: 'money', label: t('totalEquity'), metric: m.totalEquity, upIsGood: true },
             { kind: 'money', label: t('workingCapital'), metric: m.workingCapital, upIsGood: true },
+          ]}
+          secondary={[
             { kind: 'ratio', label: t('currentRatio'), ratio: m.currentRatio, upIsGood: true, format: 'x' },
             { kind: 'ratio', label: t('debtToAsset'), ratio: m.debtToAsset, upIsGood: false, format: 'x' },
           ]}
+          secondaryLabel={t('bsRatiosLabel')}
         />
       </div>
 
-      <p className="text-muted-foreground mt-3 text-[12.5px]">
-        {t('granularityNoteAsOf', { date: formatIsoDate(report.periodEnd, locale) })} · {t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })}
+      <p className="text-muted-foreground mt-3 text-small">
+        {provenance}. {t('nothingEstimated')}
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('compositionAssets')}</h2>
-          <div className="mt-4">{assets.length > 0 ? <CompositionBars items={assets} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('notPrinted')}</p>}</div>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
+          <h2 className="text-ink text-title font-semibold">{t('compositionAssets')}</h2>
+          <div className="mt-4">{assets.length > 0 ? <CompositionBars items={assets} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-ui">{t('notPrinted')}</p>}</div>
         </section>
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('compositionLiabilities')}</h2>
-          <div className="mt-4">{liabilities.length > 0 ? <CompositionBars items={liabilities} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-[14px]">{t('notPrinted')}</p>}</div>
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
+          <h2 className="text-ink text-title font-semibold">{t('compositionLiabilities')}</h2>
+          <div className="mt-4">{liabilities.length > 0 ? <CompositionBars items={liabilities} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-ui">{t('notPrinted')}</p>}</div>
         </section>
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <h2 className="text-ink text-[16px] font-semibold">{t('trendAssetsLiabilities')}</h2>
+        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
+          <h2 className="text-ink text-title font-semibold">{t('trendAssetsLiabilities')}</h2>
           <div className="mt-4">
             {trend ? (
               <TrendBars points={trend} currency={report.currency} seriesA={t('totalAssets')} seriesB={t('totalLiabilities')} summary={t('trendSummary', { count: trend.length, latest: trend[trend.length - 1]?.label ?? '' })} />
             ) : (
-              <p className="text-muted-foreground text-[14px]">{t('trendUnavailable')}</p>
+              <p className="text-muted-foreground text-ui">{t('trendUnavailable')}</p>
             )}
           </div>
         </section>
       </div>
 
-      <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:border-0 print:shadow-none">
+      <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-card print:border-0 print:shadow-none">
         <StatementTable
           roots={comparison.roots}
           meta={{ reportType: 'balance_sheet', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
@@ -157,23 +164,8 @@ export default async function BalanceSheetPage({ searchParams }: { searchParams:
           }}
         />
       </section>
-    </Page>
+    </PortalPage>
     <NickPanel page="balance_sheet" period={periodParam({ start: report.periodStart, end: report.periodEnd })} businessName={entity.name} />
     </NickProvider>
-  );
-}
-
-function Page({ title, lede, controls, children }: { title: string; lede: string; controls?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-ink text-[28px] font-bold tracking-[-0.01em]">{title}</h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">{lede}</p>
-        </div>
-        {controls && <div className="flex max-w-full min-w-0 flex-wrap items-center gap-3">{controls}</div>}
-      </div>
-      {children}
-    </main>
   );
 }

@@ -31,28 +31,28 @@ export async function RemindersCard({ reminders, currency, today, limit = 6 }: {
     .slice(0, limit);
 
   return (
-    <section className="border-line bg-card rounded-2xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <h2 className="text-ink flex items-center gap-2 text-[16px] font-semibold">
-        <CalendarClock className="text-blue size-[18px]" aria-hidden="true" />
+    <section className="border-line bg-card flex flex-col rounded-2xl border p-5 shadow-card">
+      <h2 className="text-ink flex items-center gap-2 text-title font-semibold">
+        <CalendarClock className="text-link size-[18px]" aria-hidden="true" />
         {t('title')}
       </h2>
       {open.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-[14px]">{t('empty')}</p>
+        <p className="text-muted-foreground mt-3 text-ui">{t('empty')}</p>
       ) : (
         <ul className="divide-line mt-3 divide-y">
           {open.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-3 py-3 text-[13.5px]">
+            <li key={r.id} className="flex items-start gap-3 py-3.5 text-ui first:pt-1 last:pb-0">
               <span className="min-w-0 flex-1">
-                <span className="text-ink block truncate font-semibold">{r.title}</span>
-                <span className="text-muted-foreground block text-[12.5px]">
+                <span className="text-ink block font-semibold text-pretty">{r.title}</span>
+                <span className="text-muted-foreground mt-0.5 block text-small">
                   {t(`reminderType_${r.reminderType}`)} · {t('due')} {formatIsoDate(r.dueDate, locale)}
-                  {r.amountCents !== null ? ` · ${money(r.amountCents)}` : ''}
+                  {r.amountCents !== null ? <> · <span className="tabular-nums">{money(r.amountCents)}</span></> : null}
                   {' · '}
                   {r.responsible === 'firm' ? t('responsibleFirm') : t('responsibleClient')}
                 </span>
-                {r.actionRequired && <span className="text-ink mt-0.5 block text-[12.5px]">{r.actionRequired}</span>}
+                {r.actionRequired && <span className="text-ink mt-1 block text-small">{r.actionRequired}</span>}
               </span>
-              <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${TONE[r.effective] ?? TONE.upcoming}`}>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-caption font-semibold whitespace-nowrap ${TONE[r.effective] ?? TONE.upcoming}`}>
                 {t(`reminderStatus_${r.effective}`)}
               </span>
             </li>

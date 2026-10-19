@@ -113,19 +113,19 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
-      <Link href="/admin/documents" className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-[13.5px] font-medium">
+      <Link href="/admin/documents" className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-ui font-medium">
         <ChevronLeft className="size-4" aria-hidden="true" />
         {t('backToDocuments')}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-ink flex flex-wrap items-center gap-3 text-[28px] font-bold tracking-[-0.01em]">
+          <h1 className="text-ink flex flex-wrap items-center gap-3 text-display font-bold tracking-[-0.01em]">
             {doc.title}
             <span className={statusPill(doc.status)}>{t(`status_${doc.status}`)}</span>
           </h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">
-            <Link href={`/admin/entities/${doc.business_entity_id}`} className="hover:text-blue font-medium">
+          <p className="text-muted-foreground mt-1.5 text-body">
+            <Link href={`/admin/entities/${doc.business_entity_id}`} className="hover:text-link font-medium">
               {doc.business_entities?.name ?? '—'}
             </Link>
             {' · '}
@@ -148,7 +148,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <section className={card}>
-          <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('metaTitle')}</h2>
+          <h2 className="text-ink mb-4 text-heading font-semibold">{t('metaTitle')}</h2>
           <DocumentMetaForm
             documentId={doc.id}
             initial={{
@@ -161,9 +161,9 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           />
         </section>
         <section className={`${card} overflow-x-auto`}>
-          <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('reviewPages')}</h2>
+          <h2 className="text-ink mb-4 text-heading font-semibold">{t('reviewPages')}</h2>
           {isLedger ? (
-            <p className="text-muted-foreground text-[14px]">{t('ledgerNoPages')}</p>
+            <p className="text-muted-foreground text-ui">{t('ledgerNoPages')}</p>
           ) : (
             <PagesTable
               pages={(pages ?? []).map((p) => ({
@@ -181,12 +181,12 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
 
       {/* A ledger says for itself whether anything was read (LedgerReview). */}
       {!isLedger && (reports ?? []).length === 0 && (statements ?? []).length === 0 && (salesReports ?? []).length === 0 && (
-        <p className="text-muted-foreground mt-6 text-[14px]">{t('noExtraction')}</p>
+        <p className="text-muted-foreground mt-6 text-ui">{t('noExtraction')}</p>
       )}
 
       {(reports ?? []).map((r) => (
         <section key={r.id} className={`${card} mt-6`}>
-          <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('extractedTitle')}</h2>
+          <h2 className="text-ink mb-4 text-heading font-semibold">{t('extractedTitle')}</h2>
           <StatementReview
             report={{
               id: r.id,
@@ -235,7 +235,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
 
           return (
             <section key={report.id} className={`${card} mt-6`}>
-              <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('salesReportTitle')}</h2>
+              <h2 className="text-ink mb-4 text-heading font-semibold">{t('salesReportTitle')}</h2>
               <SalesReportReview
                 report={{
                   id: report.id,
@@ -276,7 +276,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
 
       {(statements ?? []).map((s) => (
         <section key={s.id} className={`${card} mt-6`}>
-          <h2 className="text-ink mb-4 text-[17px] font-semibold">{t('bankTitle')}</h2>
+          <h2 className="text-ink mb-4 text-heading font-semibold">{t('bankTitle')}</h2>
           <BankReview
             statement={{
               id: s.id,

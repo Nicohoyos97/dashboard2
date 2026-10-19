@@ -67,7 +67,7 @@ export function Brand({
         ))
       )}
       {badge && (
-        <span className="bg-blue-pale text-blue rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-[0.02em]">
+        <span className="bg-blue-pale text-link rounded-full px-2 py-0.5 text-micro font-semibold tracking-[0.02em]">
           {badge}
         </span>
       )}

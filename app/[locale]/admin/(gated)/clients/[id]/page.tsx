@@ -39,7 +39,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
       <Link
         href="/admin/clients"
-        className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-[13.5px] font-medium"
+        className="text-muted-foreground hover:text-ink inline-flex items-center gap-1 text-ui font-medium"
       >
         <ChevronLeft className="size-4" aria-hidden="true" />
         {t('backToClients')}
@@ -47,11 +47,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-ink flex items-center gap-3 text-[28px] font-bold tracking-[-0.01em]">
+          <h1 className="text-ink flex items-center gap-3 text-display font-bold tracking-[-0.01em]">
             {client.name}
             <span className={statusPill(status)}>{t(status)}</span>
           </h1>
-          <p className="text-muted-foreground mt-1.5 text-[15px]">
+          <p className="text-muted-foreground mt-1.5 text-body">
             {[client.contact_name, client.contact_email].filter(Boolean).join(' · ') || '—'}
           </p>
         </div>
@@ -74,24 +74,24 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       {client.notes && (
         <section className={`${card} mt-8`}>
-          <h2 className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+          <h2 className="text-muted-foreground text-micro font-semibold tracking-[0.12em] uppercase">
             {t('notesInternal')}
           </h2>
-          <p className="text-ink mt-2 text-[14.5px] whitespace-pre-wrap">{client.notes}</p>
+          <p className="text-ink mt-2 text-body whitespace-pre-wrap">{client.notes}</p>
         </section>
       )}
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-ink text-[20px] font-bold tracking-[-0.01em]">{t('businesses')}</h2>
+          <h2 className="text-ink text-stat font-bold tracking-[-0.01em]">{t('businesses')}</h2>
           {canEdit && status === 'active' && <EntityDialog mode="create" clientId={client.id} />}
         </div>
         <div className={`${card} mt-4 overflow-x-auto p-0`}>
           {(entities ?? []).length === 0 ? (
-            <p className="text-muted-foreground p-6 text-[14.5px]">{t('noBusinesses')}</p>
+            <p className="text-muted-foreground p-6 text-body">{t('noBusinesses')}</p>
           ) : (
-            <table className="w-full text-left text-[14px]">
-              <thead className="text-muted-foreground border-line border-b text-[12px] font-semibold tracking-[0.06em] uppercase">
+            <table className="w-full text-left text-ui">
+              <thead className="text-muted-foreground border-line border-b text-caption font-semibold tracking-[0.06em] uppercase">
                 <tr>
                   <th className="px-5 py-3">{t('name')}</th>
                   <th className="px-5 py-3">{t('accountingBasis')}</th>
@@ -104,7 +104,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 {(entities ?? []).map((e) => (
                   <tr key={e.id} className="hover:bg-paper">
                     <td className="px-5 py-3.5">
-                      <Link href={`/admin/entities/${e.id}`} className="text-ink hover:text-blue font-semibold">
+                      <Link href={`/admin/entities/${e.id}`} className="text-ink hover:text-link font-semibold">
                         {e.name}
                       </Link>
                     </td>
