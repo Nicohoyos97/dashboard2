@@ -29,6 +29,7 @@ export type PipelineInput = {
   anthropic: Anthropic;
   expectedType?: ExtractableType | undefined;
   models?: { fast?: string | undefined; reasoning?: string | undefined } | undefined;
+  signal?: AbortSignal | undefined;
 };
 
 export type PipelineResult =
@@ -89,6 +90,7 @@ export async function runPdfPipeline(input: PipelineInput): Promise<PipelineOutp
     pages: allPages,
     anthropic: input.anthropic,
     model: input.models?.fast,
+    signal: input.signal,
   });
   let usage = addUsage(ZERO_USAGE, classification.usage);
   const warnings: string[] = [];
@@ -103,7 +105,7 @@ export async function runPdfPipeline(input: PipelineInput): Promise<PipelineOutp
       if (!pdf) throw new IngestionError('page_out_of_range', `page ${page}`);
       return { page, pdf };
     });
-    const extractInput = { pages, anthropic: input.anthropic, model: input.models?.reasoning };
+    const extractInput = { pages, anthropic: input.anthropic, model: input.models?.reasoning, signal: input.signal };
     const label = `pages ${pageNumbers.join(',')}`;
 
     if (type === 'profit_and_loss' || type === 'balance_sheet') {

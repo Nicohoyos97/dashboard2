@@ -12,6 +12,6 @@ export const maxDuration = 300;
 
 export async function GET(request: Request) {
   if (!cronAuthorized(request)) return new NextResponse(null, { status: 401 });
-  const summary = await runPendingJobs({ batchSize: 3, deadlineMs: 240_000 });
+  const summary = await runPendingJobs({ batchSize: 3 });
   return NextResponse.json(summary, { headers: { 'Cache-Control': 'no-store' } });
 }

@@ -9,7 +9,8 @@ export type { Effort, ModelOptions, ModelRole } from './models';
 let client: Anthropic | null = null;
 
 export function getAnthropic(): Anthropic {
-  // One retry: two 240 s attempts stay inside the worker's function budget.
+  // One retry. Two 240 s attempts would not fit the worker's 300 s function,
+  // so the worker bounds each job with its own abort signal (ingestion/worker.ts).
   client ??= new Anthropic({ maxRetries: 1 });
   return client;
 }

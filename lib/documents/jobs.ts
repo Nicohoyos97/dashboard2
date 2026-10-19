@@ -15,7 +15,7 @@ export async function runJobsNow(): Promise<ActionResult<{ processed: number }>>
   await requireFirmAdmin();
   if (process.env.NODE_ENV === 'production') return { ok: false, error: t('errorInvalid') };
 
-  const summary = await runPendingJobs({ batchSize: 3, deadlineMs: 240_000 });
+  const summary = await runPendingJobs({ batchSize: 3 });
   revalidatePath('/admin/documents');
   return { ok: true, value: { processed: summary.processed } };
 }

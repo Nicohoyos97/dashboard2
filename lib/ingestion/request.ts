@@ -31,6 +31,8 @@ export type StructuredRequest<TApi extends z.ZodType, TStrict extends z.ZodType>
   content: Anthropic.ContentBlockParam[];
   apiSchema: TApi;
   strictSchema: TStrict;
+  /** The job's time budget. Aborting it cancels the call and any retry, so a long document fails as a recorded attempt instead of the platform killing the function mid-call. */
+  signal?: AbortSignal | undefined;
 };
 
 // Only schema paths and issue codes — never received values — may leave here.
@@ -53,7 +55,7 @@ export async function requestStructured<TApi extends z.ZodType, TStrict extends 
       messages: [{ role: 'user', content: request.content }],
       output_config: { effort: request.options.effort, format: { type: format.type, schema: format.schema } },
     },
-    { timeout: REQUEST_TIMEOUT_MS },
+    { timeout: REQUEST_TIMEOUT_MS, signal: request.signal },
   );
   const usage: TokenUsage = {
     inputTokens: message.usage.input_tokens,

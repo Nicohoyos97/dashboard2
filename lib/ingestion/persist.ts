@@ -44,17 +44,26 @@ const centsOf = (value: string | null | undefined): number | null =>
 const asJson = (value: Reconciliation): Json => JSON.parse(JSON.stringify(value)) as Json;
 const CHUNK = 200;
 
+/**
+ * supabase-js resolves with `{ error }` rather than throwing. A clear that
+ * silently failed would let the next run stack a second copy of everything
+ * beside the first, so each one is checked.
+ */
+function cleared(result: { error: unknown }): void {
+  if (result.error) throw new WorkerError('clear_derived');
+}
+
 export async function clearDerived(admin: Admin, versionId: string): Promise<void> {
-  await admin.from('document_pages').delete().eq('document_version_id', versionId);
-  await admin.from('financial_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
-  await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published');
+  cleared(await admin.from('document_pages').delete().eq('document_version_id', versionId));
+  cleared(await admin.from('financial_reports').delete().eq('document_version_id', versionId).neq('status', 'published'));
+  cleared(await admin.from('bank_statements').delete().eq('document_version_id', versionId).neq('status', 'published'));
   // Tenders cascade with their report.
-  await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published');
+  cleared(await admin.from('sales_reports').delete().eq('document_version_id', versionId).neq('status', 'published'));
   // Accounts and transactions cascade with their ledger.
-  await admin.from('general_ledgers').delete().eq('document_version_id', versionId).neq('status', 'published');
+  cleared(await admin.from('general_ledgers').delete().eq('document_version_id', versionId).neq('status', 'published'));
   // A payment confirmation owns its payment rows, not the obligation they
   // settle; without this, reprocessing one stacked a second payment.
-  await admin.from('tax_payments').delete().eq('document_version_id', versionId).is('published_at', null);
+  cleared(await admin.from('tax_payments').delete().eq('document_version_id', versionId).is('published_at', null));
   await clearFilingHalf(admin, versionId);
 }
 
@@ -78,22 +87,25 @@ export async function clearDerived(admin: Admin, versionId: string): Promise<voi
  * payments would cascade with it), and it keeps `amount_paid` and its status.
  */
 async function clearFilingHalf(admin: Admin, versionId: string): Promise<void> {
-  const { data: owned } = await admin
+  const { data: owned, error: ownedError } = await admin
     .from('tax_obligations')
     .select('id, taxable_sales, tax_collected')
     .eq('document_version_id', versionId)
     .is('published_at', null);
+  if (ownedError) throw new WorkerError('clear_derived');
   if (!owned || owned.length === 0) return;
 
-  const { data: payments } = await admin
+  const { data: payments, error: paymentsError } = await admin
     .from('tax_payments')
     .select('obligation_id')
     .in('obligation_id', owned.map((row) => row.id));
+  // Read as "no payments", a failure here would delete a row a payment settles.
+  if (paymentsError) throw new WorkerError('clear_derived');
   const paid = new Set((payments ?? []).map((p) => p.obligation_id));
 
   const alone = owned.filter((row) => row.taxable_sales === null && row.tax_collected === null && !paid.has(row.id));
   if (alone.length > 0) {
-    await admin.from('tax_obligations').delete().in('id', alone.map((row) => row.id));
+    cleared(await admin.from('tax_obligations').delete().in('id', alone.map((row) => row.id)));
   }
 
   const kept = owned.filter((row) => !alone.includes(row));
@@ -113,12 +125,14 @@ async function clearFilingHalf(admin: Admin, versionId: string): Promise<void> {
   // Nothing is filed for this period any more, which is what pending_review
   // means on an obligation. A row a payment settled stays paid.
   if (unpaid.length > 0) {
-    await admin
-      .from('tax_obligations')
-      .update({ ...filingHalf, amount_paid: null, status: 'pending_review' })
-      .in('id', unpaid);
+    cleared(
+      await admin
+        .from('tax_obligations')
+        .update({ ...filingHalf, amount_paid: null, status: 'pending_review' })
+        .in('id', unpaid),
+    );
   }
-  if (settled.length > 0) await admin.from('tax_obligations').update(filingHalf).in('id', settled);
+  if (settled.length > 0) cleared(await admin.from('tax_obligations').update(filingHalf).in('id', settled));
 }
 
 export async function persistPages(admin: Admin, ctx: PersistContext, pages: readonly ClassifiedPage[]): Promise<void> {
@@ -609,9 +623,15 @@ export async function persistPipelineOutput(admin: Admin, ctx: PersistContext, o
 // CSV exports: deterministic parse, a model-proposed mapping (kept for the
 // firm to confirm in review — the statement lands in needs_review), then one
 // synthetic "CSV export" account per business until the firm assigns a real one.
-export async function persistCsv(admin: Admin, ctx: PersistContext, text: string, anthropic: Anthropic): Promise<PersistSummary> {
+export async function persistCsv(
+  admin: Admin,
+  ctx: PersistContext,
+  text: string,
+  anthropic: Anthropic,
+  signal?: AbortSignal,
+): Promise<PersistSummary> {
   const table = parseCsv(text);
-  const { mapping } = await proposeCsvMapping({ headers: table.headers, sampleRows: table.rows, anthropic });
+  const { mapping } = await proposeCsvMapping({ headers: table.headers, sampleRows: table.rows, anthropic, signal });
   const { transactions, skipped } = applyCsvMapping(table.rows, mapping);
   const dates = transactions.map((tx) => tx.date).sort();
   const first = dates[0];

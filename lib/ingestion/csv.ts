@@ -43,6 +43,7 @@ export type ProposeCsvMappingInput = {
   sampleRows: readonly CsvRow[];
   anthropic: Anthropic;
   model?: string | undefined;
+  signal?: AbortSignal | undefined;
 };
 
 export async function proposeCsvMapping(
@@ -55,6 +56,7 @@ export async function proposeCsvMapping(
     content: [textBlock(csvMappingInstruction(input.headers, input.sampleRows.slice(0, MAX_SAMPLE_ROWS)))],
     apiSchema: CsvMappingApiSchema,
     strictSchema: CsvMappingSchema,
+    signal: input.signal,
   });
   for (const [field, header] of Object.entries(result.data.columns)) {
     if (header !== null && !input.headers.includes(header)) {

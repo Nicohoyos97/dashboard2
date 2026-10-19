@@ -116,7 +116,11 @@ export async function deleteDocument(input: unknown): Promise<ActionResult> {
   // tax obligations that never reached the client. clearDerived is the same
   // routine the worker uses to make reprocessing idempotent.
   const admin = createAdminClient();
-  for (const version of versions) await clearDerived(admin, version.id);
+  try {
+    for (const version of versions) await clearDerived(admin, version.id);
+  } catch {
+    return { ok: false, error: t('deleteFailed') };
+  }
 
   // RLS (documents_admin_delete) and the trigger are the controls; the checks
   // above only shape the message.

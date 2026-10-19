@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import { modelOptions } from '@/lib/ai/models';
 
-import { chunk } from './classify';
+import { REQUEST_CONCURRENCY, chunk, mapLimit } from './classify';
 import type { PdfPage } from './classify';
 import { IngestionError } from './errors';
 import {
@@ -39,6 +39,7 @@ export type ExtractInput = {
   pages: readonly PdfPage[];
   anthropic: Anthropic;
   model?: string | undefined;
+  signal?: AbortSignal | undefined;
 };
 
 export type ExtractResult<T> = { data: T; usage: TokenUsage };
@@ -91,6 +92,7 @@ async function requestPages<TApi extends z.ZodType, TStrict extends z.ZodType>(
     content: [...pages.map((page) => documentBlock(page.page, page.pdf)), textBlock(pagesInstruction(sent))],
     apiSchema: extractor.apiSchema,
     strictSchema: extractor.strictSchema,
+    signal: input.signal,
   });
   const stray = extractor.pagesOf(result.data).find((page) => !sent.includes(page));
   if (stray !== undefined) throw new IngestionError('page_out_of_range', `page ${stray}`);
@@ -102,14 +104,15 @@ async function requestChunks<TApi extends z.ZodType, TStrict extends z.ZodType>(
   extractor: Extractor<TApi, TStrict>,
 ): Promise<{ chunks: z.infer<TStrict>[]; usage: TokenUsage }> {
   if (input.pages.length === 0) throw new TypeError('extract: no pages');
-  const chunks: z.infer<TStrict>[] = [];
-  let usage = ZERO_USAGE;
-  for (const pages of chunk(input.pages, EXTRACTION_CHUNK_PAGES)) {
-    const result = await requestPages(input, pages, extractor);
-    chunks.push(result.data);
-    usage = addUsage(usage, result.usage);
-  }
-  return { chunks, usage };
+  // Chunks are independent requests merged afterwards in page order, so they
+  // can be in flight together; mapLimit keeps that order.
+  const results = await mapLimit(chunk(input.pages, EXTRACTION_CHUNK_PAGES), REQUEST_CONCURRENCY, (pages) =>
+    requestPages(input, pages, extractor),
+  );
+  return {
+    chunks: results.map((result) => result.data),
+    usage: results.reduce((total, result) => addUsage(total, result.usage), ZERO_USAGE),
+  };
 }
 
 function revalidate<T extends z.ZodType>(schema: T, merged: unknown): z.infer<T> {

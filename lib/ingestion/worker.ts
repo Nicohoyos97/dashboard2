@@ -38,19 +38,25 @@ const EXPECTED_TYPE: Record<string, ExtractableType | undefined> = {
 function errorCode(error: unknown): string {
   if (isIngestionError(error)) return error.code;
   if (error instanceof WorkerError) return error.code;
+  // The job's own time budget ran out (see runPendingJobs), not the API.
+  if (error instanceof Anthropic.APIUserAbortError) return 'worker_deadline';
   if (error instanceof Anthropic.APIError) return `api_${error.status ?? 'error'}`;
   return 'worker_error';
 }
 
+// A failed bookkeeping write is logged rather than thrown: the job's own
+// outcome is what matters, and a row left `running` is re-queued by the claim.
 async function setJob(admin: Admin, jobId: string, patch: Database['public']['Tables']['document_processing_jobs']['Update']): Promise<void> {
-  await admin.from('document_processing_jobs').update(patch).eq('id', jobId);
+  const { error } = await admin.from('document_processing_jobs').update(patch).eq('id', jobId);
+  if (error) console.error('[worker] job update failed', jobId, error.code);
 }
 
 async function setDocumentStatus(admin: Admin, documentId: string, status: string): Promise<void> {
-  await admin.from('documents').update({ status }).eq('id', documentId).neq('status', 'published');
+  const { error } = await admin.from('documents').update({ status }).eq('id', documentId).neq('status', 'published');
+  if (error) console.error('[worker] document status update failed', documentId, error.code);
 }
 
-async function processJob(admin: Admin, job: Job): Promise<JobOutcome> {
+async function processJob(admin: Admin, job: Job, signal: AbortSignal): Promise<JobOutcome> {
   const { data: version } = await admin
     .from('document_versions')
     .select('id, document_id, business_entity_id, storage_path, mime_type, upload_status')
@@ -107,13 +113,14 @@ async function processJob(admin: Admin, job: Job): Promise<JobOutcome> {
         pdf: buffer,
         anthropic: getAnthropic(),
         expectedType: EXPECTED_TYPE[doc.document_type],
+        signal,
       });
       await setJob(admin, job.id, { step: 'extract' });
       summary = await persistPipelineOutput(admin, ctx, output);
       await fillDocumentMeta(admin, doc, output);
     } else {
       await setJob(admin, job.id, { step: 'extract' });
-      summary = await persistCsv(admin, ctx, text ?? '', getAnthropic());
+      summary = await persistCsv(admin, ctx, text ?? '', getAnthropic(), signal);
     }
 
     await setJob(admin, job.id, { step: 'reconcile' });
@@ -164,20 +171,31 @@ async function fillDocumentMeta(
   if (Object.keys(patch).length > 0) await admin.from('documents').update(patch).eq('id', doc.id);
 }
 
-export async function runPendingJobs(options?: { batchSize?: number; deadlineMs?: number }): Promise<WorkerSummary> {
+// The route's function budget is 300 s. A job's model calls are cut off at
+// JOB_BUDGET_MS, which leaves room to persist and to record the outcome, so a
+// document too long for one run fails as a counted attempt ('worker_deadline')
+// instead of the platform killing the function with the row still `running`.
+// A run stops claiming at CLAIM_DEADLINE_MS, so every job it starts has at
+// least the difference to work in. Jobs are claimed one at a time: a batch
+// claim charged an attempt to every job in it, even the ones a killed run never
+// reached.
+const JOB_BUDGET_MS = 270_000;
+const CLAIM_DEADLINE_MS = 90_000;
+
+export async function runPendingJobs(options?: { batchSize?: number; deadlineMs?: number; budgetMs?: number }): Promise<WorkerSummary> {
   const admin = createAdminClient();
-  const deadline = Date.now() + (options?.deadlineMs ?? 240_000);
-  const { data: jobs, error } = await admin.rpc('claim_processing_jobs', { batch_size: options?.batchSize ?? 2 });
-  if (error) throw new WorkerError('claim_failed');
+  const started = Date.now();
+  const claimUntil = started + (options?.deadlineMs ?? CLAIM_DEADLINE_MS);
+  const stopAt = started + (options?.budgetMs ?? JOB_BUDGET_MS);
+  const maxJobs = options?.batchSize ?? 2;
 
   const outcomes: JobOutcome[] = [];
-  for (const job of jobs ?? []) {
-    if (Date.now() > deadline) {
-      // Out of time: hand the job back instead of letting it sit as `running`.
-      await setJob(admin, job.id, { status: 'pending', locked_at: null, attempts: Math.max(0, job.attempts - 1) });
-      continue;
-    }
-    outcomes.push(await processJob(admin, job));
+  while (outcomes.length < maxJobs && Date.now() < claimUntil) {
+    const { data: jobs, error } = await admin.rpc('claim_processing_jobs', { batch_size: 1 });
+    if (error) throw new WorkerError('claim_failed');
+    const job = jobs?.[0];
+    if (!job) break;
+    outcomes.push(await processJob(admin, job, AbortSignal.timeout(Math.max(1, stopAt - Date.now()))));
   }
-  return { claimed: (jobs ?? []).length, processed: outcomes.length, outcomes };
+  return { claimed: outcomes.length, processed: outcomes.length, outcomes };
 }
