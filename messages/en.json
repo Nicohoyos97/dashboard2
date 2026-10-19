@@ -1234,6 +1234,7 @@
     "showing": "Showing {shown} of {total}",
     "noMatches": "No transaction here matches that search.",
     "notAvailable": "The transactions behind this account aren't available for this period.",
+    "loading": "Loading the transactions…",
     "downloadCsv": "Download CSV",
     "adjustment": "Bookkeeper adjustment",
     "adjustmentNum": "Bookkeeper adjustment #{num}",

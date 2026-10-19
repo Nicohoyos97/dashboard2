@@ -14,7 +14,7 @@ import { type LedgerAccountRow, LedgerAccountsTable } from '@/components/ledger/
 import { PortalPage } from '@/components/portal/PortalPage';
 import { Link } from '@/i18n/navigation';
 import { logAccess } from '@/lib/audit/logAccess';
-import { type LedgerTxn, loadLedgerDetail, loadLedgerTransactions } from '@/lib/ledger/load';
+import { type LedgerTxn, ledgerDetailFrom, loadLedgerAccounts, loadLedgerTransactions } from '@/lib/ledger/load';
 import { formatCents } from '@/lib/money';
 import { loadReportLinesFor } from '@/lib/portal/load';
 import { periodParam } from '@/lib/portal/period-param';
@@ -71,7 +71,11 @@ export async function PnlExpensesView({
 
   // Every statement's lines in one round trip.
   const ids = [...new Set([report.id, priorReport?.id, ...trendReports.map((r) => r.id)].filter((id): id is string => id !== undefined))];
-  const linesById = await loadReportLinesFor(supabase, entity.id, ids);
+  // …and the month's ledger accounts beside them: they need the period, not the lines.
+  const [linesById, ledgerAccounts] = await Promise.all([
+    loadReportLinesFor(supabase, entity.id, ids),
+    loadLedgerAccounts(supabase, entity.id, report),
+  ]);
   const metricsOf = (r: ReportRow) => pnlMetrics(r, buildTree(linesById.get(r.id) ?? []));
 
   const roots = buildTree(linesById.get(report.id) ?? []);
@@ -81,20 +85,15 @@ export async function PnlExpensesView({
   const lines = pnlExpenseLines(roots);
   const operatingLines = lines.filter((line) => line.kind === 'operating');
 
-  // The month's General Ledger, when the firm published one: the transactions
-  // behind each account, for the lines whose figure they add up to exactly.
-  // Grouped by P&L line: a collapsed parent's line holds its sub-accounts' transactions too.
-  const ledger = await loadLedgerDetail(supabase, entity.id, report, roots);
-  const lineOfAccount = new Map<string, string>();
-  for (const l of lines) for (const id of ledger?.lines.get(l.id)?.accountIds ?? []) lineOfAccount.set(id, l.id);
-  const ledgerTxns = new Map<string, LedgerTxn[]>();
-  for (const tx of await loadLedgerTransactions(supabase, entity.id, [...lineOfAccount.keys()])) {
-    const lineId = lineOfAccount.get(tx.accountId);
-    if (!lineId) continue;
-    const group = ledgerTxns.get(lineId);
-    if (group) group.push(tx);
-    else ledgerTxns.set(lineId, [tx]);
-  }
+  // The month's General Ledger, when the firm published one: which lines open
+  // onto the transactions behind them (those whose figure they add up to
+  // exactly), and how many each has. Only the account the client arrived for
+  // comes with the page; the table fetches any other when it is opened
+  // (/api/ledger/lines/[lineId]). Shipping every account's transactions, all
+  // of them collapsed, put hundreds of kilobytes into every Expenses render.
+  const ledger = ledgerDetailFrom(ledgerAccounts, roots);
+  const arrived = line ? ledger?.lines.get(line) : undefined;
+  const arrivedTxns: LedgerTxn[] | null = arrived ? await loadLedgerTransactions(supabase, entity.id, arrived.accountIds) : null;
   const largest = operatingLines[0] ?? lines[0] ?? null;
 
   const currency = report.currency;
@@ -163,7 +162,7 @@ export async function PnlExpensesView({
     resourceId: report.id,
     businessEntityId: entity.id,
     metadata: { source: 'profit_and_loss', line_count: lines.length },
-  });
+  }, { afterResponse: true });
 
   return (
     <>
@@ -232,7 +231,8 @@ export async function PnlExpensesView({
                     kindLabel: kindLabel[l.kind],
                     cents: l.cents,
                     share: shareOf(l.cents, totals[l.kind]),
-                    txns: ledger.lines.has(l.id) ? (ledgerTxns.get(l.id) ?? null) : null,
+                    count: ledger.lines.get(l.id)?.count ?? null,
+                    txns: arrived && l.id === line ? arrivedTxns : null,
                   }),
                 )}
               />

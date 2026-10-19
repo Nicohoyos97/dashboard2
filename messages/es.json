@@ -1234,6 +1234,7 @@
     "showing": "Mostrando {shown} de {total}",
     "noMatches": "Ninguna transacción coincide con esa búsqueda.",
     "notAvailable": "Las transacciones de esta cuenta no están disponibles para este periodo.",
+    "loading": "Cargando las transacciones…",
     "downloadCsv": "Descargar CSV",
     "adjustment": "Ajuste del contador",
     "adjustmentNum": "Ajuste del contador #{num}",
