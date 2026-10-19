@@ -21,7 +21,7 @@
     "supabase:stop": "supabase stop",
     "db:migrate": "supabase migration up --local",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > lib/supabase/types.ts",
+    "db:types": "SUPABASE_DB_PASSWORD=postgres supabase gen types typescript --local > lib/supabase/types.ts.tmp && mv lib/supabase/types.ts.tmp lib/supabase/types.ts || (rm -f lib/supabase/types.ts.tmp; exit 1)",
     "firm:admin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bootstrap-firm-admin.ts",
     "seed:demo": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-demo.ts"
   },
