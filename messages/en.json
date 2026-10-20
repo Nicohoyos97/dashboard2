@@ -706,6 +706,7 @@
     "type_general_ledger": "General Ledger",
     "publishBlockedLedgerNoStatement": "Publish this month's Profit & Loss first — the ledger is checked against it.",
     "publishBlockedLedgerBasis": "The ledger and the published Profit & Loss are on different bases.",
+    "basisMismatch": "This document is on {document} basis, but {business} keeps its books on {entity} basis. Before publishing, check which accounting method the report was run with in QuickBooks — the client will see these figures, on this basis.",
     "publishBlockedLedgerMatch": "Some Profit & Loss lines don't match the ledger to the cent — see the comparison below.",
     "ledgerTitle": "General Ledger",
     "ledgerNoPages": "A General Ledger is a CSV: it is read line by line, not by page. Its checks are below.",

@@ -7,6 +7,7 @@ import { buildHierarchy } from '@/lib/ingestion/hierarchy';
 import { FinancialStatementSchema } from '@/lib/ingestion/schemas/financial-statement';
 
 import { Fixtures, PASSWORD, supabaseEnv } from './helpers/fixtures';
+import { seedPublishedStatement } from './helpers/seed-statements';
 import { totp } from './helpers/totp';
 
 // Review → correct → reconcile → publish, through the browser (acceptance
@@ -129,6 +130,24 @@ test.describe('Firm portal: review, corrections, publish', () => {
     // trip; the dev server can take a while over it when the suite is parallel.
     await expect(page.getByText(/clients can see this document/i)).toBeVisible({ timeout: 30_000 });
   }
+
+  // QuickBooks runs a report on whichever method is selected, so a cash
+  // client's month can arrive on accrual (Que la creo Burger, September 2026).
+  // The review page says so above Publish; it warns, it does not block.
+  test('warns when a document is not on the business’s accounting method', async ({ browser }) => {
+    const tenant = await fx.makeTenant('rv-basis');
+    // The fixture P&L prints "Accrual basis"; a new business keeps its books on cash.
+    await seedPublishedStatement(fx, tenant.entityId, 'letter-and-pnl', { uploaded });
+    const { data: doc } = await fx.admin.from('documents').select('id').eq('business_entity_id', tenant.entityId).single();
+    const page = await adminPage(browser, 'basis');
+    await page.goto(`/admin/documents/${doc!.id}`);
+    await expect(page.getByRole('note')).toContainText(/on accrual basis, but .* keeps its books on cash basis/i);
+
+    await fx.admin.from('business_entities').update({ accounting_basis: 'accrual' }).eq('id', tenant.entityId);
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByText(/keeps its books on/i)).toHaveCount(0);
+  });
 
   // §14.19: publishing the same statement twice retires the first report. It
   // leaves the client's view, never the firm's.

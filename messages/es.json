@@ -706,6 +706,7 @@
     "type_general_ledger": "Libro mayor (General Ledger)",
     "publishBlockedLedgerNoStatement": "Publica primero el estado de resultados de este mes: el libro mayor se verifica contra él.",
     "publishBlockedLedgerBasis": "El libro mayor y el estado de resultados publicado usan bases distintas.",
+    "basisMismatch": "Este documento está en base {document}, pero {business} lleva sus libros en base {entity}. Antes de publicar, revisa con qué método contable se corrió el reporte en QuickBooks: el cliente verá estas cifras, en esta base.",
     "publishBlockedLedgerMatch": "Algunas líneas del estado de resultados no coinciden al centavo con el libro mayor. Revisa la comparación abajo.",
     "ledgerTitle": "Libro mayor",
     "ledgerNoPages": "El libro mayor es un CSV: se lee línea por línea, no por página. Sus verificaciones están abajo.",

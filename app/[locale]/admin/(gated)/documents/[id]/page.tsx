@@ -1,7 +1,7 @@
 // Document review (INITIAL_PROMPT.md §8): identity + confirmed details, page
 // classification, the extracted statement(s) with corrections and
 // reconciliation, publish / unpublish, and the immutable version + job history.
-import { ChevronLeft } from 'lucide-react';
+import { AlertTriangle, ChevronLeft } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
@@ -21,6 +21,7 @@ import { Link } from '@/i18n/navigation';
 import { requireFirmMember } from '@/lib/auth/requireFirm';
 import { logAccess } from '@/lib/audit/logAccess';
 import { loadDerivedHistory } from '@/lib/documents/history';
+import { basisMismatch } from '@/lib/documents/basis-check';
 import { crossCheckSalesTax } from '@/lib/documents/cross-check';
 import { deleteBlockers } from '@/lib/documents/delete';
 import { publishBlockers, reviewVersion } from '@/lib/documents/publish';
@@ -43,7 +44,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   const supabase = await createClient();
   const { data: doc } = await supabase
     .from('documents')
-    .select('id, title, document_type, status, period_start, period_end, current_version_id, published_at, business_entity_id, business_entities ( id, name, currency )')
+    .select('id, title, document_type, status, period_start, period_end, current_version_id, published_at, business_entity_id, business_entities ( id, name, currency, accounting_basis )')
     .eq('id', id)
     .maybeSingle();
   if (!doc) notFound();
@@ -92,7 +93,7 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   const versionIds = (versions ?? []).map((v) => v.id);
   const reportIds = (reports ?? []).map((r) => r.id);
   const statementIds = (statements ?? []).map((s) => s.id);
-  const [{ data: jobs }, { data: lines }, { data: transactions }, history] = await Promise.all([
+  const [{ data: jobs }, { data: lines }, { data: transactions }, history, { data: ledgers }] = await Promise.all([
     versionIds.length
       ? supabase.from('document_processing_jobs').select('id, document_version_id, status, step, attempts, max_attempts, error_code, updated_at').in('document_version_id', versionIds).order('updated_at', { ascending: false })
       : Promise.resolve({ data: [] }),
@@ -103,6 +104,9 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
       ? supabase.from('bank_transactions').select('id, bank_statement_id, txn_date, description, debit, credit, running_balance, page_number, confidence').in('bank_statement_id', statementIds).order('txn_date').limit(500)
       : Promise.resolve({ data: [] }),
     loadDerivedHistory(supabase, (versions ?? []).map((v) => ({ id: v.id, versionNo: v.version_no }))),
+    versionId && doc.document_type === 'general_ledger'
+      ? supabase.from('general_ledgers').select('basis').eq('document_version_id', versionId)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const canEdit = firm.role === 'master_admin';
@@ -110,6 +114,10 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
   const versionNo = new Map((versions ?? []).map((v) => [v.id, v.version_no]));
   const dayFmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const currency = doc.business_entities?.currency ?? 'USD';
+  // The document's figures on a method the business does not keep its books on.
+  const entityBasis = doc.business_entities?.accounting_basis ?? null;
+  const otherBasis = basisMismatch(entityBasis, [...(reports ?? []).map((r) => r.basis), ...(ledgers ?? []).map((l) => l.basis)]);
+  const basisName = (basis: string) => t(basis === 'accrual' ? 'basisAccrual' : 'basisCash').toLocaleLowerCase(locale);
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-6 py-10 md:px-10">
@@ -141,6 +149,19 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
           canEdit={canEdit}
         />
       </div>
+
+      {otherBasis && entityBasis && (
+        <p role="note" className="border-warning/30 bg-warning/10 text-ink mt-6 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-ui">
+          <AlertTriangle className="text-warning mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span>
+            {t('basisMismatch', {
+              document: basisName(otherBasis),
+              business: doc.business_entities?.name ?? '—',
+              entity: basisName(entityBasis),
+            })}
+          </span>
+        </p>
+      )}
 
       <div className="mt-6">
         <PublishBar documentId={doc.id} status={doc.status} blockers={blockers.blockers} canEdit={canEdit} />
