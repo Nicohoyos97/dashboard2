@@ -3,9 +3,11 @@
 // globals live one level up (app/).
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { CLIENT_NAMESPACES, pickMessages } from '@/i18n/client-messages';
 import { routing } from '@/i18n/routing';
 import { THEME_INIT_SCRIPT } from '@/lib/theme/constants';
 
@@ -42,6 +44,9 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
+  // Only what client components read (i18n/client-messages.ts): the whole
+  // catalogue used to travel with every page.
+  const messages = pickMessages(await getMessages(), CLIENT_NAMESPACES);
 
   return (
     <html lang={locale} className={inter.variable} suppressHydrationWarning>
@@ -51,7 +56,7 @@ export default async function LocaleLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>
           <ThemeProvider>{children}</ThemeProvider>
         </NextIntlClientProvider>
       </body>

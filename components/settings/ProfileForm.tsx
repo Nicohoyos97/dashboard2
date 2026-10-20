@@ -6,7 +6,8 @@ import { useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { type Locale, routing } from '@/i18n/routing';
 import { updateProfile } from '@/lib/settings/actions';
-import { createClient } from '@/lib/supabase/client';
+import { downscaleImage, imageExtension } from '@/lib/images/downscale';
+import { browserClient } from '@/lib/supabase/browser-client';
 
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB — mirrors the bucket limit
@@ -67,12 +68,12 @@ export function ProfileForm({
       let newAvatarUrl: string | undefined;
 
       if (file) {
-        const supabase = createClient();
-        const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-        const path = `${userId}/${Date.now()}.${ext}`;
+        // Stored at the size it is shown (lib/images/downscale.ts), not as picked.
+        const [supabase, image] = await Promise.all([browserClient(), downscaleImage(file)]);
+        const path = `${userId}/${Date.now()}.${imageExtension(image.type)}`;
         const { error: upErr } = await supabase.storage
           .from('avatars')
-          .upload(path, file, { upsert: true, contentType: file.type });
+          .upload(path, image, { upsert: true, contentType: image.type });
         if (upErr) return setError(t('saveError'));
         newAvatarUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
       }

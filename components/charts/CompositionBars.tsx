@@ -1,5 +1,3 @@
-'use client';
-
 import { ChevronRight } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
@@ -12,7 +10,9 @@ export type CompositionItem = { label: string; cents: number; href?: string };
 
 // Share of a total as horizontal bars (magnitude, low → high is obvious from
 // length; color only carries identity, fixed order, ≤ 5 classes + Other).
-// Plain HTML: every value is visible, so no tooltip is needed to read it.
+// Plain HTML: every value is visible, so no tooltip is needed to read it. A
+// Server Component — nothing here runs in the browser, so neither its code nor
+// its items travel there.
 export function CompositionBars({ items, currency, otherLabel }: { items: CompositionItem[]; currency: string; otherLabel: string }) {
   const sorted = [...items].filter((i) => i.cents > 0).sort((a, b) => b.cents - a.cents);
   const top = sorted.slice(0, CATEGORICAL.length - 1);

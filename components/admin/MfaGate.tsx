@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
-import { createClient } from '@/lib/supabase/client';
+import { browserClient } from '@/lib/supabase/browser-client';
 
 type Enrollment = { factorId: string; qrCode: string; secret: string };
 
@@ -32,7 +32,7 @@ export function MfaGate({
     if (mode !== 'enroll') return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
+      const supabase = await browserClient();
       // Abandoned enrollments leave unverified factors behind; clear them so
       // the account never accumulates dead factors.
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -59,7 +59,7 @@ export function MfaGate({
     if (!id || code.length !== 6) return setError(t('codeInvalid'));
 
     startTransition(async () => {
-      const supabase = createClient();
+      const supabase = await browserClient();
       const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
         factorId: id,
         code,

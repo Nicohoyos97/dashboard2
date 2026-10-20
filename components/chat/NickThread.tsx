@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 import type { PageContext } from '@/lib/ai/nick/types';
 
@@ -12,6 +12,31 @@ import { SuggestedQuestions } from './SuggestedQuestions';
 import type { NickChat } from './useNickChat';
 
 type Send = (text: string) => void;
+
+// A message already in the thread does not change while the next one streams
+// in: each token updates only the streaming text, and the messages keep their
+// identity. Memoised, a past answer is not re-parsed for its markdown and
+// citations on every token of the new one.
+const PastMessage = memo(function PastMessage({ message }: { message: NickChat['messages'][number] }) {
+  if (message.role === 'user') {
+    return (
+      <MessageBubble role="user" failed={message.failed ?? false}>
+        <p className="whitespace-pre-wrap">{message.text}</p>
+      </MessageBubble>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2.5">
+      <NickOrb size={30} className="mt-1" />
+      <div className="min-w-0 flex-1">
+        <MessageBubble role="assistant">
+          <AssistantText text={message.text} citations={message.citations} />
+          <SourcesRow citations={message.citations} />
+        </MessageBubble>
+      </div>
+    </div>
+  );
+});
 
 // The conversation surface shared by the full page and the contextual panel:
 // messages with Nick's orb beside each answer, the streaming answer, tool
@@ -73,23 +98,9 @@ export function NickThread({
         )}
 
         <div className="flex flex-col gap-4">
-          {chat.messages.map((message) =>
-            message.role === 'user' ? (
-              <MessageBubble key={message.id} role="user" failed={message.failed ?? false}>
-                <p className="whitespace-pre-wrap">{message.text}</p>
-              </MessageBubble>
-            ) : (
-              <div key={message.id} className="flex items-start gap-2.5">
-                <NickOrb size={30} className="mt-1" />
-                <div className="min-w-0 flex-1">
-                  <MessageBubble role="assistant">
-                    <AssistantText text={message.text} citations={message.citations} />
-                    <SourcesRow citations={message.citations} />
-                  </MessageBubble>
-                </div>
-              </div>
-            ),
-          )}
+          {chat.messages.map((message) => (
+            <PastMessage key={message.id} message={message} />
+          ))}
 
           {chat.streaming && (
             <div className="flex items-start gap-2.5">

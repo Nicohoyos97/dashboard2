@@ -13,14 +13,14 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { Link, useRouter } from '@/i18n/navigation';
 import { deleteChatSession } from '@/lib/ai/nick/actions';
 import type { SessionRow } from '@/lib/ai/nick/persist';
 import { matchesKeywords, titleFromMessage } from '@/lib/ai/nick/title';
 import type { ThreadMessage } from '@/lib/ai/nick/types';
-import { cn } from '@/lib/utils/cn';
+import { cx } from '@/lib/utils/cx';
 
 import { Composer } from './Composer';
 import { NickOrb } from './NickOrb';
@@ -127,10 +127,10 @@ export function NickWorkspace({
       if (sessionId === currentId) router.push('/chat');
     });
   };
-  const dateOf = (session: SessionRow) =>
-    new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(
-      new Date(session.lastMessageAt ?? session.createdAt),
-    );
+  // Built once per language: the history list re-renders with every token of
+  // a streaming answer, and it used to build one formatter per session each time.
+  const dateFormat = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }), [locale]);
+  const dateOf = (session: SessionRow) => dateFormat.format(new Date(session.lastMessageAt ?? session.createdAt));
   const greeting = part
     ? firstName
       ? t(`greeting${part}`, { name: firstName })
@@ -192,7 +192,7 @@ export function NickWorkspace({
         aria-label={t('history')}
         aria-hidden={!isOpen}
         style={{ width: isOpen ? SIDEBAR_WIDTH : 0 }}
-        className={cn(
+        className={cx(
           'border-line bg-card z-10 shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none max-md:absolute max-md:inset-y-0 max-md:left-0 md:relative',
           isOpen ? 'border-r max-md:shadow-xl' : '',
         )}
@@ -290,7 +290,7 @@ export function NickWorkspace({
                       href={`/chat?session=${session.id}`}
                       aria-current={active ? 'page' : undefined}
                       tabIndex={isOpen ? 0 : -1}
-                      className={cn(
+                      className={cx(
                         'block min-w-0 flex-1 rounded-lg px-2.5 py-2 transition',
                         active ? 'bg-secondary text-ink' : 'text-ink hover:bg-secondary/70',
                       )}
@@ -330,7 +330,7 @@ export function NickWorkspace({
         />
       )}
 
-      <section className={cn('flex min-w-0 flex-1 flex-col', isOpen && 'md:pl-4')}>
+      <section className={cx('flex min-w-0 flex-1 flex-col', isOpen && 'md:pl-4')}>
         <div className="flex items-center gap-1 px-1 pb-2">
           {!isOpen && (
             <button

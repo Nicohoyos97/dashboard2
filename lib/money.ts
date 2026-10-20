@@ -90,9 +90,19 @@ export function formatCents(cents: number, currency = 'USD'): string {
   return formatAmount(cents / 100, currency);
 }
 
+// One formatter per currency. Building an Intl.NumberFormat costs about
+// eighty times what formatting with one does, and a statement table formats
+// three figures a row on every keystroke of its search.
+const moneyFormatters = new Map<string, Intl.NumberFormat>();
+
 /** The same, for a figure that is already in currency units rather than cents. */
 export function formatAmount(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency }).format(amount);
+  let formatter = moneyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency });
+    moneyFormatters.set(currency, formatter);
+  }
+  return formatter.format(amount);
 }
 
 /**

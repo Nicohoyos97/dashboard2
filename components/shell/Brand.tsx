@@ -50,10 +50,12 @@ export function Brand({
           // serves the 1080 px candidate to a phone, which is the whole artwork
           // downloaded for a thumbnail.
           sizes="40px"
-          priority
           className="size-10 shrink-0"
         />
       ) : (
+        // No `priority` on any of the three: it preloaded every one of them on
+        // every page, though CSS shows one at a time (theme, breakpoint). Left
+        // lazy, the one on screen loads and a `display: none` one never does.
         LOCKUPS.map((lockup) => (
           <Image
             key={lockup.src}
@@ -61,7 +63,9 @@ export function Brand({
             alt=""
             width={lockup.width}
             height={107}
-            priority
+            // ~133 px at h-8: without `sizes` next/image offered the 640 and
+            // 1080 px candidates for it.
+            sizes="134px"
             className={`h-8 w-auto ${lockup.visibility}`}
           />
         ))

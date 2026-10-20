@@ -1,7 +1,5 @@
 import Image from 'next/image';
 
-import { cn } from '@/lib/utils/cn';
-
 // Nick's orb: the owner's gradient blob (public/brand/nick-orb.png). It
 // breathes at rest and quickens while Nick is thinking or answering; the
 // motion lives in globals.css (.nick-orb) and stops under reduced motion.
@@ -18,7 +16,10 @@ export function NickOrb({
     <span
       aria-hidden="true"
       data-active={active ? 'true' : 'false'}
-      className={cn('nick-orb', className)}
+      // A plain join: `nick-orb` is the component's own class, so there is no
+      // utility for tailwind-merge to resolve, and the orb rides every page Nick
+      // is on.
+      className={className ? `nick-orb ${className}` : 'nick-orb'}
       style={{ width: size, height: size }}
     >
       <span className="nick-orb__glow" />

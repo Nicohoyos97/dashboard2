@@ -4,7 +4,8 @@ import { ImageUp, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 
-import { createClient } from '@/lib/supabase/client';
+import { downscaleImage, imageExtension } from '@/lib/images/downscale';
+import { browserClient } from '@/lib/supabase/browser-client';
 
 import { secondaryButton } from './ui';
 
@@ -14,12 +15,6 @@ import { secondaryButton } from './ui';
 // a client cannot change how their own portal is branded.
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 const MAX_BYTES = 2 * 1024 * 1024;
-const EXTENSION: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-};
 
 export function LogoField({
   value,
@@ -43,11 +38,12 @@ export function LogoField({
     if (file.size > MAX_BYTES) return onError(t('logoTooLarge'));
 
     setBusy(true);
-    const supabase = createClient();
-    const path = `${crypto.randomUUID()}/${Date.now()}.${EXTENSION[file.type] ?? 'png'}`;
+    // Stored at the size the portal shows it (lib/images/downscale.ts); an SVG as it came.
+    const [supabase, image] = await Promise.all([browserClient(), downscaleImage(file)]);
+    const path = `${crypto.randomUUID()}/${Date.now()}.${imageExtension(image.type)}`;
     const { error } = await supabase.storage
       .from('logos')
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, image, { upsert: true, contentType: image.type });
     setBusy(false);
     if (error) return onError(t('logoUploadFailed'));
     onChange(supabase.storage.from('logos').getPublicUrl(path).data.publicUrl);

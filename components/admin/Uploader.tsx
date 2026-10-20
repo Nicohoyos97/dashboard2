@@ -13,7 +13,7 @@ import {
   type UploadMimeType,
   defaultDocumentType,
 } from '@/lib/documents/types';
-import { createClient } from '@/lib/supabase/client';
+import { browserClient } from '@/lib/supabase/browser-client';
 
 import { card, inputClass, labelClass, primaryButton, selectClass } from './ui';
 
@@ -89,7 +89,7 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
     });
     if (!draft.ok) return patch(item.key, { state: 'error', message: draft.error });
 
-    const { error } = await createClient()
+    const { error } = await (await browserClient())
       .storage.from('documents')
       .upload(draft.value.storagePath, item.file, { contentType: item.mime, upsert: false });
     if (error) return patch(item.key, { state: 'error', message: t('uploadFailed') });

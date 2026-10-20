@@ -3,8 +3,6 @@
 import { Moon, Sun } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { cn } from '@/lib/utils/cn';
-
 import { useTheme } from './ThemeProvider';
 
 export function ThemeToggle({
@@ -83,10 +81,11 @@ function ThemeOption({
       aria-pressed={active}
       title={label}
       onClick={onClick}
-      className={cn(
-        'focus-visible:ring-brand/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-caption font-semibold transition outline-none focus-visible:ring-3',
-        active ? 'bg-card text-ink shadow-sm' : 'text-muted-foreground hover:text-foreground',
-      )}
+      // A plain join, not cn(): the two halves share no utility, and cn() is
+      // what put tailwind-merge (~9 kB) in every portal page's first load.
+      className={`focus-visible:ring-brand/40 inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-2.5 text-caption font-semibold transition outline-none focus-visible:ring-3 ${
+        active ? 'bg-card text-ink shadow-sm' : 'text-muted-foreground hover:text-foreground'
+      }`}
     >
       {children}
       {compact ? <span className="sr-only">{label}</span> : <span>{label}</span>}

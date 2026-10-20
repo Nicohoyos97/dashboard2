@@ -3,26 +3,39 @@
 // Money follows MONEY_LOCALE, not the reader's language: an axis that said
 // "60 mil US$" in Spanish and "$60K" in English would disagree with every
 // other figure on the page. Month labels below still follow the reader.
-import { MONEY_LOCALE } from '@/lib/money';
+import { MONEY_LOCALE, formatAmount } from '@/lib/money';
+
+// Formatters are built once per currency or locale and reused: an axis formats
+// every tick, and a chart re-renders on every resize.
+const compactFormatters = new Map<string, Intl.NumberFormat>();
+const monthFormatters = new Map<string, Intl.DateTimeFormat>();
 
 export function compactMoney(cents: number, currency: string): string {
-  return new Intl.NumberFormat(MONEY_LOCALE, {
-    style: 'currency',
-    currency,
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(cents / 100);
+  let formatter = compactFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(MONEY_LOCALE, {
+      style: 'currency',
+      currency,
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    });
+    compactFormatters.set(currency, formatter);
+  }
+  return formatter.format(cents / 100);
 }
 
 export function fullMoney(cents: number, currency: string): string {
-  return new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency }).format(cents / 100);
+  return formatAmount(cents / 100, currency);
 }
 
 export function monthLabel(month: string, locale: string): string {
   const [y, m] = month.split('-').map(Number);
-  return new Intl.DateTimeFormat(locale, { month: 'short', year: '2-digit', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, 1)),
-  );
+  let formatter = monthFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { month: 'short', year: '2-digit', timeZone: 'UTC' });
+    monthFormatters.set(locale, formatter);
+  }
+  return formatter.format(new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, 1)));
 }
 
 /**

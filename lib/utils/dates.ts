@@ -1,13 +1,23 @@
 // Date-only values (Postgres `date`, ISO YYYY-MM-DD) carry no time zone.
 // `new Date('2026-01-01')` is UTC midnight, which Intl renders as Dec 31 in
 // the Americas — so date-only strings are always formatted in UTC here.
+// Built once per locale and option set: a table of dated rows formats one per
+// row, and building the formatter is the expensive half.
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+
 export function formatIsoDate(
   value: string | null | undefined,
   locale: string,
   options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' },
 ): string {
   if (!value) return '';
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(new Date(value));
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let formatter = dateFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
+    dateFormatters.set(key, formatter);
+  }
+  return formatter.format(new Date(value));
 }
 
 export function formatPeriod(

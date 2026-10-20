@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 import { NICK_LIMITS } from '@/lib/ai/nick/config';
-import { cn } from '@/lib/utils/cn';
+import { cx } from '@/lib/utils/cx';
 
 // Message input: Enter sends, Shift+Enter adds a line; disabled while Nick is
 // answering so a turn can never overlap another on the same session. The
@@ -63,7 +63,7 @@ export function Composer({
           submit();
         }
       }}
-      className={cn(
+      className={cx(
         // The placeholder is hidden on a phone rather than shortened: at 16px
         // (the size iOS demands of a field it focuses) "Ask Nick about your
         // finances…" runs to within 9px of the box edge at 390px and is cut on
@@ -84,7 +84,7 @@ export function Composer({
         event.preventDefault();
         submit();
       }}
-      className={cn(
+      className={cx(
         'border-line bg-card focus-within:border-brand/60 focus-within:ring-brand/20 rounded-2xl border shadow-card focus-within:ring-3',
         hero ? 'flex flex-col gap-2 p-3 sm:p-4' : 'flex items-end gap-2 p-2',
       )}
