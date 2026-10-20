@@ -1,25 +1,23 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { Link, useRouter } from '@/i18n/navigation';
-import { passwordSchema } from '@/lib/auth/schemas';
-import { createClient } from '@/lib/supabase/client';
+import { passwordIssue } from '@/lib/auth/rules';
+import { browserClient } from '@/lib/supabase/browser-client';
 
-import { ErrorBanner, PasswordField, Spinner, StrengthMeter } from './fields';
+import { ErrorBanner, PasswordField, Spinner, StrengthMeter, useIssueMessage } from './fields';
 
-const schema = z.object({ password: passwordSchema });
-type Values = z.infer<typeof schema>;
+type Values = { password: string };
 type State = 'loading' | 'ready' | 'invalid';
 
 // Invite acceptance: the browser client picks the session up from the invite
 // link's URL fragment; the user then sets a password and continues.
 export function AcceptInviteForm() {
   const t = useTranslations('Auth');
+  const issueMessage = useIssueMessage();
   const router = useRouter();
   const [state, setState] = useState<State>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -30,33 +28,33 @@ export function AcceptInviteForm() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<Values>({ resolver: zodResolver(schema), mode: 'onBlur' });
+  } = useForm<Values>({ mode: 'onBlur' });
 
   useEffect(() => {
     // The invite link (generated server-side, so no PKCE verifier) lands with
     // the tokens in the URL fragment. The browser client does not consume it
     // on its own, so read it explicitly, install the session (which writes the
     // auth cookies the server needs), and scrub the fragment from history.
-    const supabase = createClient();
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const accessToken = hash.get('access_token');
     const refreshToken = hash.get('refresh_token');
-    if (!accessToken || !refreshToken) {
-      supabase.auth.getSession().then(({ data }) => setState(data.session ? 'ready' : 'invalid'));
-      return;
-    }
-    supabase.auth
-      .setSession({ access_token: accessToken, refresh_token: refreshToken })
-      .then(({ data }) => {
-        window.history.replaceState(null, '', window.location.pathname);
-        setState(data.session ? 'ready' : 'invalid');
-      });
+    void browserClient().then((supabase) => {
+      if (!accessToken || !refreshToken) {
+        return supabase.auth.getSession().then(({ data }) => setState(data.session ? 'ready' : 'invalid'));
+      }
+      return supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data }) => {
+          window.history.replaceState(null, '', window.location.pathname);
+          setState(data.session ? 'ready' : 'invalid');
+        });
+    });
   }, []);
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
     startTransition(async () => {
-      const { error: updateError } = await createClient().auth.updateUser({
+      const { error: updateError } = await (await browserClient()).auth.updateUser({
         password: values.password,
       });
       if (updateError) return setError(t('inviteFailed'));
@@ -94,7 +92,7 @@ export function AcceptInviteForm() {
         label={t('newPassword')}
         autoComplete="new-password"
         error={errors.password?.message}
-        registration={register('password')}
+        registration={register('password', { validate: (value) => issueMessage(passwordIssue(value)) })}
       />
       <StrengthMeter value={watch('password') ?? ''} />
       <button

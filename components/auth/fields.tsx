@@ -9,7 +9,13 @@ import { Eye, EyeOff, LockKeyhole } from 'lucide-react';
 import { useState } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
-import { passwordStrength } from '@/lib/auth/schemas';
+import { type AuthIssue, passwordStrength } from '@/lib/auth/rules';
+
+/** A react-hook-form `validate` result for a rule of lib/auth/rules: the reader's own words, or true when it passes. */
+export function useIssueMessage(): (issue: AuthIssue | null) => string | true {
+  const t = useTranslations('Auth');
+  return (issue) => (issue ? t(issue) : true);
+}
 
 export const fieldClass =
   'h-12 w-full rounded-xl border border-line bg-card px-4 text-ui text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground/60 hover:border-muted-ink/60 focus:border-brand focus:ring-4 focus:ring-brand/10 disabled:cursor-not-allowed disabled:opacity-60';

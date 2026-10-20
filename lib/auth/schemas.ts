@@ -1,47 +1,39 @@
-// Zod schemas validated at the auth trust boundary (client form + server
-// action). Password policy mirrors docs/SECURITY.md and supabase/config.toml:
-// min 8 chars with at least one lower, upper, digit, and symbol.
+// Zod schemas validated at the auth trust boundary: the Server Actions run
+// them, and they are the authority. The forms check the same rules in the
+// browser without zod (./rules), so both are built from one set of values.
+// Every message is an AuthIssue key of the `Auth` namespace, which the action
+// translates for the reader.
 import { z } from 'zod';
 
-export const passwordSchema = z
-  .string()
-  .min(8, 'At least 8 characters')
-  .regex(/[a-z]/, 'Add a lowercase letter')
-  .regex(/[A-Z]/, 'Add an uppercase letter')
-  .regex(/[0-9]/, 'Add a number')
-  .regex(/[^A-Za-z0-9]/, 'Add a symbol');
+import { EMAIL_PATTERN, PASSWORD_MIN, PASSWORD_RULES } from './rules';
+
+export const passwordSchema = PASSWORD_RULES.reduce(
+  (schema, rule) => schema.regex(rule.pattern, rule.issue),
+  z.string().min(PASSWORD_MIN, 'passwordTooShort'),
+);
+
+const emailSchema = z.string().regex(EMAIL_PATTERN, 'emailInvalid');
 
 export const signInSchema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(1, 'Enter your password'),
+  email: emailSchema,
+  password: z.string().min(1, 'passwordRequired'),
   remember: z.boolean().optional(),
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email('Enter a valid email'),
+  email: emailSchema,
 });
 
 export const resetPasswordSchema = z
   .object({
     password: passwordSchema,
-    confirmPassword: z.string().min(1, 'Confirm your password'),
+    confirmPassword: z.string().min(1, 'confirmRequired'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
+    message: 'passwordMismatch',
     path: ['confirmPassword'],
   });
 
 export type SignInValues = z.infer<typeof signInSchema>;
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
-
-// Shared 0–4 password strength score for the invite and reset meters.
-export function passwordStrength(value: string): number {
-  if (!value || value.length < 8) return 0;
-  let score = 0;
-  if (/[a-z]/.test(value)) score++;
-  if (/[A-Z]/.test(value)) score++;
-  if (/[0-9]/.test(value)) score++;
-  if (/[^A-Za-z0-9]/.test(value)) score++;
-  return score;
-}

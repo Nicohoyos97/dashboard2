@@ -1,17 +1,18 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { updatePassword } from '@/lib/auth/actions';
-import { type ResetPasswordValues, resetPasswordSchema } from '@/lib/auth/schemas';
+import { passwordIssue } from '@/lib/auth/rules';
+import type { ResetPasswordValues } from '@/lib/auth/schemas';
 
-import { ErrorBanner, PasswordField, Spinner, StrengthMeter } from './fields';
+import { ErrorBanner, PasswordField, Spinner, StrengthMeter, useIssueMessage } from './fields';
 
 export function ResetPasswordForm() {
   const t = useTranslations('Auth');
+  const issueMessage = useIssueMessage();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,7 @@ export function ResetPasswordForm() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<ResetPasswordValues>({ resolver: zodResolver(resetPasswordSchema), mode: 'onBlur' });
+  } = useForm<ResetPasswordValues>({ mode: 'onBlur' });
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -40,7 +41,7 @@ export function ResetPasswordForm() {
         label={t('newPassword')}
         autoComplete="new-password"
         error={errors.password?.message}
-        registration={register('password')}
+        registration={register('password', { validate: (value) => issueMessage(passwordIssue(value)) })}
       />
       <StrengthMeter value={watch('password') ?? ''} />
 
@@ -49,7 +50,10 @@ export function ResetPasswordForm() {
         label={t('confirmPassword')}
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
-        registration={register('confirmPassword')}
+        registration={register('confirmPassword', {
+          validate: (value, values) =>
+            issueMessage(value.length === 0 ? 'confirmRequired' : value === values.password ? null : 'passwordMismatch'),
+        })}
       />
 
       <button

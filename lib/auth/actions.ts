@@ -9,6 +9,7 @@ import { safeRedirectPath } from '@/lib/auth/redirect';
 import { createClient } from '@/lib/supabase/server';
 import { COOKIE_OPTIONS, REMEMBER_SESSION_COOKIE } from '@/lib/supabase/env';
 
+import { isAuthIssue } from './rules';
 import { type SignInValues, forgotPasswordSchema, passwordSchema, signInSchema } from './schemas';
 
 // Discriminated result returned to the client form. Never leak provider error
@@ -119,7 +120,9 @@ export async function updatePassword(password: string): Promise<AuthResult> {
   const t = await getTranslations('AuthErrors');
   const parsed = passwordSchema.safeParse(password);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? t('checkDetails') };
+    // The schema's messages are AuthIssue keys: said in the reader's language.
+    const issue = parsed.error.issues[0]?.message;
+    return { ok: false, error: isAuthIssue(issue) ? (await getTranslations('Auth'))(issue) : t('checkDetails') };
   }
 
   const supabase = await createClient();

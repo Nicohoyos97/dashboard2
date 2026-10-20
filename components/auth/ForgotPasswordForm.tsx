@@ -1,18 +1,19 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Link } from '@/i18n/navigation';
 import { requestPasswordReset } from '@/lib/auth/actions';
-import { type ForgotPasswordValues, forgotPasswordSchema } from '@/lib/auth/schemas';
+import { emailIssue } from '@/lib/auth/rules';
+import type { ForgotPasswordValues } from '@/lib/auth/schemas';
 
-import { ErrorBanner, Field, Spinner, fieldClass } from './fields';
+import { ErrorBanner, Field, Spinner, fieldClass, useIssueMessage } from './fields';
 
 export function ForgotPasswordForm() {
   const t = useTranslations('Auth');
+  const issueMessage = useIssueMessage();
   const [isPending, startTransition] = useTransition();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,6 @@ export function ForgotPasswordForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<ForgotPasswordValues>({
-    resolver: zodResolver(forgotPasswordSchema),
     mode: 'onBlur',
   });
 
@@ -63,7 +63,7 @@ export function ForgotPasswordForm() {
           placeholder={t('emailPlaceholder')}
           autoComplete="email"
           className={fieldClass}
-          {...register('email')}
+          {...register('email', { validate: (value) => issueMessage(emailIssue(value)) })}
         />
       </Field>
 

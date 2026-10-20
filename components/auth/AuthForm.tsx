@@ -1,6 +1,5 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useTransition } from 'react';
@@ -8,9 +7,10 @@ import { useForm } from 'react-hook-form';
 
 import { Link } from '@/i18n/navigation';
 import { signInWithPassword } from '@/lib/auth/actions';
-import { type SignInValues, signInSchema } from '@/lib/auth/schemas';
+import { emailIssue } from '@/lib/auth/rules';
+import type { SignInValues } from '@/lib/auth/schemas';
 
-import { Field, PasswordField, Spinner, fieldClass } from './fields';
+import { Field, PasswordField, Spinner, fieldClass, useIssueMessage } from './fields';
 
 export function AuthForm({
   redirectTo,
@@ -20,6 +20,7 @@ export function AuthForm({
   onError: (message: string | null) => void;
 }) {
   const t = useTranslations('Auth');
+  const issueMessage = useIssueMessage();
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -27,7 +28,6 @@ export function AuthForm({
     handleSubmit,
     formState: { errors },
   } = useForm<SignInValues>({
-    resolver: zodResolver(signInSchema),
     mode: 'onBlur',
     defaultValues: { remember: true },
   });
@@ -55,7 +55,7 @@ export function AuthForm({
             placeholder={t('emailPlaceholder')}
             autoComplete="email"
             className={`${fieldClass} pl-11`}
-            {...register('email')}
+            {...register('email', { validate: (value) => issueMessage(emailIssue(value)) })}
           />
         </div>
       </Field>
@@ -65,7 +65,7 @@ export function AuthForm({
         label={t('passwordLabel')}
         autoComplete="current-password"
         error={errors.password?.message}
-        registration={register('password')}
+        registration={register('password', { validate: (value) => issueMessage(value.length > 0 ? null : 'passwordRequired') })}
       />
 
       <div className="mb-4 flex items-center justify-between gap-4 text-small">
