@@ -110,14 +110,27 @@ export async function createSession(
   return data.id;
 }
 
-export async function loadThread(supabase: Db, sessionId: string): Promise<ThreadMessage[]> {
-  const { data } = await supabase
+export async function loadThread(
+  supabase: Db,
+  sessionId: string,
+  /**
+   * The newest `latest` messages only, still oldest first. A turn sends the
+   * model its last NICK_LIMITS.historyMessages and used to read and parse the
+   * whole conversation to find them; the chat page, which shows it all, passes
+   * nothing.
+   */
+  options: { latest?: number } = {},
+): Promise<ThreadMessage[]> {
+  let query = supabase
     .from('chat_messages')
     .select('id, role, content, created_at')
     .eq('session_id', sessionId)
     .in('role', ['user', 'assistant'])
-    .order('created_at');
-  return (data ?? []).flatMap((row): ThreadMessage[] => {
+    .order('created_at', { ascending: options.latest === undefined });
+  if (options.latest !== undefined) query = query.limit(options.latest);
+  const { data } = await query;
+  const rows = options.latest === undefined ? (data ?? []) : [...(data ?? [])].reverse();
+  return rows.flatMap((row): ThreadMessage[] => {
     if (row.role === 'user') {
       const parsed = storedUserSchema.safeParse(row.content);
       return parsed.success
@@ -268,7 +281,12 @@ export async function usedTokensToday(
   return data ? data.input_tokens + data.output_tokens : 0;
 }
 
-/** Adds a turn's tokens to the daily counter and the session totals; sets the title on the first turn. */
+/**
+ * Adds a turn's tokens to the daily counter and the session totals, and names
+ * an untitled session from its first question — one statement each, in
+ * record_nick_usage (0033), so two turns finishing together both count. A
+ * failure is logged rather than thrown: the answer is already the client's.
+ */
 export async function recordUsage(
   admin: AdminDb,
   input: {
@@ -279,37 +297,13 @@ export async function recordUsage(
     firstUserText: string | null;
   },
 ): Promise<void> {
-  const { data: daily } = await admin
-    .from('ai_usage_daily')
-    .select('input_tokens, output_tokens, messages')
-    .eq('business_entity_id', input.entityId)
-    .eq('day', input.day)
-    .maybeSingle();
-  await admin.from('ai_usage_daily').upsert(
-    {
-      business_entity_id: input.entityId,
-      day: input.day,
-      input_tokens: (daily?.input_tokens ?? 0) + input.usage.input,
-      output_tokens: (daily?.output_tokens ?? 0) + input.usage.output,
-      messages: (daily?.messages ?? 0) + 1,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'business_entity_id,day' },
-  );
-  const { data: session } = await admin
-    .from('chat_sessions')
-    .select('total_input_tokens, total_output_tokens, title')
-    .eq('id', input.sessionId)
-    .maybeSingle();
-  const title =
-    session?.title ?? (input.firstUserText ? titleFromMessage(input.firstUserText) : null);
-  await admin
-    .from('chat_sessions')
-    .update({
-      total_input_tokens: (session?.total_input_tokens ?? 0) + input.usage.input,
-      total_output_tokens: (session?.total_output_tokens ?? 0) + input.usage.output,
-      last_message_at: new Date().toISOString(),
-      title,
-    })
-    .eq('id', input.sessionId);
+  const { error } = await admin.rpc('record_nick_usage', {
+    p_entity: input.entityId,
+    p_session: input.sessionId,
+    p_day: input.day,
+    p_input: input.usage.input,
+    p_output: input.usage.output,
+    ...(input.firstUserText ? { p_title: titleFromMessage(input.firstUserText) } : {}),
+  });
+  if (error) console.error('[nick] usage not recorded', input.sessionId, error.code);
 }

@@ -30,6 +30,14 @@ export type LoopParams = {
   emit: (event: NickEvent) => void;
   maxIterations: number;
   onToolCall?: (call: { name: string; input: unknown; result: unknown; ok: boolean }) => void;
+  /**
+   * Every call's tokens as it ends — including a call that is then refused,
+   * truncated or cut off — so the caller can count a turn that never returns
+   * an outcome against the daily budget.
+   */
+  onUsage?: (usage: { input: number; output: number }) => void;
+  /** The client went away, or the turn ran out of time: stop generating (and paying for) the answer. */
+  signal?: AbortSignal;
 };
 
 export type LoopOutcome = {
@@ -63,32 +71,54 @@ export async function runToolLoop(params: LoopParams): Promise<LoopOutcome> {
   const toolCalls: LoopOutcome['toolCalls'] = [];
   let retried = false;
 
+  const add = (callUsage: Anthropic.Usage) => {
+    const counted = countUsage(callUsage);
+    usage.input += counted.input;
+    usage.output += counted.output;
+    params.onUsage?.(counted);
+  };
+
   for (let iteration = 0; iteration < params.maxIterations; iteration += 1) {
     const last = iteration === params.maxIterations - 1;
-    const stream = params.anthropic.messages.stream({
-      model: params.model,
-      max_tokens: params.maxTokens,
-      system: params.system,
-      tools: params.tools,
-      messages,
-      output_config: { effort: params.effort },
-      // The final allowed iteration must answer: no further tool calls.
-      ...(last ? { tool_choice: { type: 'none' as const } } : {}),
-    });
+    const stream = params.anthropic.messages.stream(
+      {
+        model: params.model,
+        max_tokens: params.maxTokens,
+        system: params.system,
+        tools: params.tools,
+        messages,
+        output_config: { effort: params.effort },
+        // The system prompt and tools carry their own breakpoint; this one
+        // caches the conversation as it grows, so each call of the loop reads
+        // the previous call's history and tool results from the cache instead
+        // of paying for them again in full.
+        cache_control: { type: 'ephemeral' },
+        // The final allowed iteration must answer: no further tool calls.
+        ...(last ? { tool_choice: { type: 'none' as const } } : {}),
+      },
+      { signal: params.signal },
+    );
     stream.on('text', (delta) => params.emit({ type: 'delta', text: delta }));
 
     let message: Anthropic.Message;
     try {
       message = await stream.finalMessage();
     } catch (error) {
+      // What was generated before an abort is billed: count what the stream saw.
+      const partial = stream.currentMessage?.usage;
+      if (partial) add(partial);
       console.error('[nick] model call failed:', error instanceof Error ? error.name : 'unknown');
       throw new NickError('model_error');
     }
-    const turnUsage = countUsage(message.usage);
-    usage.input += turnUsage.input;
-    usage.output += turnUsage.output;
+    add(message.usage);
 
     if (message.stop_reason === 'refusal') throw new NickError('refusal');
+    // Thinking shares max_tokens with the answer; an answer cut off at the cap
+    // would otherwise be shown and saved as if it were complete.
+    if (message.stop_reason === 'max_tokens' || message.stop_reason === 'model_context_window_exceeded') {
+      console.error('[nick] answer truncated:', message.stop_reason);
+      throw new NickError('model_error');
+    }
 
     if (message.stop_reason === 'tool_use') {
       const toolUses = message.content.filter(

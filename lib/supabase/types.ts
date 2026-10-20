@@ -2565,6 +2565,17 @@ export type Database = {
       }
       published_report_ids: { Args: never; Returns: string[] }
       published_sales_report_ids: { Args: never; Returns: string[] }
+      record_nick_usage: {
+        Args: {
+          p_day: string
+          p_entity: string
+          p_input: number
+          p_output: number
+          p_session: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
       report_is_published: { Args: { report: string }; Returns: boolean }
       sales_report_is_published: { Args: { report: string }; Returns: boolean }
       shares_entity_with: { Args: { target: string }; Returns: boolean }

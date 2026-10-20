@@ -8,9 +8,12 @@ export const NICK_LIMITS = {
   maxToolIterations: 8,
   historyMessages: 20,
   maxMessageChars: 2000,
-  // Tool results are small and answers are short prose; these cap runaway
-  // output without truncating a normal explanation.
-  maxTokens: { fast: 4000, reasoning: 8000 } as const,
+  // A ceiling on runaway output, not a target: only what is generated is
+  // billed. Adaptive thinking shares this budget with the answer, and an
+  // answer cut off at the cap is now an error rather than a reply saved as
+  // complete (loop.ts), so the ceiling leaves thinking room — the same
+  // figures the document pipeline uses (MODEL_DEFAULTS).
+  maxTokens: { fast: 8000, reasoning: 16000 } as const,
   effort: { fast: 'low', reasoning: 'high' } as const satisfies Record<
     'fast' | 'reasoning',
     Effort

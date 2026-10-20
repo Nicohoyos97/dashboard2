@@ -15,6 +15,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
+/** A turn's model calls stop here, leaving room inside maxDuration to save what was spent. */
+const TURN_DEADLINE_MS = 110_000;
+
 const bodySchema = z.object({
   sessionId: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(NICK_LIMITS.maxMessageChars),
@@ -42,9 +45,25 @@ export async function POST(request: Request) {
   const body = parsed.data;
 
   const encoder = new TextEncoder();
+  // The model stops when the reader leaves (the request is aborted, or the
+  // stream cancelled) or the turn runs out of time inside maxDuration — every
+  // token after that would be paid for and never read.
+  const gone = new AbortController();
+  request.signal.addEventListener('abort', () => gone.abort(), { once: true });
+  const signal = AbortSignal.any([gone.signal, AbortSignal.timeout(TURN_DEADLINE_MS)]);
+  let closed = false;
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const emit = (event: NickEvent) => controller.enqueue(encoder.encode(encode(event)));
+      // Once the stream is closed nothing more can be written to it; writing
+      // anyway threw, and the error path then tried to write the error.
+      const emit = (event: NickEvent) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(encode(event)));
+        } catch {
+          closed = true;
+        }
+      };
       runNickTurn({
         userId: user.id,
         entity,
@@ -53,13 +72,22 @@ export async function POST(request: Request) {
         message: body.message,
         context: body.context,
         emit,
+        signal,
       })
         .catch((error: unknown) => {
           if (!(error instanceof NickError))
             console.error('[nick] turn failed:', error instanceof Error ? error.name : 'unknown');
           emit({ type: 'error', code: error instanceof NickError ? error.code : 'model_error' });
         })
-        .finally(() => controller.close());
+        .finally(() => {
+          if (closed) return;
+          closed = true;
+          controller.close();
+        });
+    },
+    cancel() {
+      closed = true;
+      gone.abort();
     },
   });
 

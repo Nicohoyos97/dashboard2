@@ -51,6 +51,8 @@ export async function routeMessage(
   anthropic: Anthropic,
   model: string,
   input: RouterInput,
+  /** The router is a model call of its own, every turn: its tokens count against the daily budget too. */
+  onUsage?: (usage: { input: number; output: number }) => void,
 ): Promise<RouterDecision> {
   const format = apiOutputFormat(routerOutputSchema);
   const pending = input.pendingActionLabel
@@ -69,6 +71,13 @@ export async function routeMessage(
       },
       { timeout: ROUTER_TIMEOUT_MS },
     );
+    onUsage?.({
+      input:
+        message.usage.input_tokens +
+        (message.usage.cache_creation_input_tokens ?? 0) +
+        (message.usage.cache_read_input_tokens ?? 0),
+      output: message.usage.output_tokens,
+    });
     if (message.stop_reason !== 'end_turn') return ROUTER_FALLBACK;
     const text = message.content.find(
       (block): block is Anthropic.TextBlock => block.type === 'text',

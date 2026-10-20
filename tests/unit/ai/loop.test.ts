@@ -21,7 +21,7 @@ const PNL_CALL = {
   input: { period: null, detail: 'summary', query: null },
 };
 
-function harness(maxIterations = 8) {
+function harness(maxIterations = 8, extra: { onUsage?: (usage: { input: number; output: number }) => void } = {}) {
   const registry = new CitationRegistry();
   const events: NickEvent[] = [];
   const toolInputs: unknown[] = [];
@@ -60,6 +60,7 @@ function harness(maxIterations = 8) {
       registry,
       emit: (event) => events.push(event),
       maxIterations,
+      ...extra,
     });
   return { registry, events, toolInputs, run };
 }
@@ -167,5 +168,33 @@ describe('runToolLoop', () => {
     const outcome = await harness().run();
     expect(outcome.citations).toEqual([]);
     expect(outcome.toolCalls).toEqual([]);
+  });
+
+  it('caches the conversation as it grows, on every call of the loop', async () => {
+    const captured = mockStreams([
+      { toolUses: [PNL_CALL] },
+      { text: 'Net income was **$12,450.00** [c1] for the quarter.' },
+    ]);
+    await harness().run();
+    expect(captured).toHaveLength(2);
+    for (const body of captured) expect(isRecord(body) ? body.cache_control : null).toEqual({ type: 'ephemeral' });
+  });
+
+  it('treats an answer cut off at max_tokens as an error, not as a reply', async () => {
+    mockStreams([{ text: 'Net income was $12,450.00 [c1] and the', stopReason: 'max_tokens' }]);
+    await expect(harness().run()).rejects.toMatchObject({ code: 'model_error' });
+  });
+
+  it('reports every call it pays for, a refused one included', async () => {
+    mockStreams([
+      { toolUses: [PNL_CALL], inputTokens: 300, outputTokens: 40 },
+      { stopReason: 'refusal', inputTokens: 500, outputTokens: 7 },
+    ]);
+    const spent: { input: number; output: number }[] = [];
+    await expect(harness(8, { onUsage: (usage) => spent.push(usage) }).run()).rejects.toMatchObject({ code: 'refusal' });
+    expect(spent).toEqual([
+      { input: 300, output: 40 },
+      { input: 500, output: 7 },
+    ]);
   });
 });
