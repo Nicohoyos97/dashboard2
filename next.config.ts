@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
   // node_modules/@sparticuz/chromium symlink itself cannot be shipped (Vercel
   // rejects a function with files under a symlinked directory).
   outputFileTracingIncludes: Object.fromEntries(
-    ['/api/reports/[reportId]/pdf', '/api/reports/range/pdf', '/api/diag/pdf'].map((route) => [route, PDF_FILES]),
+    ['/api/reports/[reportId]/pdf', '/api/reports/range/pdf'].map((route) => [route, PDF_FILES]),
   ),
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];

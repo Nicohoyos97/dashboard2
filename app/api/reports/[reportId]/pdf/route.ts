@@ -71,7 +71,7 @@ export async function GET(request: Request, context: { params: Promise<{ reportI
     // Fixed code only: never leak a renderer message to the client.
     console.error(
       '[report-pdf] render failed:',
-      error instanceof ReportRenderError ? error.message : 'unknown',
+      error instanceof ReportRenderError ? error.message : error instanceof Error ? error.name : 'unknown',
     );
     return new Response(null, { status: 503 });
   }

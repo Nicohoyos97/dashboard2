@@ -108,8 +108,22 @@ async function finish(bytes: Uint8Array, coverPages: number, title: string): Pro
   return doc.save();
 }
 
+/** A failure's name and first line, for the server log: a launch error names a path or a library, never a figure. */
+function describe(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message.split('\n')[0]?.slice(0, 200) ?? ''}` : 'unknown';
+}
+
 export async function statementPdf(input: ReportHtmlInput): Promise<Uint8Array> {
-  const browser = await launch();
+  // Launching is where a deployment that did not ship Chromium fails, and it
+  // used to throw past the renderer's error handling, so the route could only
+  // log "unknown" — which is all production said while every PDF failed.
+  let browser: Browser;
+  try {
+    browser = await launch();
+  } catch (error) {
+    if (error instanceof ReportRenderError) throw error;
+    throw new ReportRenderError(`browser_launch_failed (${describe(error)})`);
+  }
   try {
     const page = await browser.newPage();
     page.setDefaultTimeout(RENDER_TIMEOUT_MS);
@@ -131,7 +145,7 @@ export async function statementPdf(input: ReportHtmlInput): Promise<Uint8Array> 
     return finish(new Uint8Array(printed), covers, documentTitle(input));
   } catch (error) {
     if (error instanceof ReportRenderError) throw error;
-    throw new ReportRenderError(error instanceof Error ? error.name : 'unknown');
+    throw new ReportRenderError(`render_failed (${describe(error)})`);
   } finally {
     await browser.close().catch(() => undefined);
   }

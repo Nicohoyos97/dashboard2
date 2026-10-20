@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     // Fixed code only: never leak a renderer message to the client.
-    console.error('[report-pdf] render failed:', error instanceof ReportRenderError ? error.message : 'unknown');
+    console.error('[report-pdf] render failed:', error instanceof ReportRenderError ? error.message : error instanceof Error ? error.name : 'unknown');
     return new Response(null, { status: 503 });
   }
 
