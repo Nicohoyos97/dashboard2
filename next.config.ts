@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
   // (lib/reports/report-assets.ts), so tracing has to be told to ship them.
   outputFileTracingIncludes: {
     '/api/reports/[reportId]/pdf': ['./lib/reports/assets/**'],
+    '/api/diag/pdf': ['./lib/reports/assets/**'],
   },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
