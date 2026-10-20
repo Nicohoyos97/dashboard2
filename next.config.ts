@@ -30,7 +30,6 @@ const SECURITY_HEADERS = [
 
 const PDF_FILES = [
   './lib/reports/assets/**',
-  './node_modules/@sparticuz/chromium/bin/**',
   './node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**',
 ];
 
@@ -43,7 +42,9 @@ const nextConfig: NextConfig = {
   // (lib/reports/report-assets.ts), and Chromium itself — @sparticuz/chromium
   // unpacks its binary from its own bin/ at runtime, and without this every
   // PDF on Vercel failed with "The input directory … bin does not exist". The
-  // second glob is pnpm's real path, which is where the package looks.
+  // glob is pnpm's real path, which is where the package looks; the
+  // node_modules/@sparticuz/chromium symlink itself cannot be shipped (Vercel
+  // rejects a function with files under a symlinked directory).
   outputFileTracingIncludes: Object.fromEntries(
     ['/api/reports/[reportId]/pdf', '/api/reports/range/pdf', '/api/diag/pdf'].map((route) => [route, PDF_FILES]),
   ),
