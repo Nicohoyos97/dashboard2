@@ -1,7 +1,8 @@
 import type { NavItem } from '@/lib/nav';
 
 import { NavList } from './NavList';
-import { type ShellUser, UserMenu } from './UserMenu';
+import { UserMenu } from './lazy-menus';
+import type { ShellUser } from './UserMenu';
 
 export type { ShellUser } from './UserMenu';
 

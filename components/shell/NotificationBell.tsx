@@ -1,45 +1,47 @@
 'use client';
 
-import { Bell } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { Popover } from 'radix-ui';
-import { useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 
 import { Link } from '@/i18n/navigation';
 import { markNotificationsRead } from '@/lib/portal/notification-actions';
 import type { PortalNotification } from '@/lib/portal/notifications';
 
+import { BellTrigger } from './menu-triggers';
+
 // The notifications control in the top bar (§7). The badge counts unread rows
 // and the panel marks them read when it opens, so the count means "since you
 // last looked" rather than "ever". An empty list says so — no placeholder rows.
-export function NotificationBell({ notifications }: { notifications: PortalNotification[] }) {
+// Loaded on demand through lazy-menus.tsx, which renders the same trigger until then.
+export function NotificationBellLoaded({ notifications, defaultOpen = false }: { notifications: PortalNotification[]; defaultOpen?: boolean }) {
   const t = useTranslations('Notifications');
   const format = useFormatter();
   const [, startTransition] = useTransition();
   const unread = notifications.filter((notification) => notification.readAt === null);
+  const markRead = () => {
+    if (unread.length === 0) return;
+    startTransition(async () => {
+      await markNotificationsRead(unread.map((notification) => notification.id));
+    });
+  };
+  // Radix calls onOpenChange for an opening, not for a panel born open: a click
+  // that arrived before this code did opens it that way, and still counts.
+  useEffect(() => {
+    if (defaultOpen) markRead();
+    // Once, for the panel this mount opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Popover.Root
+      defaultOpen={defaultOpen}
       onOpenChange={(open) => {
-        if (!open || unread.length === 0) return;
-        startTransition(async () => {
-          await markNotificationsRead(unread.map((notification) => notification.id));
-        });
+        if (open) markRead();
       }}
     >
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          aria-label={unread.length > 0 ? t('openWithCount', { count: unread.length }) : t('open')}
-          className="text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 relative inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3"
-        >
-          <Bell className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
-          {unread.length > 0 && (
-            <span className="bg-danger ring-card absolute top-1.5 right-1.5 min-w-[16px] rounded-full px-1 text-micro leading-4 font-bold text-white ring-2">
-              {unread.length > 9 ? '9+' : unread.length}
-            </span>
-          )}
-        </button>
+        <BellTrigger unread={unread.length} />
       </Popover.Trigger>
       <Popover.Portal>
         {/* On a phone the panel is a bar that drops out of the header and spans

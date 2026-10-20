@@ -13,9 +13,8 @@ import { type NavItem, breadcrumbFor } from '@/lib/nav';
 import type { PortalNotification } from '@/lib/portal/notifications';
 
 import { ThemeToggle } from '../theme/ThemeToggle';
-import { NotificationBell } from './NotificationBell';
+import { NotificationBell, TopAccountMenu } from './lazy-menus';
 import { SearchBar, type SearchTarget } from './SearchBar';
-import { TopAccountMenu } from './TopAccountMenu';
 
 const iconButton =
   'text-muted-foreground hover:bg-secondary hover:text-ink focus-visible:ring-brand/40 inline-flex size-10 items-center justify-center rounded-xl transition outline-none focus-visible:ring-3';

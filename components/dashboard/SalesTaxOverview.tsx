@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { formatPeriodCompact } from '@/lib/utils/dates';
 import { todayIn } from '@/lib/utils/timezone';
 
-import { DownloadReportsMenu } from './DownloadReportsMenu';
+import { DownloadReportsMenu } from '@/components/shell/lazy-menus';
 import { OverviewCard, OverviewEmpty, OverviewShell } from './OverviewShell';
 import { RemindersCard } from './RemindersCard';
 import { ReportTiles } from './ReportTiles';

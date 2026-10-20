@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 
-import { EntitySwitcher } from '@/components/shell/EntitySwitcher';
+import { EntitySwitcher } from '@/components/shell/lazy-menus';
 import { NavList } from '@/components/shell/NavList';
 import { type ShellUser, UserBlock } from '@/components/shell/UserBlock';
 import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';

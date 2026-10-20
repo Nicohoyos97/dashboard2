@@ -8,11 +8,10 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
-import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { MobileTabBar } from '@/components/shell/MobileTabBar';
-import { NotificationBell } from '@/components/shell/NotificationBell';
+import { DownloadReportsMenu, NotificationBell } from '@/components/shell/lazy-menus';
 import { TopBar } from '@/components/shell/TopBar';
 import { getCurrentEntity, listEntities } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';

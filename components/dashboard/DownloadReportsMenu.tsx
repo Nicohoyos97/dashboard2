@@ -1,9 +1,10 @@
 'use client';
 
-import { ChevronDown, Download, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from 'radix-ui';
 
+import { DownloadTrigger } from '@/components/shell/menu-triggers';
 import { Link } from '@/i18n/navigation';
 import { DOWNLOAD_MENU_LIMIT, type DownloadItem } from '@/lib/portal/downloads';
 
@@ -16,25 +17,22 @@ import { DOWNLOAD_MENU_LIMIT, type DownloadItem } from '@/lib/portal/downloads';
 // variant rides the app shell's own bar — same icon and caret, shortened to
 // "Reports" because the download icon already says what it does. Each variant
 // hides at the other's breakpoint, so only one is ever on screen.
-export function DownloadReportsMenu({ items, variant = 'page' }: { items: DownloadItem[]; variant?: 'page' | 'compact' }) {
+export function DownloadReportsMenuLoaded({
+  items,
+  variant = 'page',
+  defaultOpen = false,
+}: {
+  items: DownloadItem[];
+  variant?: 'page' | 'compact';
+  defaultOpen?: boolean;
+}) {
   const t = useTranslations('Overview');
   if (items.length === 0) return null;
   const compact = variant === 'compact';
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root defaultOpen={defaultOpen}>
       <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          className={
-            compact
-              ? 'bg-blue hover:bg-blue-hover inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-small font-semibold text-white transition md:hidden'
-              : 'bg-blue hover:bg-blue-hover hidden h-11 items-center gap-2 rounded-xl px-4 text-ui font-semibold text-white transition md:inline-flex'
-          }
-        >
-          <Download className={compact ? 'size-[15px]' : 'size-4'} aria-hidden="true" />
-          {compact ? t('downloadReportsShort') : t('downloadReports')}
-          <ChevronDown className={compact ? 'size-[15px] opacity-80' : 'size-4 opacity-80'} aria-hidden="true" />
-        </button>
+        <DownloadTrigger compact={compact} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="end" sideOffset={6} collisionPadding={8} className="border-line bg-card z-50 w-[min(320px,calc(100vw-2rem))] rounded-xl border p-1.5 shadow-menu">

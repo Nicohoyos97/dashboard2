@@ -6,7 +6,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { CompositionBars } from '@/components/charts/CompositionBars';
 import { IncomeExpenseChart } from '@/components/charts/IncomeExpenseChart';
-import { DownloadReportsMenu } from '@/components/dashboard/DownloadReportsMenu';
+import { DownloadReportsMenu } from '@/components/shell/lazy-menus';
 import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';

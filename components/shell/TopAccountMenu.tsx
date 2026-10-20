@@ -5,43 +5,30 @@
 // letterboxed inside it. It opens the same menu as the user row at the bottom of
 // the sidebar — Profile and Sign out — so the two are never a different set of
 // choices depending on where you clicked.
-import { useTranslations } from 'next-intl';
 import { DropdownMenu } from 'radix-ui';
 
-import { AccountMenuItems, initials, useSignOutForm } from './account-menu';
+import { AccountMenuItems, useSignOutForm } from './account-menu';
+import { AccountTrigger } from './menu-triggers';
 
-export function TopAccountMenu({
+export function TopAccountMenuLoaded({
   businessName,
   logoUrl,
   profileHref,
+  defaultOpen = false,
 }: {
   businessName: string;
   logoUrl: string | null;
   profileHref: string;
+  defaultOpen?: boolean;
 }) {
-  const t = useTranslations('Shell');
   const signOutForm = useSignOutForm();
 
   return (
     <>
       {signOutForm.element}
-      <DropdownMenu.Root>
+      <DropdownMenu.Root defaultOpen={defaultOpen}>
         <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            aria-label={t('accountMenu')}
-            title={businessName}
-            className="border-line bg-secondary hover:border-brand/40 focus-visible:ring-brand/40 ml-1 inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border transition outline-none focus-visible:ring-3"
-          >
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- firm-set, arbitrary host
-              <img src={logoUrl} alt="" className="size-full object-cover" />
-            ) : (
-              <span className="text-muted-foreground text-caption font-semibold">
-                {initials(businessName)}
-              </span>
-            )}
-          </button>
+          <AccountTrigger businessName={businessName} logoUrl={logoUrl} />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content

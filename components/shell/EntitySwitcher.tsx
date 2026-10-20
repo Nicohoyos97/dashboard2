@@ -5,7 +5,7 @@
 // which validates membership and sets the hb_entity cookie; the refresh makes
 // every report, document and Nick context follow. Radix DropdownMenu gives
 // keyboard navigation + roving focus for free.
-import { Building2, Check, ChevronsUpDown } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu } from 'radix-ui';
@@ -14,12 +14,16 @@ import { useTransition } from 'react';
 import type { CurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { switchEntity } from '@/lib/entities/actions';
 
-export function EntitySwitcher({
+import { EntityTrigger } from './menu-triggers';
+
+export function EntitySwitcherLoaded({
   entities,
   currentId,
+  defaultOpen = false,
 }: {
   entities: CurrentEntity[];
   currentId: string;
+  defaultOpen?: boolean;
 }) {
   const t = useTranslations('Shell');
   const router = useRouter();
@@ -35,27 +39,9 @@ export function EntitySwitcher({
   }
 
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root defaultOpen={defaultOpen}>
       <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          aria-label={t('switchBusiness')}
-          disabled={isPending}
-          className="border-line bg-card hover:bg-secondary focus-visible:ring-brand/40 flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left outline-none focus-visible:ring-3 disabled:opacity-60"
-        >
-          <span className="bg-blue-pale text-link flex size-8 shrink-0 items-center justify-center rounded-lg">
-            <Building2 className="size-4" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="text-muted-foreground block text-micro font-medium">
-              {t('currentBusiness')}
-            </span>
-            <span className="text-ink block truncate text-ui font-semibold">
-              {current?.name}
-            </span>
-          </span>
-          <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-        </button>
+        <EntityTrigger name={current?.name} disabled={isPending} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
