@@ -10,6 +10,7 @@
 import 'server-only';
 
 import { toCents } from '@/lib/money';
+import { accountLabel } from '@/lib/portal/account-label';
 import { loadPublishedReport, loadReportLines } from '@/lib/portal/load';
 import { buildTree } from '@/lib/reports/tree';
 import type { LineNode, ReportRow } from '@/lib/reports/types';
@@ -157,7 +158,10 @@ export async function loadLineLedger(supabase: Db, entityId: string, lineId: str
   if (!report || report.reportType !== 'profit_and_loss') return null;
   const detail = ledgerDetailFrom(accounts, buildTree(rows))?.lines.get(lineId) ?? null;
   const txns = detail ? await loadLedgerTransactions(supabase, entityId, detail.accountIds) : [];
-  return { line: { id: line.id, accountName: line.account_name }, report, detail, txns };
+  // The name as the statement on screen reads it — without the account code,
+  // which loadReportLines takes off the whole statement at once.
+  const accountName = rows.find((row) => row.id === lineId)?.accountName ?? accountLabel(line.account_name);
+  return { line: { id: line.id, accountName }, report, detail, txns };
 }
 
 /** Rows one search reads at most, in pages; past it the result says it is partial rather than present a part as the whole. */

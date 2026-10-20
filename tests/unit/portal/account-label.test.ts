@@ -58,6 +58,42 @@ describe('withAccountLabels', () => {
   });
 
 
+  it('reads the code off a total when extraction split it off the account above', () => {
+    // Que la creo Burger's September P&L, as stored: each account's code in its
+    // own column, and the totals that close a parent account still printing it.
+    const lines = withAccountLabels([
+      { accountName: 'Expenses', isSection: true },
+      { accountName: 'Rent', accountNumber: '5943' },
+      { accountName: 'Utilities', accountNumber: '6300', isSection: true },
+      { accountName: 'Electricity', accountNumber: '63001' },
+      { accountName: 'Gas', accountNumber: '63002' },
+      { accountName: 'Total for 6300 - Utilities', isTotal: true },
+      { accountName: 'Vehicle expense', accountNumber: '9020', isSection: true },
+      { accountName: 'Fuel', accountNumber: '99201' },
+      { accountName: 'Total for 9020- Vehicle expense', isTotal: true },
+      { accountName: 'Total for Expenses', isTotal: true },
+    ]);
+    expect(lines.filter((l) => l.isTotal).map((l) => l.accountName)).toEqual([
+      'Total for Utilities',
+      'Total for Vehicle expense',
+      'Total for Expenses',
+    ]);
+  });
+
+  it('reads the code off a total that closes a coded account, even in a mostly uncoded statement', () => {
+    const lines = withAccountLabels([
+      { accountName: 'Rent' },
+      { accountName: 'Payroll' },
+      { accountName: 'Insurance' },
+      { accountName: 'Utilities', accountNumber: '6300', isSection: true },
+      { accountName: 'Electricity' },
+      { accountName: 'Total for 6300 - Utilities', isTotal: true },
+      { accountName: '1099-NEC contractors' },
+    ]);
+    expect(lines.map((l) => l.accountName)).toContain('Total for Utilities');
+    expect(lines.map((l) => l.accountName)).toContain('1099-NEC contractors');
+  });
+
   it('keeps the note on lines it is the only thing telling apart', () => {
     const lines = withAccountLabels([
       { accountName: 'Food (bank)' },

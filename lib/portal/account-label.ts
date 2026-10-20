@@ -41,16 +41,30 @@ export function accountLabel(name: string): string {
   return withoutNote(withoutCode(name));
 }
 
-type Labelled = { accountName: string; isSection?: boolean; isTotal?: boolean };
+type Labelled = { accountName: string; accountNumber?: string | null; isSection?: boolean; isTotal?: boolean };
+
+const NUMBER = /^\d{3,7}$/;
+
+/** The code a line carries: in its own column when extraction split it off, else at the front of its name. */
+function codeOf(line: Labelled): string | null {
+  const own = line.accountNumber?.trim() ?? '';
+  if (NUMBER.test(own)) return own;
+  return ACCOUNT_CODE.test(line.accountName.trim()) ? (/\d{3,7}/.exec(line.accountName)?.[0] ?? null) : null;
+}
 
 /**
  * Codes come as a system: a statement carries them on its accounts or it does
  * not. Reading them off only where most of the amount lines have one keeps a
  * lone "1099-NEC contractors" in an uncoded statement exactly as printed.
+ *
+ * A code counts wherever the line keeps it. Extraction often splits it off an
+ * account ("6300" | "Utilities") and leaves it inside the total that closes
+ * the account ("Total for 6300 - Utilities") — counting names alone, such a
+ * statement read as uncoded and every one of those totals kept its code.
  */
 function isCoded(lines: readonly Labelled[]): boolean {
   const accounts = lines.filter((line) => !line.isSection && !line.isTotal);
-  const coded = accounts.filter((line) => ACCOUNT_CODE.test(line.accountName.trim())).length;
+  const coded = accounts.filter((line) => codeOf(line) !== null).length;
   return coded > 0 && coded * 2 >= accounts.length;
 }
 
@@ -60,7 +74,14 @@ function isCoded(lines: readonly Labelled[]): boolean {
  * "Food" would be a statement the client cannot check.
  */
 export function withAccountLabels<T extends Labelled>(lines: readonly T[]): T[] {
-  const named = isCoded(lines) ? lines.map((line) => ({ ...line, accountName: withoutCode(line.accountName) })) : lines;
+  // Even in a statement that is not coded as a whole, a total names the code of
+  // an account printed above it: "Total for 9020 - Vehicle expense" closes 9020.
+  // Only codes extraction split into their own column: a name that merely
+  // starts with digits ("1099-NEC contractors") must not reach its total.
+  const codes = new Set(lines.flatMap((line) => (NUMBER.test(line.accountNumber?.trim() ?? '') ? [line.accountNumber!.trim()] : [])));
+  const closesKnownCode = (line: T) => line.isTotal && [...codes].some((code) => new RegExp(`^(?:total\\s+(?:for\\s+)?)?${code}\\b`, 'i').test(line.accountName.trim()));
+  const coded = isCoded(lines);
+  const named = lines.map((line) => (coded || closesKnownCode(line) ? { ...line, accountName: withoutCode(line.accountName) } : line));
   const counts = new Map<string, number>();
   for (const line of named) {
     const label = withoutNote(line.accountName).toLowerCase();
