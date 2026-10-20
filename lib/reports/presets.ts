@@ -1,13 +1,13 @@
-// Relative date presets for the period picker — the shapes an owner actually
+// Relative date presets for the report period — the shapes an owner actually
 // asks for ("this quarter", "last year") rather than the list of ranges the
 // firm happens to have published.
 //
 // These are two different questions and the portal must not blur them. A
-// preset resolves to a calendar range; whether a published statement covers
-// that range is answered separately, and when nothing does the page says so
-// instead of estimating from a longer period (spec §3, and the reason
-// granularity.ts exists). Everything here is pure date arithmetic on the
-// business's own "today", so a Florida client's "this month" is their month.
+// preset resolves to a calendar range; whether the published statements cover
+// that range is answered separately (lib/reports/range.ts adds a range up from
+// them, and a ledger, or says why it cannot), and nothing is ever estimated
+// from a longer period (spec §3). Everything here is pure date arithmetic on
+// the business's own "today", so a Florida client's "this month" is their month.
 import {
   firstDayOfMonth,
   lastDayOfMonth,

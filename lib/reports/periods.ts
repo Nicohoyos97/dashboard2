@@ -1,6 +1,9 @@
 // Which periods have data and which granularities the sources support.
 // Spec §3: never fabricate granularity — a half-year P&L cannot show months;
-// daily bank transactions can be bucketed into any calendar unit.
+// daily bank transactions can be bucketed into any calendar unit. Since
+// 2026-10-19 a month *can* be cut out of a longer P&L, but only from its
+// published General Ledger's own transactions, never by proration
+// (lib/reports/range.ts).
 import {
   addDays,
   daysBetween,

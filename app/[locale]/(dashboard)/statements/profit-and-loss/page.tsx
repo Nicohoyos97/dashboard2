@@ -1,40 +1,36 @@
 // Profit & Loss (INITIAL_PROMPT.md §7): headline cards read from the printed
 // totals, expense composition, a trend across published periods, and the
-// interactive statement. Only published reports; only periods with data.
+// interactive statement. Only published figures: a published statement for
+// exactly the dates chosen, or those dates added up from the published
+// statements and, inside a month, its General Ledger (lib/reports/range.ts).
 import { getLocale, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
-import { CompositionBars } from '@/components/charts/CompositionBars';
-import { NickProvider } from '@/components/chat/NickContext';
-import { NickPanel } from '@/components/chat/NickPanel';
-import { TrendBars } from '@/components/charts/TrendBars';
-import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
-import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
-import { periodPickerProps } from '@/lib/portal/period-picker';
-import { todayIn } from '@/lib/utils/timezone';
+import { ReportPeriodBar } from '@/components/dashboard/ReportPeriodBar';
 import { EmptyStatement } from '@/components/statements/EmptyStatement';
-import { MetricCards } from '@/components/statements/MetricCards';
-import { StatementActions } from '@/components/statements/StatementActions';
+import { Notice } from '@/components/portal/Notice';
+import { ProfitAndLossView } from '@/components/statements/ProfitAndLossView';
 import { PortalPage } from '@/components/portal/PortalPage';
-import { StatementTable } from '@/components/statements/StatementTable';
 import { chosenComparison, resolveComparison } from '@/lib/portal/statement-compare';
 import { logAccess } from '@/lib/audit/logAccess';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
 import { ledgerDetailFrom, loadLedgerAccounts, loadPublishedLedgers } from '@/lib/ledger/load';
 import { loadPortalEntitySettings, loadPublishedReports, loadReportLinesFor } from '@/lib/portal/load';
-import { granularityChoices } from '@/lib/portal/granularity';
 import { periodParam } from '@/lib/portal/period-param';
-import { leafItems, selectReport, statementPeriods } from '@/lib/portal/statement-page';
-import { availablePeriods } from '@/lib/reports/periods';
+import { rangeFigures, rangeSpark } from '@/lib/portal/range-figures';
+import { loadRangeView, periodBarProps, rangeNotice, selectPeriod, selectedRange } from '@/lib/portal/report-period';
+import { leafItems } from '@/lib/portal/statement-page';
 import { PNL_SYNONYMS, type PnlMetricKey, type PnlMetrics, pnlMetrics } from '@/lib/reports/pnl';
 import { findSection } from '@/lib/reports/sections';
 import { buildTree } from '@/lib/reports/tree';
 import { createClient } from '@/lib/supabase/server';
 import { comparableSeries } from '@/lib/reports/series';
 import { formatPeriod, formatPeriodCompact } from '@/lib/utils/dates';
+import { todayIn } from '@/lib/utils/timezone';
 
 const TREND_LIMIT = 8;
+const KEYS: PnlMetricKey[] = ['revenue', 'cogs', 'grossProfit', 'operatingExpenses', 'netIncome'];
 
 export default async function ProfitAndLossPage({ searchParams }: { searchParams: Promise<{ period?: string; compare?: string }> }) {
   const [entity, t, tOverview, locale, params] = await Promise.all([getCurrentEntity(), getTranslations('Statements'), getTranslations('Overview'), getLocale(), searchParams]);
@@ -53,9 +49,65 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   // to agree, or the URL is a way around the sale.
   if (!settings.modules.bookkeeping) notFound();
   const reports = allReports.filter((r) => r.reportType === 'profit_and_loss');
-  const report = selectReport(reports, params.period);
-  if (!report) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
+  const selection = selectPeriod(reports, params.period);
+  if (!selection) return <PortalPage title={typeLabel} lede={t('pnlLede')}><EmptyStatement kind="none" typeLabel={typeLabel} entityName={entity.name} /></PortalPage>;
 
+  const today = todayIn(settings.timezone);
+  const filters = <ReportPeriodBar {...periodBarProps({ selected: selectedRange(selection), today, presetLabel: (preset) => tOverview(`preset_${preset}`) })} />;
+  const basisOf = (basis: string | null) => t('basisLabel', { basis: (basis ?? settings.accountingBasis) === 'accrual' ? t('basisAccrual') : t('basisCash') });
+
+  // ── Dates no single statement covers: added up ─────────────────────────────
+  if (selection.mode === 'range') {
+    const periodValue = periodParam(selection.requested);
+    const view = await loadRangeView(supabase, entity.id, { reports: allReports, ledgers: publishedLedgers, currency: settings.currency }, selection.requested);
+    const notice = rangeNotice(view, tOverview, locale);
+    if (!view.ok) {
+      await logAccess({ action: 'report.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id, metadata: { period: periodValue, refused: view.reason } }, { afterResponse: true });
+      return (
+        <PortalPage title={typeLabel} lede={`${entity.name} · ${formatPeriod(selection.requested.start, selection.requested.end, locale)}`} filters={filters}>
+          {notice && <Notice text={notice} />}
+        </PortalPage>
+      );
+    }
+    const figures = rangeFigures(view.statement, view.prior, periodValue);
+    const { report, metrics } = figures;
+    const expenseLinks = compositionLinks(figures.current, figures.links);
+    const sparks = Object.fromEntries(KEYS.map((key) => [key, rangeSpark(figures, (m) => m[key])])) as Record<PnlMetricKey, number[]>;
+    const provenance = [
+      basisOf(report.basis),
+      report.comparativeStart && report.comparativeEnd ? t('comparedWithPrevious', { period: formatPeriod(report.comparativeStart, report.comparativeEnd, locale) }) : null,
+      t('sourceLabel', { source: view.statement.fromLedger ? t('sourceRangeLedger') : t('sourceRange') }),
+    ].filter(Boolean).join(' · ');
+
+    await logAccess({ action: 'report.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id, metadata: { period: periodValue, statements: figures.pieces.length } }, { afterResponse: true });
+    return (
+      <ProfitAndLossView
+        lede={`${entity.name} · ${formatPeriod(report.periodStart, report.periodEnd, locale)}`}
+        filters={filters}
+        notice={notice}
+        report={report}
+        metrics={metrics}
+        sparks={sparks}
+        provenance={provenance}
+        expenses={leafItems(findSection(figures.roots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
+          const href = expenseLinks.get(item.label);
+          return href ? { ...item, href } : item;
+        })}
+        trend={figures.pieces.length >= 2
+          ? figures.pieces.map((piece) => ({ label: formatPeriodCompact(piece.report.periodStart, piece.report.periodEnd, locale), a: piece.metrics.revenue.current?.cents ?? null, b: piece.metrics.operatingExpenses.current?.cents ?? null }))
+          : null}
+        trendOfRange
+        roots={figures.roots}
+        hasPrior={figures.hasPrior}
+        details={figures.links}
+        exports={{ csv: `/api/reports/range/csv?period=${periodValue}`, pdf: `/api/reports/range/pdf?period=${periodValue}` }}
+        businessName={entity.name}
+      />
+    );
+  }
+
+  // ── One published statement ────────────────────────────────────────────────
+  const report = selection.report;
   // Every statement this page draws — the one on screen, the one it is compared
   // with, the trend — in one query, and the month's ledger beside it. The
   // statement on screen is in the trend too; it used to be read twice.
@@ -80,7 +132,7 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
     requested: params.compare,
     preloaded: linesById,
     locale,
-    today: todayIn(settings.timezone),
+    today,
     labels: {
       printed: t('comparePrinted'),
       comparedWith: (period) => t('comparedWithPeriod', { period }),
@@ -91,38 +143,24 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
   // The month's General Ledger: a click on an account opens its transactions.
   const lineLinks = ledgerLinks(roots, ledgerDetailFrom(ledgerAccounts, roots));
   const expenseLinks = compositionLinks(roots, lineLinks);
-  const expenses = leafItems(findSection(comparison.roots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
-    const href = expenseLinks.get(item.label);
-    return href ? { ...item, href } : item;
-  });
 
   // Trend across published periods (oldest → newest), only when there are ≥ 2;
   // their lines came with the batch above.
-  const trendLines = trendReports.length >= 2 ? linesById : null;
-  const trendMetrics = trendLines ? trendReports.map((r) => pnlMetrics(r, buildTree(trendLines.get(r.id) ?? []))) : [];
-  const trend = trendLines
-    ? trendReports.map((r, index) => {
-        const m = trendMetrics[index];
-        return { label: formatPeriodCompact(r.periodStart, r.periodEnd, locale), a: m?.revenue.current?.cents ?? null, b: m?.operatingExpenses.current?.cents ?? null };
-      })
-    : null;
+  const trendMetrics = trendReports.length >= 2 ? trendReports.map((r) => pnlMetrics(r, buildTree(linesById.get(r.id) ?? []))) : [];
   // The cards' sparklines, by the Overview's rule: the published periods when
   // every one of them prints the figure — a gap is never drawn as a zero —
   // otherwise the two points the card already states, otherwise no shape.
-  const sparkOf = (pick: (m: PnlMetrics) => number | null, current: number | null, prior: number | null): number[] => {
-    const points = trendMetrics.flatMap((m) => {
-      const value = pick(m);
+  const sparkOf = (key: PnlMetricKey): number[] => {
+    const points = trendMetrics.flatMap((m: PnlMetrics) => {
+      const value = m[key].current?.cents ?? null;
       return value === null ? [] : [value];
     });
     if (points.length === trendMetrics.length && points.length >= 2) return points;
+    const current = metrics[key].current?.cents ?? null;
+    const prior = metrics[key].prior?.cents ?? null;
     return current !== null && prior !== null ? [prior, current] : [];
   };
-  const moneySpark = (key: PnlMetricKey) =>
-    sparkOf((m) => m[key].current?.cents ?? null, metrics[key].current?.cents ?? null, metrics[key].prior?.cents ?? null);
 
-  const periodLabel = formatPeriod(report.periodStart, report.periodEnd, locale);
-  // Same rule as the PDF: a statement that prints no method is read on the one set at onboarding.
-  const basis = t('basisLabel', { basis: (report.basis ?? settings.accountingBasis) === 'accrual' ? t('basisAccrual') : t('basisCash') });
   const comparative = comparison.note
     ? comparison.note
     : report.comparativeStart && report.comparativeEnd
@@ -130,90 +168,41 @@ export default async function ProfitAndLossPage({ searchParams }: { searchParams
       : null;
   // Where the figures came from, once, under them: the basis, the comparison,
   // the source and the promise that nothing on the page is an estimate.
-  const provenance = [basis, comparative, t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })]
+  const provenance = [basisOf(report.basis), comparative, t('sourceLabel', { source: report.source === 'firm_entry' ? t('sourceEntry') : t('sourceDocument') })]
     .filter(Boolean)
     .join(' · ');
 
   await logAccess({ action: 'report.view', resourceType: 'financial_report', resourceId: report.id, businessEntityId: entity.id }, { afterResponse: true });
 
   return (
-    <NickProvider>
-    <PortalPage
-      title={typeLabel}
-      lede={`${entity.name} · ${periodLabel}`}
-      filters={
-        <>
-          <GranularityTabs choices={granularityChoices(availablePeriods(reports, [], { locale }), { start: report.periodStart, end: report.periodEnd })} />
-          <PeriodPicker
-            {...periodPickerProps({
-              periods: statementPeriods(reports, locale),
-              selected: { start: report.periodStart, end: report.periodEnd, label: '', kind: 'custom', sources: [] },
-              today: todayIn(settings.timezone),
-              locale,
-              presetLabel: (preset) => tOverview(`preset_${preset}`),
-            })}
-          />
-        </>
-      }
-      actions={<StatementActions versionId={report.documentVersionId} csvHref={`/api/reports/${report.id}/csv`} pdfHref={`/api/reports/${report.id}/pdf`} />}
-    >
-      <div className="mt-6">
-        <MetricCards
-          currency={report.currency}
-          items={[
-            { kind: 'money', label: t('revenue'), metric: metrics.revenue, upIsGood: true, trend: moneySpark('revenue') },
-            { kind: 'money', label: t('grossProfit'), metric: metrics.grossProfit, upIsGood: true, trend: moneySpark('grossProfit') },
-            { kind: 'money', label: t('operatingExpenses'), metric: metrics.operatingExpenses, upIsGood: false, trend: moneySpark('operatingExpenses') },
-            { kind: 'money', label: t('netIncome'), metric: metrics.netIncome, upIsGood: true, trend: moneySpark('netIncome') },
-          ]}
-          secondary={[
-            { kind: 'money', label: t('cogs'), metric: metrics.cogs, upIsGood: false },
-            { kind: 'ratio', label: t('grossMargin'), ratio: { key: 'grossMargin', current: metrics.grossMarginPct, prior: metrics.priorGrossMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
-            { kind: 'ratio', label: t('netMargin'), ratio: { key: 'netMargin', current: metrics.netMarginPct, prior: metrics.priorNetMarginPct, ...(metrics.marginReason ? { reason: metrics.marginReason } : {}) }, upIsGood: true, format: 'pct' },
-          ]}
-          secondaryLabel={t('ratiosLabel')}
-        />
-      </div>
-
-      <p className="text-muted-foreground mt-3 text-small">
-        {provenance}. {t('nothingEstimated')}
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
-          <h2 className="text-ink text-title font-semibold">{t('compositionExpenses')}</h2>
-          <div className="mt-4">
-            {expenses.length > 0 ? <CompositionBars items={expenses} currency={report.currency} otherLabel={t('other')} /> : <p className="text-muted-foreground text-ui">{t('notPrinted')}</p>}
-          </div>
-        </section>
-        <section className="border-line bg-card rounded-2xl border p-5 shadow-card">
-          <h2 className="text-ink text-title font-semibold">{t('trendRevenueExpenses')}</h2>
-          <div className="mt-4">
-            {trend ? (
-              <TrendBars points={trend} currency={report.currency} seriesA={t('revenue')} seriesB={t('operatingExpenses')} summary={t('trendSummary', { count: trend.length, latest: trend[trend.length - 1]?.label ?? '' })} />
-            ) : (
-              <p className="text-muted-foreground text-ui">{t('trendUnavailable')}</p>
-            )}
-          </div>
-        </section>
-      </div>
-
-      <section className="border-line bg-card mt-6 rounded-2xl border p-5 shadow-card print:border-0 print:shadow-none">
-        <StatementTable
-          roots={comparison.roots}
-          meta={{ reportType: 'profit_and_loss', currency: report.currency, hasPrior: comparison.hasPrior, source: report.source, versionId: report.documentVersionId }}
-          details={lineLinks}
-          compare={{
-            leading: comparison.leading,
-            presets: comparison.presets,
-            published: comparison.published,
-            current: comparison.current,
-            currentLabel: comparison.currentLabel,
-          }}
-        />
-      </section>
-    </PortalPage>
-    <NickPanel page="profit_and_loss" period={periodParam({ start: report.periodStart, end: report.periodEnd })} businessName={entity.name} />
-    </NickProvider>
+    <ProfitAndLossView
+      lede={`${entity.name} · ${formatPeriod(report.periodStart, report.periodEnd, locale)}`}
+      filters={filters}
+      notice={null}
+      report={report}
+      metrics={metrics}
+      sparks={Object.fromEntries(KEYS.map((key) => [key, sparkOf(key)])) as Record<PnlMetricKey, number[]>}
+      provenance={provenance}
+      expenses={leafItems(findSection(comparison.roots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
+        const href = expenseLinks.get(item.label);
+        return href ? { ...item, href } : item;
+      })}
+      trend={trendMetrics.length >= 2
+        ? trendReports.map((r, index) => ({ label: formatPeriodCompact(r.periodStart, r.periodEnd, locale), a: trendMetrics[index]?.revenue.current?.cents ?? null, b: trendMetrics[index]?.operatingExpenses.current?.cents ?? null }))
+        : null}
+      roots={comparison.roots}
+      hasPrior={comparison.hasPrior}
+      details={lineLinks}
+      compare={{
+        leading: comparison.leading,
+        presets: comparison.presets,
+        published: comparison.published,
+        current: comparison.current,
+        currentLabel: comparison.currentLabel,
+      }}
+      exports={{ csv: `/api/reports/${report.id}/csv`, pdf: `/api/reports/${report.id}/pdf` }}
+      nickPeriod={periodParam({ start: report.periodStart, end: report.periodEnd })}
+      businessName={entity.name}
+    />
   );
 }

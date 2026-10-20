@@ -247,16 +247,27 @@ export async function searchLedgerTransactions(
   return { txns: [...found.values()].sort((a, b) => b.date.localeCompare(a.date)), truncated };
 }
 
-/** Every transaction of these accounts, newest first. Paged: a month of sales can pass PostgREST's row cap. */
-export async function loadLedgerTransactions(supabase: Db, entityId: string, accountIds: readonly string[]): Promise<LedgerTxn[]> {
+/**
+ * Every transaction of these accounts, newest first — or only those dated
+ * inside `within`, for a range that cuts through the month. Paged: a month of
+ * sales can pass PostgREST's row cap.
+ */
+export async function loadLedgerTransactions(
+  supabase: Db,
+  entityId: string,
+  accountIds: readonly string[],
+  within?: { start: string; end: string },
+): Promise<LedgerTxn[]> {
   if (accountIds.length === 0) return [];
   const out: LedgerTxn[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('ledger_transactions')
       .select(TXN_COLUMNS)
       .eq('business_entity_id', entityId)
-      .in('account_id', [...accountIds])
+      .in('account_id', [...accountIds]);
+    if (within) query = query.gte('txn_date', within.start).lte('txn_date', within.end);
+    const { data, error } = await query
       .order('txn_date', { ascending: false })
       .order('position', { ascending: true })
       .range(from, from + PAGE - 1);

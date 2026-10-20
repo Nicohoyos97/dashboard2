@@ -12,8 +12,7 @@ import { CompositionBars } from '@/components/charts/CompositionBars';
 import { MonthlySpendChart } from '@/components/charts/MonthlySpendChart';
 import { NickPanel } from '@/components/chat/NickPanel';
 import { ExportMenu } from '@/components/dashboard/ExportMenu';
-import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
-import { periodPickerProps } from '@/lib/portal/period-picker';
+import { ReportPeriodBar } from '@/components/dashboard/ReportPeriodBar';
 import { todayIn } from '@/lib/utils/timezone';
 import { StatCards, type StatCardItem } from '@/components/dashboard/StatCards';
 import { ExpenseFilterBar } from '@/components/expenses/ExpenseFilterBar';
@@ -36,10 +35,12 @@ import {
   loadExpenseSummary,
   loadExpenseVendors,
 } from '@/lib/portal/expenses';
+import { loadPublishedLedgers } from '@/lib/ledger/load';
 import { loadPortalEntitySettings, loadPublishedBankStatements, loadPublishedReports } from '@/lib/portal/load';
 import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
+import { periodBarProps, selectPeriod } from '@/lib/portal/report-period';
 import { expenseDelta } from '@/lib/reports/expenses';
-import { availablePeriods, bankAccountsCoverPeriod, priorPeriod } from '@/lib/reports/periods';
+import { availablePeriods, bankAccountsCoverPeriod, periodKind, periodLabel, priorPeriod } from '@/lib/reports/periods';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<ExpenseSearchParams> }) {
@@ -56,10 +57,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   if (!entity) return <PortalPage title={t('title')} lede={t('lede')}><PortalEmpty kind="pending" /></PortalPage>;
 
   const supabase = await createClient();
-  const [settings, reports, statements] = await Promise.all([
+  const [settings, reports, statements, ledgers] = await Promise.all([
     loadPortalEntitySettings(supabase, entity.id),
     loadPublishedReports(supabase, entity.id),
     loadPublishedBankStatements(supabase, entity.id),
+    loadPublishedLedgers(supabase, entity.id),
   ]);
   const currency = settings.currency;
   // The nav hides this page when the firm did not sell the module; the route has
@@ -67,8 +69,18 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   if (!settings.modules.bookkeeping) notFound();
   const currencyStatements = statements.filter((statement) => statement.currency === currency);
   const periods = availablePeriods(reports, currencyStatements, { locale }).filter((period) => period.sources.includes('bank'));
-  const requested = parsePeriodParam(typeof params.period === 'string' ? params.period : undefined);
-  const selected = (requested && periods.find((p) => p.start === requested.start && p.end === requested.end)) ?? periods[0] ?? null;
+  const periodValue = typeof params.period === 'string' ? params.period : undefined;
+  const requested = parsePeriodParam(periodValue);
+  // Bank activity is daily, so any dates can be read off it; whether the
+  // statements cover all of them is the `covered` check below, which says so
+  // rather than counting a missing day as zero.
+  const selected =
+    (requested && periods.find((p) => p.start === requested.start && p.end === requested.end)) ??
+    (requested && periods.length > 0
+      ? { ...requested, label: periodLabel(requested.start, requested.end, periodKind(requested.start, requested.end), locale) }
+      : null) ??
+    periods[0] ??
+    null;
 
   // The Profit & Loss is the source of expenses (owner, 2026-10-07: the firm
   // publishes statements, not bank activity). It wins whenever one is
@@ -76,14 +88,19 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   // was shown that single bank month and nothing else.
   const pnlReports = reports.filter((report) => report.reportType === 'profit_and_loss');
   // The account a click on the P&L or the Overview asked to open.
-  const lineParam = z.string().uuid().safeParse(params.line);
-  if (pnlReports.length > 0) {
+  // A published statement's line is a uuid; a range's is its account path's id (lib/reports/range.ts).
+  const lineParam = z.union([z.string().uuid(), z.string().regex(/^r[0-9a-z]{1,12}$/)]).safeParse(params.line);
+  const selection = selectPeriod(pnlReports, periodValue);
+  if (selection) {
     return (
       <PnlExpensesView
         supabase={supabase}
         entity={entity}
         reports={pnlReports}
-        period={typeof params.period === 'string' ? params.period : undefined}
+        allReports={reports}
+        ledgers={ledgers}
+        currency={currency}
+        selection={selection}
         line={lineParam.success ? lineParam.data : undefined}
         locale={locale}
         today={todayIn(settings.timezone)}
@@ -224,7 +241,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <PortalPage
         title={t('title')}
         lede={`${entity.name} · ${selected.label}`}
-        filters={<PeriodPicker {...periodPickerProps({ periods, selected, today: todayIn(settings.timezone), locale, presetLabel: (preset) => tOverview(`preset_${preset}`) })} />}
+        filters={<ReportPeriodBar {...periodBarProps({ selected, today: todayIn(settings.timezone), presetLabel: (preset) => tOverview(`preset_${preset}`) })} />}
         actions={
           <ExportMenu
             formats={[

@@ -21,12 +21,18 @@ export type LedgerAccountRow = {
   count: number | null;
   /** The transactions, when they came with the page (the account the client arrived for); any other is fetched when opened. */
   txns: LedgerTxn[] | null;
+  /** Where the account's transactions and their CSV come from; a published statement's line by default, a range's line otherwise. */
+  sources?: { txns: string; csv: string };
 };
 
 type Fetched = LedgerTxn[] | 'loading' | 'failed';
 
-async function fetchTransactions(lineId: string): Promise<LedgerTxn[]> {
-  const response = await fetch(`/api/ledger/lines/${lineId}`, { cache: 'no-store' });
+function sourcesOf(row: LedgerAccountRow): { txns: string; csv: string } {
+  return row.sources ?? { txns: `/api/ledger/lines/${row.id}`, csv: `/api/ledger/lines/${row.id}/csv` };
+}
+
+async function fetchTransactions(url: string): Promise<LedgerTxn[]> {
+  const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) throw new Error(`ledger_line_${response.status}`);
   const body = (await response.json()) as { txns?: unknown };
   if (!Array.isArray(body.txns)) throw new Error('ledger_line_shape');
@@ -63,7 +69,7 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
       if (!open.has(row.id) || row.count === null || row.txns !== null || requested.current.has(row.id)) continue;
       requested.current.add(row.id);
       setFetched((prev) => ({ ...prev, [row.id]: 'loading' }));
-      fetchTransactions(row.id)
+      fetchTransactions(sourcesOf(row).txns)
         .then((txns) => setFetched((prev) => ({ ...prev, [row.id]: txns })))
         .catch(() => setFetched((prev) => ({ ...prev, [row.id]: 'failed' })));
     }
@@ -173,7 +179,7 @@ export function LedgerAccountsTable({ rows, currency, openId }: { rows: LedgerAc
                         <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden="true" />
                         {t('addsUp', { count: txns.length, total: formatCents(row.cents, currency) })}
                       </p>
-                      <a href={`/api/ledger/lines/${row.id}/csv`} download className="text-link inline-flex items-center gap-1.5 font-semibold hover:underline">
+                      <a href={sourcesOf(row).csv} download className="text-link inline-flex items-center gap-1.5 font-semibold hover:underline">
                         <Download className="size-4" aria-hidden="true" />
                         {t('downloadCsv')}
                       </a>

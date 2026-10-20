@@ -54,17 +54,19 @@ test.describe('Client portal: Overview, reports and reminders', () => {
     await expect(page.getByText('Equipment loan payment')).toBeVisible();
     await expect(page.getByText('Schedule the payment.')).toBeVisible();
 
-    // §14.13: the fixture publishes monthly bank statements and one half-year
-    // P&L, so Monthly is offered and the other two are disabled — never a month
-    // sliced out of the six-month statement. The sentence that used to sit under
-    // these tabs was removed at the owner's request; the period picker carries
-    // the same information per option now.
-    const granularity = page.getByRole('group', { name: /reporting granularity/i });
-    await expect(granularity.getByRole('button', { name: 'Monthly' })).not.toHaveAttribute('aria-disabled', 'true');
-    await expect(granularity.getByRole('button', { name: 'Quarterly' })).toHaveAttribute('aria-disabled', 'true');
-    await expect(granularity.getByRole('button', { name: 'Annual' })).toHaveAttribute('aria-disabled', 'true');
-    await granularity.getByRole('button', { name: 'Monthly' }).click();
+    // The report period is QuickBooks' (owner, 2026-10-19): a named period and
+    // two dates, in place of the Monthly · Quarterly · Annual toggle. The
+    // fixture's one half-year P&L is a custom range of its own dates.
+    await expect(page.getByRole('group', { name: /granularity/i })).toHaveCount(0);
+    const bar = page.getByRole('group', { name: 'Report period' });
+    await expect(bar.getByRole('combobox', { name: 'Report period' })).toHaveValue('custom');
+    await expect(bar.getByLabel('From', { exact: true })).toHaveValue(pnl.period.start);
+    await expect(bar.getByLabel('To', { exact: true })).toHaveValue(pnl.period.end);
+    // Last month has nothing published behind it, and the page says so rather
+    // than slicing a month out of the six-month statement.
+    await bar.getByRole('combobox', { name: 'Report period' }).selectOption({ label: 'Last month' });
     await expect(page).toHaveURL(/\/dashboard\?period=\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}/);
+    await expect(page.getByText('Nothing has been published for these dates yet.').first()).toBeVisible();
 
     // The Profit & Loss is the Expenses page's source, and it names it — even
     // for a business that also has bank statements published, whose debits

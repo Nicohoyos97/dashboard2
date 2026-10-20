@@ -11,20 +11,18 @@ import { IncomeTaxCard } from '@/components/dashboard/IncomeTaxCard';
 import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { OverviewEmpty, OverviewShell } from '@/components/dashboard/OverviewShell';
+import { ReportPeriodBar } from '@/components/dashboard/ReportPeriodBar';
 import { SalesTaxOverview } from '@/components/dashboard/SalesTaxOverview';
-import { GranularityTabs } from '@/components/dashboard/GranularityTabs';
-import { PeriodPicker } from '@/components/dashboard/PeriodPicker';
-import { periodPickerProps } from '@/lib/portal/period-picker';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { ReportTiles } from '@/components/dashboard/ReportTiles';
+import { Notice } from '@/components/portal/Notice';
 import { logAccess } from '@/lib/audit/logAccess';
 import { todayIn } from '@/lib/utils/timezone';
 import { getCurrentEntity } from '@/lib/auth/getCurrentEntity';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { INSIGHT_PERIODS, type InsightPeriod, insightsAcrossPeriods } from '@/lib/insights/periods';
-import { compositionLinks, ledgerLinks } from '@/lib/ledger/links';
-import { ledgerDetailFrom, loadLedgerAccounts, loadPublishedLedgers } from '@/lib/ledger/load';
-import { MAX_INSIGHTS, type PnlInput } from '@/lib/insights/types';
+import { INSIGHT_PERIODS, insightsAcrossPeriods } from '@/lib/insights/periods';
+import { loadPublishedLedgers } from '@/lib/ledger/load';
+import { MAX_INSIGHTS } from '@/lib/insights/types';
 import {
   loadPortalEntitySettings,
   loadPublishedBankStatements,
@@ -32,62 +30,14 @@ import {
   loadPublishedReports,
   loadInsightDismissals,
   loadReminders,
-  loadReportLinesFor,
 } from '@/lib/portal/load';
 import { DOWNLOAD_MENU_READ, downloadItemsFor } from '@/lib/portal/downloads';
-import { granularityChoices } from '@/lib/portal/granularity';
-import { parsePeriodParam, periodParam } from '@/lib/portal/period-param';
-import { leafItems } from '@/lib/portal/statement-page';
-import { type Metric, type ReportRow } from '@/lib/reports';
-import { balanceSheetMetrics } from '@/lib/reports/balance-sheet';
-import { availablePeriods, periodKind, periodLabel, priorPeriod } from '@/lib/reports/periods';
-import { PNL_SYNONYMS, type PnlMetrics, pnlMetrics } from '@/lib/reports/pnl';
-import { findSection } from '@/lib/reports/sections';
-import { buildTree } from '@/lib/reports/tree';
+import { type CardKey, type OverviewFigures, overviewFromRange, overviewFromReport } from '@/lib/portal/overview-figures';
+import { periodParam } from '@/lib/portal/period-param';
+import { periodBarProps, selectPeriod, selectedRange } from '@/lib/portal/report-period';
+import { availablePeriods } from '@/lib/reports/periods';
 import { loadTaxObligations } from '@/lib/portal/taxes';
 import { createClient } from '@/lib/supabase/server';
-import { formatPeriodCompact } from '@/lib/utils/dates';
-
-// Which figure the delta was measured against. The statement's own comparative
-// column and the previous published period are different periods, and labelling
-// one with the other's name is how "+12.0% vs Jul–Dec 2025" appeared over a
-// year-over-year comparison. Nick already distinguishes the two.
-type ComparedTo = 'comparative_column' | 'prior_period_report';
-type Delta = {
-  cents: number | null;
-  deltaCents: number | null;
-  deltaPct: number | null;
-  comparedTo: ComparedTo | null;
-};
-
-/** How many published P&L periods the headline sparklines run over. */
-const PNL_TREND_LIMIT = 6;
-
-/** Fallback trend when no monthly source exists: the two real figures the delta already compares. */
-function priorAndCurrent(cents: number | null | undefined, deltaCents: number | null | undefined): number[] {
-  return cents === null || cents === undefined || deltaCents === null || deltaCents === undefined ? [] : [cents - deltaCents, cents];
-}
-
-function exactReport(reports: ReportRow[], type: ReportRow['reportType'], range: { start: string; end: string }): ReportRow | null {
-  return reports.find((report) => report.reportType === type && report.periodStart === range.start && report.periodEnd === range.end) ?? null;
-}
-
-function metricDelta(metric: Metric | undefined, priorMetric: Metric | undefined): Delta {
-  const cents = metric?.current?.cents ?? null;
-  if (cents === null) return { cents: null, deltaCents: null, deltaPct: null, comparedTo: null };
-  if (metric?.deltaCents !== null && metric?.deltaCents !== undefined) {
-    return { cents, deltaCents: metric.deltaCents, deltaPct: metric.deltaPct, comparedTo: 'comparative_column' };
-  }
-  const prior = priorMetric?.current?.cents;
-  if (prior === null || prior === undefined) return { cents, deltaCents: null, deltaPct: null, comparedTo: null };
-  const deltaCents = cents - prior;
-  return {
-    cents,
-    deltaCents,
-    deltaPct: prior === 0 ? null : (deltaCents / Math.abs(prior)) * 100,
-    comparedTo: 'prior_period_report',
-  };
-}
 
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const [t, locale, user, entity, params, supabase] = await Promise.all([
@@ -150,11 +100,16 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const periods = availablePeriods(reports, defaultCurrencyStatements, { locale }).filter((period) =>
     period.sources.some((source) => source === 'pnl' || source === 'bank'),
   );
-  const requested = parsePeriodParam(params.period);
-  const selected = (requested && periods.find((period) => period.start === requested.start && period.end === requested.end)) ?? periods[0] ?? null;
+  // The figures read the Profit & Loss: a published statement for exactly the
+  // dates chosen, or those dates added up (lib/reports/range.ts). A business
+  // with bank statements and no P&L keeps its newest published period, whose
+  // cards say the statement does not print them.
+  const pnlReports = reports.filter((report) => report.reportType === 'profit_and_loss');
+  const selection = selectPeriod(pnlReports, params.period);
+  const fallback = periods[0] ?? null;
   const downloadItems = downloadItemsFor(documents, locale);
 
-  if (!selected) {
+  if (!selection && !fallback) {
     await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
     return (
       <OverviewShell
@@ -171,97 +126,40 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const currentPnlReport = exactReport(reports, 'profit_and_loss', selected);
-  const priorRange = priorPeriod(selected, locale);
-  const priorPnlReport = priorRange ? exactReport(reports, 'profit_and_loss', priorRange) : null;
-  // Only for a client with the Balance Sheet add-on: without it no insight may
-  // read, or link to, a statement they cannot open.
-  const balanceReport = settings.modules.balance_sheet
-    ? (reports.find((report) => report.reportType === 'balance_sheet' && report.periodEnd <= selected.end) ?? null)
-    : null;
-  const currency = currentPnlReport?.currency ?? settings.currency;
+  const today = todayIn(settings.timezone);
   const modules = settings.modules;
-
-  // The headline sparklines run over the published P&Ls of the same kind as the
-  // selected period, oldest first — a monthly view trends months, an annual one
-  // trends years, so the shape never mixes granularities (spec §3).
-  const selectedKind = periodKind(selected.start, selected.end);
-  const pnlTrendReports = reports
-    .filter((report) => report.reportType === 'profit_and_loss' && report.periodEnd <= selected.end && periodKind(report.periodStart, report.periodEnd) === selectedKind)
-    .slice(0, PNL_TREND_LIMIT)
-    .reverse();
-
-  // Every statement's lines are read once: the selected and prior P&Ls are
-  // normally inside the trend window too, and were being fetched twice.
-  const lineReportIds = [
-    ...new Set([currentPnlReport?.id, priorPnlReport?.id, balanceReport?.id, ...pnlTrendReports.map((report) => report.id)].filter((id): id is string => id !== undefined)),
-  ];
-  // The month's ledger needs only the statement's period, so its accounts are
-  // read beside the lines rather than after them.
-  const [linesById, ledgerAccounts] = await Promise.all([
-    loadReportLinesFor(supabase, entity.id, lineReportIds),
-    currentPnlReport ? loadLedgerAccounts(supabase, entity.id, currentPnlReport, publishedLedgers) : Promise.resolve(null),
-  ]);
-  const linesOf = (report: ReportRow | null) => (report ? (linesById.get(report.id) ?? []) : []);
-  const currentLines = linesOf(currentPnlReport);
-  const priorLines = linesOf(priorPnlReport);
-  const balanceLines = linesOf(balanceReport);
-  const pnlTrendLines = pnlTrendReports.map((report) => linesOf(report));
-
-  const currentRoots = buildTree(currentLines);
-  const priorRoots = buildTree(priorLines);
-  const currentPnl = currentPnlReport ? pnlMetrics(currentPnlReport, currentRoots) : null;
-  const priorPnl = priorPnlReport ? pnlMetrics(priorPnlReport, priorRoots) : null;
-  const netIncome = metricDelta(currentPnl?.netIncome, priorPnl?.netIncome);
-  const revenue = metricDelta(currentPnl?.revenue, priorPnl?.revenue);
-  const grossProfit = metricDelta(currentPnl?.grossProfit, priorPnl?.grossProfit);
-  const operatingExpenses = metricDelta(currentPnl?.operatingExpenses, priorPnl?.operatingExpenses);
-  // A period whose statement does not print a total contributes nothing rather
-  // than a zero, so a gap never reads as a collapse to nil.
-  const pnlTrendTrees = pnlTrendReports.map((_, index) => buildTree(pnlTrendLines[index] ?? []));
-  const pnlTrend = pnlTrendReports.map((report, index) => pnlMetrics(report, pnlTrendTrees[index] ?? []));
-  const pnlSeries = (pick: (m: PnlMetrics) => Metric): number[] => {
-    const points = pnlTrend.flatMap((metrics) => {
-      const cents = pick(metrics).current?.cents;
-      return cents === undefined || cents === null ? [] : [cents];
-    });
-    return points.length === pnlTrend.length && points.length >= 2 ? points : [];
+  const context = {
+    supabase,
+    entityId: entity.id,
+    reports,
+    ledgers: publishedLedgers,
+    currency: settings.currency,
+    balanceSheet: modules.balance_sheet,
+    locale,
+    t,
   };
-  const trendFor = (pick: (m: PnlMetrics) => Metric, delta: Delta): number[] => {
-    const series = pnlSeries(pick);
-    return series.length >= 2 ? series : priorAndCurrent(delta.cents, delta.deltaCents);
-  };
+  const figures: OverviewFigures = !selection
+    ? noPnl(fallback ?? { start: today, end: today, label: '' }, settings.currency)
+    : selection.mode === 'report'
+      ? await overviewFromReport(context, selection.report)
+      : await overviewFromRange(context, selection.requested);
+  const shown = selection ? selectedRange(selection) : (fallback ?? { start: today, end: today });
+  const currency = figures.currency;
   // The cards dropped the source pill at the owner's request; the source still
   // travels in the "how is this calculated" tooltip (§2 rule 10), and says
   // "entered by your accountant" when there is no document behind the figure.
-  const pnlSourceNote = t(currentPnlReport?.source === 'firm_entry' ? 'sourceEntryNote' : 'sourceDocumentNote');
-  const pnlInput: PnlInput | undefined = currentPnl ? {
-    current: currentPnl,
-    lines: currentRoots,
-    ...(priorPnl ? { prior: priorPnl, priorLines: priorRoots } : {}),
-  } : undefined;
-  const today = todayIn(settings.timezone);
+  const pnlSourceNote = t(
+    figures.source === 'entry' ? 'sourceEntryNote' : figures.source === 'range' ? 'sourceRangeNote' : figures.source === 'range_ledger' ? 'sourceRangeLedgerNote' : 'sourceDocumentNote',
+  );
   // Insights run over the last few published periods, not only the selected
-  // one: the earlier periods get the statement rules (their balance figures
-  // are not loaded), and the selected period gets the full set. Rows
-  // this user has already checked off are dropped here.
-  const earlierPeriods: InsightPeriod[] = pnlTrendReports.flatMap((report, index) => {
-    const metrics = pnlTrend[index];
-    if (!metrics || report.periodEnd >= selected.end) return [];
-    return [{
-      start: report.periodStart,
-      end: report.periodEnd,
-      label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale),
-      metrics,
-      lines: pnlTrendTrees[index] ?? [],
-    }];
-  }).slice(-(INSIGHT_PERIODS - 1));
+  // one: the earlier periods get the statement rules, and the selected period
+  // gets the full set. Rows this user has already checked off are dropped here.
   const insights = insightsAcrossPeriods(
-    { start: selected.start, end: selected.end, label: selected.label },
-    earlierPeriods,
+    { start: figures.range.start, end: figures.range.end, label: figures.label },
+    figures.earlier.slice(-(INSIGHT_PERIODS - 1)),
     {
-      ...(pnlInput ? { pnl: pnlInput } : {}),
-      ...(balanceReport ? { balance: balanceSheetMetrics(balanceReport, buildTree(balanceLines)) } : {}),
+      ...(figures.pnl ? { pnl: figures.pnl } : {}),
+      ...(figures.balance ? { balance: figures.balance } : {}),
       reminders,
       reportsNeedingReview: 0,
       today,
@@ -269,34 +167,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     MAX_INSIGHTS + INSIGHT_PERIODS,
     dismissedInsights,
   );
-  // Each bar opens its account's transactions on Expenses when the month has a General Ledger.
-  const expenseLinks = currentPnlReport
-    ? compositionLinks(currentRoots, ledgerLinks(currentRoots, ledgerDetailFrom(ledgerAccounts, currentRoots)))
-    : new Map<string, string>();
-  const expenses = leafItems(findSection(currentRoots, PNL_SYNONYMS.operatingExpenses)).map((item) => {
-    const href = expenseLinks.get(item.label);
-    return href ? { ...item, href } : item;
-  });
-  const priorLabel = priorRange?.label ?? selected.label;
-  // A statement's comparative column names its own period; when it does not, say
-  // so rather than borrowing the previous period's name.
-  const comparativeLabel =
-    currentPnlReport?.comparativeStart && currentPnlReport?.comparativeEnd
-      ? formatPeriodCompact(currentPnlReport.comparativeStart, currentPnlReport.comparativeEnd, locale)
-      : null;
-  const periodLabelFor = (delta: Delta): string =>
-    delta.comparedTo === 'comparative_column' ? (comparativeLabel ?? t('priorColumn')) : priorLabel;
-  // Income and expenses come from the same statement, period by period; a
-  // period that prints neither total is dropped rather than drawn at zero.
-  const incomeExpense = pnlTrendReports.flatMap((report, index) => {
-    const metrics = pnlTrend[index];
-    const income = metrics?.revenue.current?.cents ?? null;
-    const expense = metrics?.operatingExpenses.current?.cents ?? null;
-    if (income === null && expense === null) return [];
-    // periodLabel, not the full range: "May 2026" fits an axis tick where
-    // "May 1, 2026 – May 31, 2026" would crowd every other label off it.
-    return [{ label: periodLabel(report.periodStart, report.periodEnd, selectedKind, locale), incomeCents: income, expenseCents: expense }];
-  });
+  const incomeExpense = figures.incomeExpense;
+  const expenses = figures.expenses;
+  const kpi = (key: CardKey, label: string, how: string, upIsGood: boolean) => {
+    const c = figures.cards[key];
+    return (
+      <KpiCard label={label} cents={c.cents} currency={currency} deltaCents={c.deltaCents} deltaPct={c.deltaPct} upIsGood={upIsGood} periodLabel={c.comparedWith} how={`${how} ${pnlSourceNote}`} href={`/statements/profit-and-loss?period=${periodParam(shown)}`} trend={c.trend} unavailableReason={figures.notice ?? t('notPrintedOnPnl')} />
+    );
+  };
 
   await logAccess({ action: 'dashboard.view', resourceType: 'business_entity', resourceId: entity.id, businessEntityId: entity.id }, { afterResponse: true });
 
@@ -308,14 +186,11 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   return (
     <OverviewShell
       greeting={greeting}
-      subtitle={t('subtitlePeriod', { business: entity.name, period: selected.label })}
+      subtitle={t('subtitlePeriod', { business: entity.name, period: figures.label })}
       logoUrl={settings.logoUrl}
       filters={
         modules.bookkeeping ? (
-          <>
-            <GranularityTabs choices={granularityChoices(periods, selected)} />
-            <PeriodPicker {...periodPickerProps({ periods, selected, today, locale, presetLabel: (preset) => t(`preset_${preset}`) })} />
-          </>
+          <ReportPeriodBar {...periodBarProps({ selected: shown, today, presetLabel: (preset) => t(`preset_${preset}`) })} />
         ) : undefined
       }
       actions={<DownloadReportsMenu items={downloadItems} />}
@@ -324,12 +199,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           home of every package, so it shows what the client bought and nothing
           else — a sales-tax-only client has no Profit & Loss for these to read.
           The four figures follow the statement's own order, top to bottom. */}
+      {modules.bookkeeping && figures.notice && (
+        <Notice text={figures.notice} />
+      )}
       {modules.bookkeeping && (
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <KpiCard label={t('kpiGrossIncome')} cents={revenue.cents} currency={currency} deltaCents={revenue.deltaCents} deltaPct={revenue.deltaPct} upIsGood periodLabel={periodLabelFor(revenue)} how={`${t('howGrossIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.revenue, revenue)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiGrossProfit')} cents={grossProfit.cents} currency={currency} deltaCents={grossProfit.deltaCents} deltaPct={grossProfit.deltaPct} upIsGood periodLabel={periodLabelFor(grossProfit)} how={`${t('howGrossProfit')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.grossProfit, grossProfit)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiTotalExpenses')} cents={operatingExpenses.cents} currency={currency} deltaCents={operatingExpenses.deltaCents} deltaPct={operatingExpenses.deltaPct} upIsGood={false} periodLabel={periodLabelFor(operatingExpenses)} how={`${t('howTotalExpenses')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.operatingExpenses, operatingExpenses)} unavailableReason={t('notPrintedOnPnl')} />
-        <KpiCard label={t('kpiNetIncome')} cents={netIncome.cents} currency={currency} deltaCents={netIncome.deltaCents} deltaPct={netIncome.deltaPct} upIsGood periodLabel={periodLabelFor(netIncome)} how={`${t('howNetIncome')} ${pnlSourceNote}`} href="/statements/profit-and-loss" trend={trendFor((m) => m.netIncome, netIncome)} unavailableReason={t('notPrintedOnPnl')} />
+        {kpi('revenue', t('kpiGrossIncome'), t('howGrossIncome'), true)}
+        {kpi('grossProfit', t('kpiGrossProfit'), t('howGrossProfit'), true)}
+        {kpi('operatingExpenses', t('kpiTotalExpenses'), t('howTotalExpenses'), false)}
+        {kpi('netIncome', t('kpiNetIncome'), t('howNetIncome'), true)}
       </div>
       )}
 
@@ -348,7 +226,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           </div>
           <div className="mt-4 flex-1">
             {incomeExpense.length >= 2 ? (
-              <IncomeExpenseChart points={incomeExpense} currency={currency} summary={t('incomeExpenseSummary', { count: incomeExpense.length })} />
+              <IncomeExpenseChart points={incomeExpense} currency={currency} summary={t(figures.source === 'range' || figures.source === 'range_ledger' ? 'incomeExpenseSummaryRange' : 'incomeExpenseSummary', { count: incomeExpense.length })} />
             ) : (
               <p className="text-muted-foreground text-ui">{t('incomeExpenseUnavailable')}</p>
             )}
@@ -388,9 +266,28 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           )}
         </div>
       )}
-      <NickPanel page="overview" period={periodParam(selected)} businessName={entity.name} />
+      <NickPanel page="overview" period={figures.nickPeriod} businessName={entity.name} />
     </OverviewShell>
   );
+}
+
+/** A business with bank statements and no Profit & Loss: every card says the statement does not print it. */
+function noPnl(period: { start: string; end: string; label: string }, currency: string): OverviewFigures {
+  const none = { cents: null, deltaCents: null, deltaPct: null, comparedWith: period.label, trend: [] };
+  return {
+    currency,
+    range: { start: period.start, end: period.end },
+    label: period.label,
+    cards: { revenue: none, grossProfit: none, operatingExpenses: none, netIncome: none },
+    source: 'document',
+    incomeExpense: [],
+    expenses: [],
+    pnl: undefined,
+    earlier: [],
+    balance: null,
+    nickPeriod: periodParam(period),
+    notice: null,
+  };
 }
 
 function Swatch({ color, label }: { color: string; label: string }) {
