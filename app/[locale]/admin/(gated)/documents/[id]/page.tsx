@@ -164,7 +164,17 @@ export default async function DocumentReviewPage({ params }: { params: Promise<{
       )}
 
       <div className="mt-6">
-        <PublishBar documentId={doc.id} status={doc.status} blockers={blockers.blockers} canEdit={canEdit} />
+        <PublishBar
+          documentId={doc.id}
+          status={doc.status}
+          blockers={blockers.blockers}
+          // current_version_id stays on what the client sees while the document
+          // is published; a newer review version is a replacement waiting.
+          pendingVersion={
+            doc.status === 'published' && versionId && versionId !== doc.current_version_id ? (versionNo.get(versionId) ?? null) : null
+          }
+          canEdit={canEdit}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">

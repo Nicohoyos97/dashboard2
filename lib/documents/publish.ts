@@ -34,6 +34,7 @@ const metaSchema = z.object({
 
 export type PublishBlocker =
   | 'publishBlockedStatus'
+  | 'publishBlockedProcessing'
   | 'publishBlockedReconciliation'
   | 'publishBlockedLowConfidence'
   | 'publishBlockedNoData'
@@ -103,6 +104,22 @@ export async function publishBlockers(
   const blockers = new Set<PublishBlocker>();
   if (!['reconciled', 'ready_to_publish', 'published'].includes(doc.status)) {
     blockers.add('publishBlockedStatus');
+  }
+
+  // A published document keeps its status while a newer version processes (the
+  // worker never touches a published row), so the status check above cannot
+  // tell a finished replacement from one the worker is still writing — and the
+  // worker clears and re-inserts the version's figures as it goes. Its job is
+  // what says the figures are whole.
+  if (doc.status === 'published' && reviewVersionId !== doc.current_version_id) {
+    const { data: job } = await supabase
+      .from('document_processing_jobs')
+      .select('status')
+      .eq('document_version_id', reviewVersionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!job || job.status === 'pending' || job.status === 'running') blockers.add('publishBlockedProcessing');
   }
 
   // Everything a version can produce. Tax filings and payroll summaries are as

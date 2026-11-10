@@ -358,4 +358,61 @@ describe.skipIf(!env)('publish blockers', () => {
     const { blockers } = await publishBlockers(A, doc.data.id);
     expect(blockers).toContain('publishBlockedNoData');
   });
+
+  it('holds a replacement for a published document until its version has finished processing', async () => {
+    // A published document keeps `published` while a newer version processes,
+    // so the status check never fires for it; the worker clears and rewrites
+    // the version's figures as it goes. Only the job says they are whole.
+    const tenant = await fx.makeTenant('pb-replace');
+    const be = { business_entity_id: tenant.entityId };
+    const doc = await A.from('documents')
+      .insert({ ...be, document_type: 'profit_and_loss', title: 'P&L', status: 'published', published_at: new Date().toISOString() })
+      .select('id')
+      .single();
+    if (doc.error) throw new Error(`document: ${doc.error.message}`);
+    const documentId = doc.data.id;
+
+    async function addVersion(no: number): Promise<string> {
+      const v = await A.from('document_versions')
+        .insert({
+          ...be,
+          document_id: documentId,
+          version_no: no,
+          storage_path: `${tenant.entityId}/${documentId}/v${no}/p.pdf`,
+          original_filename: 'p.pdf',
+          mime_type: 'application/pdf',
+          size_bytes: 10,
+          upload_status: 'uploaded',
+        })
+        .select('id')
+        .single();
+      if (v.error) throw new Error(`version ${no}: ${v.error.message}`);
+      const r = await A.from('financial_reports').insert({
+        ...be,
+        report_type: 'profit_and_loss',
+        source: 'firm_document',
+        document_version_id: v.data.id,
+        reconciliation: passed,
+        ...PERIOD,
+      });
+      if (r.error) throw new Error(`report ${no}: ${r.error.message}`);
+      return v.data.id;
+    }
+
+    const v1 = await addVersion(1);
+    await A.from('documents').update({ current_version_id: v1 }).eq('id', documentId);
+    // Nothing newer than what the client sees: the published version is not held.
+    expect((await publishBlockers(A, documentId)).blockers).toEqual([]);
+
+    const v2 = await addVersion(2);
+    const job = await A.from('document_processing_jobs').insert({ ...be, document_version_id: v2, status: 'running' }).select('id').single();
+    if (job.error) throw new Error(`job: ${job.error.message}`);
+
+    const running = await publishBlockers(A, documentId);
+    expect(running.versionId).toBe(v2);
+    expect(running.blockers).toEqual(['publishBlockedProcessing']);
+
+    await A.from('document_processing_jobs').update({ status: 'succeeded', step: 'done' }).eq('id', job.data.id);
+    expect((await publishBlockers(A, documentId)).blockers).toEqual([]);
+  });
 });

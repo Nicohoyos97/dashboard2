@@ -176,6 +176,79 @@ test.describe('Firm portal: review, corrections, publish', () => {
     expect(report?.superseded_by).not.toBeNull();
   });
 
+  // A newer version of a published statement replaces it in place. The bar used
+  // to offer only Unpublish, so the firm withdrew the month and published it
+  // again — two notifications and a moment with no statement (October 2026).
+  test('a newer version of a published document replaces it without unpublishing', async ({ browser }) => {
+    const entityId = await fx.makeEntity(await fx.makeClientRow('rpl'), 'Replace Co');
+    const first = await seedExtraction(entityId);
+    const page = await adminPage(browser, 'replace');
+    await correctAndPublish(page, first);
+
+    // Version 2, processed and clean, as the worker would leave it.
+    const statement = FinancialStatementSchema.parse(JSON.parse(readFileSync('tests/fixtures/expected/letter-and-pnl.json', 'utf8')));
+    const { rows } = buildHierarchy(statement.lines);
+    const { data: v2 } = await fx.admin
+      .from('document_versions')
+      .insert({ document_id: first.documentId, business_entity_id: entityId, version_no: 2, storage_path: `${entityId}/${first.documentId}/v2/letter-and-pnl.pdf`, original_filename: 'letter-and-pnl.pdf', mime_type: 'application/pdf', size_bytes: 10, sha256: randomUUID().replace(/-/g, ''), page_count: 3, upload_status: 'uploaded' })
+      .select('id')
+      .single();
+    const { data: report } = await fx.admin
+      .from('financial_reports')
+      .insert({ business_entity_id: entityId, report_type: 'profit_and_loss', basis: statement.basis ?? null, currency: statement.currency, period_start: statement.period_start, period_end: statement.period_end, source: 'firm_document', document_version_id: v2!.id, status: 'reconciled', reconciliation: { passed: true, checks: [], lowConfidence: { count: 0, refs: [] } } })
+      .select('id')
+      .single();
+    const ids = rows.map(() => randomUUID());
+    await fx.admin.from('financial_statement_lines').insert(
+      rows.map((r, i) => ({
+        id: ids[i]!,
+        report_id: report!.id,
+        business_entity_id: entityId,
+        parent_line_id: r.parentIndex === null ? null : ids[r.parentIndex]!,
+        position: r.position,
+        depth: r.depth,
+        section: r.section,
+        account_name: r.account_name,
+        current: r.currentCents === null ? null : r.currentCents / 100,
+        prior: r.priorCents === null ? null : r.priorCents / 100,
+        is_section: r.is_section,
+        is_total: r.is_total,
+        page_number: r.page,
+        source_text: r.source_text,
+        confidence: 0.99,
+        source: 'firm_document',
+        document_version_id: v2!.id,
+      })),
+    );
+    const { data: job } = await fx.admin
+      .from('document_processing_jobs')
+      .insert({ business_entity_id: entityId, document_version_id: v2!.id, status: 'running' })
+      .select('id')
+      .single();
+
+    // While the worker is still on it, the replacement is held and says why.
+    await page.reload();
+    await expect(page.getByText(/version 2 can't replace it yet/i)).toBeVisible();
+    await expect(page.getByText(/still being processed/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /publish version 2/i })).toBeDisabled();
+
+    await fx.admin.from('document_processing_jobs').update({ status: 'succeeded', step: 'done' }).eq('id', job!.id);
+    await page.reload();
+    await expect(page.getByText(/version 2 is ready/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^unpublish$/i })).toBeVisible();
+    await page.getByRole('button', { name: /publish version 2/i }).click();
+    await page.getByRole('button', { name: /confirm: replace with version 2/i }).click();
+    await expect(page.getByRole('button', { name: /publish version/i })).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByText(/clients can see this document/i)).toBeVisible();
+
+    const { data: doc } = await fx.admin.from('documents').select('status, current_version_id').eq('id', first.documentId).single();
+    expect(doc?.status).toBe('published');
+    expect(doc?.current_version_id).toBe(v2!.id);
+    const { data: old } = await fx.admin.from('financial_reports').select('status, superseded_by').eq('document_version_id', first.versionId).single();
+    expect(old?.status).toBe('superseded');
+    expect(old?.superseded_by).toBe(report!.id);
+  });
+
   test('corrections unlock publish; client visibility follows publication', async ({ browser }) => {
     const entityId = await fx.makeEntity(await fx.makeClientRow('rv'), 'Review Co');
     const member = await fx.makeUser('rv-member');

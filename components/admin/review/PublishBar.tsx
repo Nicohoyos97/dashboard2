@@ -11,15 +11,25 @@ import { primaryButton, secondaryButton } from '../ui';
 
 // Publish / unpublish with a two-step confirmation. Blockers come from the
 // server (publishBlockers) and are shown instead of a disabled mystery button.
+//
+// A published document can carry a newer version than the one the client sees
+// (`pendingVersion`). The server has always accepted publishing it — the
+// version swap supersedes the old report in one transaction and the client is
+// told the statement was updated — but this bar only offered Unpublish, so the
+// firm had to withdraw the month and publish it again: two notifications and a
+// moment with no statement at all (Que la creo Burger, October 2026).
 export function PublishBar({
   documentId,
   status,
   blockers,
+  pendingVersion,
   canEdit,
 }: {
   documentId: string;
   status: string;
   blockers: PublishBlocker[];
+  /** The newer version waiting behind a published one; null when there is none. */
+  pendingVersion: number | null;
   canEdit: boolean;
 }) {
   const t = useTranslations('Admin');
@@ -28,6 +38,7 @@ export function PublishBar({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const published = status === 'published';
+  const replacing = published && pendingVersion !== null;
 
   function run(kind: 'publish' | 'unpublish') {
     if (confirm !== kind) return setConfirm(kind);
@@ -42,6 +53,14 @@ export function PublishBar({
 
   if (!canEdit) return null;
 
+  const blockerList = (
+    <ul className="text-muted-foreground flex flex-col gap-1 text-ui">
+      {blockers.map((b) => (
+        <li key={b}>{t(b)}</li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="border-line bg-card flex flex-wrap items-center gap-4 rounded-2xl border p-5 shadow-card">
       <div className="min-w-0 flex-1">
@@ -51,13 +70,21 @@ export function PublishBar({
             {t('publishedNote')}
           </p>
         ) : blockers.length > 0 ? (
-          <ul className="text-muted-foreground flex flex-col gap-1 text-ui">
-            {blockers.map((b) => (
-              <li key={b}>{t(b)}</li>
-            ))}
-          </ul>
+          blockerList
         ) : (
           <p className="text-ink text-ui font-medium">{t('status_ready_to_publish')}</p>
+        )}
+        {replacing && (
+          <div className="mt-2">
+            {blockers.length > 0 ? (
+              <>
+                <p className="text-ink text-ui font-medium">{t('pendingVersionBlocked', { version: pendingVersion })}</p>
+                {blockerList}
+              </>
+            ) : (
+              <p className="text-ink text-ui font-medium">{t('pendingVersionReady', { version: pendingVersion })}</p>
+            )}
+          </div>
         )}
         {error && (
           <p role="alert" className="text-danger mt-2 text-ui">
@@ -65,12 +92,13 @@ export function PublishBar({
           </p>
         )}
       </div>
-      {published ? (
+      {published && (
         <button type="button" disabled={isPending} onClick={() => run('unpublish')} className={secondaryButton}>
           <EyeOff className="size-4" aria-hidden="true" />
           {confirm === 'unpublish' ? t('confirmUnpublish') : t('unpublish')}
         </button>
-      ) : (
+      )}
+      {(!published || replacing) && (
         <button
           type="button"
           disabled={isPending || blockers.length > 0}
@@ -78,7 +106,13 @@ export function PublishBar({
           className={primaryButton}
         >
           <CheckCircle2 className="size-4" aria-hidden="true" />
-          {confirm === 'publish' ? t('confirmPublish') : t('publish')}
+          {replacing
+            ? confirm === 'publish'
+              ? t('confirmPublishVersion', { version: pendingVersion })
+              : t('publishVersion', { version: pendingVersion })
+            : confirm === 'publish'
+              ? t('confirmPublish')
+              : t('publish')}
         </button>
       )}
     </div>
