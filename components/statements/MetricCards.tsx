@@ -133,15 +133,21 @@ export async function MetricCards({
             secondary.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
           }`}
         >
+          {/* Label and figure share a line when they fit; when they do not, the
+              figure drops to its own line, right-aligned, and the label keeps
+              its words together. The figure side used to be unshrinkable, so in
+              a narrow column — or beside "No comparative column on this
+              statement" — the label was squeezed to one word per line under
+              the figure. */}
           {secondary.map(resolve).map(({ item, value, reason, change, magnitude }) => (
-            <div key={item.label} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
-              <dt className="text-muted-foreground min-w-0 text-small font-medium">{item.label}</dt>
-              <dd className="flex shrink-0 items-center gap-2">
+            <div key={item.label} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 sm:px-5">
+              <dt className="text-muted-foreground shrink-0 text-small font-medium">{item.label}</dt>
+              <dd className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right">
                 {value === null ? (
                   <span className="text-muted-foreground text-small">{reasonText(item.kind === 'money' ? item.metric.reason : item.ratio.reason)}</span>
                 ) : (
                   <>
-                    <span className="text-ink text-title font-semibold tabular-nums">{value}</span>
+                    <span className="text-ink text-title font-semibold whitespace-nowrap tabular-nums">{value}</span>
                     {change !== null && magnitude !== null ? (
                       <DeltaPill change={change} magnitude={magnitude} upIsGood={item.upIsGood} />
                     ) : (
