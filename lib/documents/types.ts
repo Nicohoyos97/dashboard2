@@ -58,6 +58,18 @@ export function isDocumentStatus(value: string | undefined): value is DocumentSt
 export const UPLOAD_MIME_TYPES = ['application/pdf', 'text/csv', 'text/plain'] as const;
 export type UploadMimeType = (typeof UPLOAD_MIME_TYPES)[number];
 
+// What the worker can read from a CSV: a General Ledger through its own parser,
+// and anything else as an export of transactions — persistCsv writes a bank
+// statement, whatever the document was called. Every other type is read from
+// its PDF. A P&L uploaded as its QuickBooks CSV used to be accepted, fail three
+// times as `csv_unparseable` and leave the firm guessing (Que la creo Burger,
+// October 2026); one that did parse would have been filed as bank activity.
+export const CSV_DOCUMENT_TYPES: readonly DocumentType[] = ['csv_transactions', 'bank_statement', 'general_ledger'];
+
+export function acceptsCsv(documentType: string): boolean {
+  return (CSV_DOCUMENT_TYPES as readonly string[]).includes(documentType);
+}
+
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // matches the bucket limit
 
 export function defaultDocumentType(mime: UploadMimeType): DocumentType {

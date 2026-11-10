@@ -8,6 +8,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 
 import { getAnthropic } from '@/lib/ai/client';
+import { acceptsCsv } from '@/lib/documents/types';
 import { looksLikeGeneralLedger, persistGeneralLedger } from '@/lib/ledger/persist';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
@@ -119,6 +120,9 @@ async function processJob(admin: Admin, job: Job, signal: AbortSignal): Promise<
       summary = await persistPipelineOutput(admin, ctx, output);
       await fillDocumentMeta(admin, doc, output);
     } else {
+      // The upload refuses these now (acceptsCsv); a document already stored
+      // that way must still not be filed as bank activity under its own name.
+      if (!acceptsCsv(doc.document_type)) throw new WorkerError('needs_pdf');
       await setJob(admin, job.id, { step: 'extract' });
       summary = await persistCsv(admin, ctx, text ?? '', getAnthropic(), signal);
     }

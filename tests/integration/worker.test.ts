@@ -188,4 +188,36 @@ describe.skipIf(!env)('worker integration', () => {
     const { count: again } = await fx.admin.from('bank_transactions').select('id', { count: 'exact', head: true }).eq('business_entity_id', entityId);
     expect(again).toBe(expected.transactions.length);
   });
+
+  it('a P&L stored as a CSV fails by name, never as bank activity', async () => {
+    // The upload refuses this now; one already stored went to persistCsv, which
+    // files whatever it parses as a bank statement under the document's name.
+    const entityId = await fx.makeEntity(await fx.makeClientRow('wk-csv'), 'Worker CSV Co');
+    const csv = Buffer.from('Worker CSV Co\nProfit and Loss\nOctober 2026\n\n,Total\nIncome,\nSales,100.00\n');
+    const { data: doc } = await fx.admin
+      .from('documents')
+      .insert({ business_entity_id: entityId, document_type: 'profit_and_loss', title: 'P&L as CSV', status: 'uploaded' })
+      .select('id')
+      .single();
+    const path = `${entityId}/${doc!.id}/v1/pnl.csv`;
+    const { error: upErr } = await fx.admin.storage.from('documents').upload(path, csv, { contentType: 'text/csv' });
+    if (upErr) throw new Error(`upload: ${upErr.message}`);
+    uploaded.push(path);
+    const { data: version } = await fx.admin
+      .from('document_versions')
+      .insert({ document_id: doc!.id, business_entity_id: entityId, version_no: 1, storage_path: path, original_filename: 'pnl.csv', mime_type: 'text/csv', size_bytes: csv.length, sha256: sha(csv), upload_status: 'uploaded' })
+      .select('id')
+      .single();
+    await fx.admin.from('documents').update({ current_version_id: version!.id }).eq('id', doc!.id);
+    const { data: job } = await fx.admin
+      .from('document_processing_jobs')
+      .insert({ business_entity_id: entityId, document_version_id: version!.id })
+      .select('id')
+      .single();
+
+    const summary = await runPendingJobs({ batchSize: 5 });
+    expect(summary.outcomes.find((o) => o.jobId === job!.id)?.errorCode).toBe('needs_pdf');
+    const { count } = await fx.admin.from('bank_statements').select('id', { count: 'exact', head: true }).eq('business_entity_id', entityId);
+    expect(count).toBe(0);
+  });
 });

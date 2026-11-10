@@ -518,6 +518,7 @@
     "uploadFailed": "La subida falló. Inténtalo de nuevo.",
     "fileTooLarge": "El archivo supera 50 MB.",
     "fileBadType": "Solo se aceptan archivos PDF y CSV.",
+    "csvNeedsPdf": "{type}: se lee desde el PDF. Sube el PDF; un CSV solo se puede subir como transacciones CSV, extracto bancario o General Ledger.",
     "reject_duplicate": "Este mismo archivo ya fue subido para este negocio.",
     "reject_pdf_invalid": "El archivo no es un PDF legible.",
     "reject_pdf_encrypted": "El PDF tiene contraseña. Quítala y súbelo de nuevo.",

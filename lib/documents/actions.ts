@@ -14,7 +14,7 @@ import { getPageCount } from '@/lib/ingestion/pdf';
 import { RATE_LIMITS, consumeRateLimit } from '@/lib/rate-limit';
 import { createClient } from '@/lib/supabase/server';
 
-import { DOCUMENT_TYPES, MAX_UPLOAD_BYTES, UPLOAD_MIME_TYPES, safeFilename } from './types';
+import { DOCUMENT_TYPES, MAX_UPLOAD_BYTES, UPLOAD_MIME_TYPES, acceptsCsv, safeFilename } from './types';
 
 // Upload flow (docs/PLAN.md §3.3): the browser never sends bytes through the
 // server. createDocumentDraft() reserves the rows + storage path, the browser
@@ -54,15 +54,25 @@ export async function createDocumentDraft(input: unknown): Promise<ActionResult<
   let documentId = d.documentId ?? null;
   let versionNo = 1;
 
+  // A CSV the worker cannot read as what the document says it is, refused
+  // before any bytes move. A new version keeps its document's type, so that is
+  // the one to check — not whatever the form's select still says.
+  const refuseCsv = (documentType: string): ActionResult<DraftResult> | null =>
+    d.mimeType !== 'application/pdf' && !acceptsCsv(documentType)
+      ? { ok: false, error: t('csvNeedsPdf', { type: t(`type_${documentType}`) }) }
+      : null;
+
   if (documentId) {
     const { data: existing } = await supabase
       .from('documents')
-      .select('id, business_entity_id')
+      .select('id, business_entity_id, document_type')
       .eq('id', documentId)
       .maybeSingle();
     if (!existing || existing.business_entity_id !== d.entityId) {
       return { ok: false, error: t('errorInvalid') };
     }
+    const refused = refuseCsv(existing.document_type);
+    if (refused) return refused;
     const { data: last } = await supabase
       .from('document_versions')
       .select('version_no')
@@ -72,6 +82,8 @@ export async function createDocumentDraft(input: unknown): Promise<ActionResult<
       .maybeSingle();
     versionNo = (last?.version_no ?? 0) + 1;
   } else {
+    const refused = refuseCsv(d.documentType);
+    if (refused) return refused;
     const { data: doc, error } = await supabase
       .from('documents')
       .insert({

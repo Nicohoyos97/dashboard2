@@ -125,6 +125,27 @@ test.describe('Firm portal: upload + original download', () => {
     expect(docAfterV2?.current_version_id).toBe(versions![1]!.id);
     await fx.admin.storage.from('documents').remove([versions![1]!.storage_path]);
 
+    // ── A P&L is read from its PDF: its CSV is not offered as one, and is ──
+    // refused as the P&L's next version, with the reason, before any bytes move.
+    const pnlCsv = Buffer.from('Upload Co\nProfit and Loss\nOctober 2026\n\n,Total\nIncome,\nSales,100.00\n');
+    await page.goto('/admin/upload');
+    await page.selectOption('#uploadClient', clientId);
+    await page.selectOption('#uploadEntity', entityId);
+    await page.setInputFiles('#uploadFiles', { name: `pnl-${stamp}.csv`, mimeType: 'text/csv', buffer: pnlCsv });
+    await expect(page.locator('select[id^="type-"]')).toHaveValue('csv_transactions');
+    await expect(page.locator('select[id^="type-"] option[value="profit_and_loss"]')).toHaveCount(0);
+
+    await page.goto(`/admin/upload?document=${version!.document_id}`);
+    await expect(page.getByText(/new version of/i)).toBeVisible();
+    await page.setInputFiles('#uploadFiles', { name: `pnl-v3-${stamp}.csv`, mimeType: 'text/csv', buffer: pnlCsv });
+    await page.getByRole('button', { name: /upload 1 file/i }).click();
+    await expect(page.getByText(/profit & loss is read from its pdf/i)).toBeVisible({ timeout: 30_000 });
+    const { count: versionCount } = await fx.admin
+      .from('document_versions')
+      .select('id', { count: 'exact', head: true })
+      .eq('document_id', version!.document_id);
+    expect(versionCount).toBe(2);
+
     // ── Download: admin gets a 302 to a signed URL serving the exact bytes ─
     const adminRes = await page.request.get(`/api/documents/${version!.id}/download`, {
       maxRedirects: 0,

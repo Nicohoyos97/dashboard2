@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { createDocumentDraft, finalizeDocumentUpload } from '@/lib/documents/actions';
 import {
+  CSV_DOCUMENT_TYPES,
   DOCUMENT_TYPES,
   type DocumentType,
   MAX_UPLOAD_BYTES,
@@ -161,7 +162,8 @@ export function Uploader({ clients, replace }: { clients: UploaderClient[]; repl
                 <div>
                   <label htmlFor={`type-${item.key}`} className="text-muted-foreground mb-1 block text-caption font-medium">{t('fileType')}</label>
                   <select id={`type-${item.key}`} value={item.documentType} disabled={item.state !== 'ready'} onChange={(e) => patch(item.key, { documentType: e.target.value as DocumentType })} className={`${selectClass} h-10`}>
-                    {DOCUMENT_TYPES.map((d) => <option key={d} value={d}>{t(`type_${d}`)}</option>)}
+                    {/* A CSV can only be one of the types the worker reads from a CSV; the server refuses the rest. */}
+                    {(item.mime === 'application/pdf' ? DOCUMENT_TYPES : CSV_DOCUMENT_TYPES).map((d) => <option key={d} value={d}>{t(`type_${d}`)}</option>)}
                   </select>
                 </div>
                 <div>

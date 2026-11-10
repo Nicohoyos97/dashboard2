@@ -518,6 +518,7 @@
     "uploadFailed": "Upload failed. Try again.",
     "fileTooLarge": "File is larger than 50 MB.",
     "fileBadType": "Only PDF and CSV files are accepted.",
+    "csvNeedsPdf": "{type} is read from its PDF. Upload the PDF: a CSV can only go up as CSV transactions, a bank statement or a General Ledger.",
     "reject_duplicate": "This exact file was already uploaded for this business.",
     "reject_pdf_invalid": "The file is not a readable PDF.",
     "reject_pdf_encrypted": "The PDF is password-protected. Remove the password and upload again.",
